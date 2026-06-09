@@ -19,7 +19,8 @@ import {
   type VariableTreeDataNode,
 } from './variableTreeData';
 
-const TREE_ITEM_HEIGHT = 24;
+/** Must match .tree-structure-panel row height for virtual scroll. */
+const TREE_ITEM_HEIGHT = 20;
 
 interface VariableTreeProps {
   onExpandBranch?: (branch: string) => void;

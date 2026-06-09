@@ -10,6 +10,11 @@ createRoot(document.getElementById('root')!).render(
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: { colorBgLayout: '#f0f0f0' },
+        components: {
+          Tree: {
+            titleHeight: 20,
+          },
+        },
       }}
     >
       <AntApp>
