@@ -111,6 +111,13 @@ function sortTreeNodes(nodes: TreeNode[]): TreeNode[] {
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
+function branchPathContains(nodePath: string, branch: string): boolean {
+  if (nodePath === branch) return true;
+  const slash = branch.includes('/');
+  const sep = slash ? '/' : '.';
+  return branch.startsWith(`${nodePath}${sep}`);
+}
+
 /** Attach variable leaf nodes under a branch; keeps existing sub-branch children. */
 export function attachVariablesToBranch(
   tree: TreeNode[],
@@ -118,10 +125,12 @@ export function attachVariablesToBranch(
   variables: { name: string }[],
   branchVarPrefix: string | null,
 ): TreeNode[] {
-  const attach = (nodes: TreeNode[]): TreeNode[] =>
-    nodes.map((node) => {
+  const attach = (nodes: TreeNode[]): TreeNode[] => {
+    let changed = false;
+    const next = nodes.map((node) => {
       if (node.nodeKind === 'variable') return node;
       if (node.fullPath === branch) {
+        changed = true;
         const branchChildren = (node.children ?? []).filter((c) => c.nodeKind !== 'variable');
         const varChildren: TreeNode[] = variables.map((v) => ({
           key: v.name,
@@ -136,17 +145,23 @@ export function attachVariablesToBranch(
         });
         return {
           ...node,
-          nodeKind: 'branch',
+          nodeKind: 'branch' as const,
           variablesLoaded: true,
           isLeaf: children.length === 0,
           children,
         };
       }
-      if (node.children?.length) {
-        return { ...node, children: attach(node.children) };
+      if (node.children?.length && branchPathContains(node.fullPath, branch)) {
+        const children = attach(node.children);
+        if (children !== node.children) {
+          changed = true;
+          return { ...node, children };
+        }
       }
       return node;
     });
+    return changed ? next : nodes;
+  };
 
   return attach(tree);
 }
@@ -191,9 +206,11 @@ export function mergeDotBranchIntoTree(
 
   if (!parentPath) return childNodes;
 
-  const attach = (nodes: TreeNode[]): TreeNode[] =>
-    nodes.map((node) => {
+  const attach = (nodes: TreeNode[]): TreeNode[] => {
+    let changed = false;
+    const next = nodes.map((node) => {
       if (node.fullPath === parentPath) {
+        changed = true;
         const merged = new Map<string, TreeNode>();
         for (const c of node.children ?? []) {
           if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
@@ -207,16 +224,22 @@ export function mergeDotBranchIntoTree(
         }
         return {
           ...node,
-          nodeKind: 'branch',
+          nodeKind: 'branch' as const,
           isLeaf: false,
           children: Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
         };
       }
-      if (node.children?.length) {
-        return { ...node, children: attach(node.children) };
+      if (node.children?.length && branchPathContains(node.fullPath, parentPath)) {
+        const children = attach(node.children);
+        if (children !== node.children) {
+          changed = true;
+          return { ...node, children };
+        }
       }
       return node;
     });
+    return changed ? next : nodes;
+  };
 
   return attach(tree);
 }
@@ -238,9 +261,11 @@ export function mergeSmcBranchIntoTree(
 
   if (!parentPath) return childNodes;
 
-  const attach = (nodes: TreeNode[]): TreeNode[] =>
-    nodes.map((node) => {
+  const attach = (nodes: TreeNode[]): TreeNode[] => {
+    let changed = false;
+    const next = nodes.map((node) => {
       if (node.fullPath === parentPath) {
+        changed = true;
         const merged = new Map<string, TreeNode>();
         for (const c of node.children ?? []) {
           if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
@@ -248,16 +273,22 @@ export function mergeSmcBranchIntoTree(
         for (const c of childNodes) merged.set(c.fullPath, c);
         return {
           ...node,
-          nodeKind: 'branch',
+          nodeKind: 'branch' as const,
           isLeaf: false,
           children: Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
         };
       }
-      if (node.children?.length) {
-        return { ...node, children: attach(node.children) };
+      if (node.children?.length && branchPathContains(node.fullPath, parentPath)) {
+        const children = attach(node.children);
+        if (children !== node.children) {
+          changed = true;
+          return { ...node, children };
+        }
       }
       return node;
     });
+    return changed ? next : nodes;
+  };
 
   return attach(tree);
 }

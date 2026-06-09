@@ -1,6 +1,6 @@
 import { App, Tree } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { isWatchIoTransport } from '../../api/smcHttp';
 import { MAX_SELECTED_PARAMETERS, useVariableStore } from '../../stores/variableStore';
@@ -9,19 +9,17 @@ import type { TreeNode } from '../../api/types';
 import {
   branchHasLoadedChildren,
   branchHasLoadedVariables,
-  findTreeNode,
   flattenTree,
   wrapWithWatchIoRoot,
 } from '../../utils/buildVariableTree';
+import { VariableTreeNodeTitle } from './VariableTreeNodeTitle';
+import {
+  collectBranchKeys,
+  toVariableTreeData,
+  type VariableTreeDataNode,
+} from './variableTreeData';
 
-function toAntTree(nodes: TreeNode[]): DataNode[] {
-  return nodes.map((n) => ({
-    key: n.key,
-    title: n.title,
-    isLeaf: n.isLeaf,
-    children: n.children?.length ? toAntTree(n.children) : undefined,
-  }));
-}
+const TREE_ITEM_HEIGHT = 24;
 
 interface VariableTreeProps {
   onExpandBranch?: (branch: string) => void;
@@ -30,19 +28,21 @@ interface VariableTreeProps {
 
 export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreeProps) {
   const { message } = App.useApp();
-  const { flatTree, searchQuery, config } = useConnectionStore();
-  const {
-    treeNodes,
-    selectedBranch,
-    selectedVariables,
-    setSelectedBranch,
-    toggleSelectedVariable,
-    clearSelectedVariables,
-  } = useVariableStore();
-  const { addPlotVariable } = usePlotStore();
-  const watchIoName = config.watchIoName;
-  const useDotTreeRoot =
-    isWatchIoTransport(config.transport) && !flatTree;
+  const flatTree = useConnectionStore((s) => s.flatTree);
+  const searchQuery = useConnectionStore((s) => s.searchQuery);
+  const transport = useConnectionStore((s) => s.config.transport);
+  const watchIoName = useConnectionStore((s) => s.config.watchIoName);
+
+  const treeNodes = useVariableStore((s) => s.treeNodes);
+  const selectedBranch = useVariableStore((s) => s.selectedBranch);
+  const selectedVariables = useVariableStore((s) => s.selectedVariables);
+  const setSelectedBranch = useVariableStore((s) => s.setSelectedBranch);
+  const toggleSelectedVariable = useVariableStore((s) => s.toggleSelectedVariable);
+  const clearSelectedVariables = useVariableStore((s) => s.clearSelectedVariables);
+
+  const addPlotVariable = usePlotStore((s) => s.addPlotVariable);
+
+  const useDotTreeRoot = isWatchIoTransport(transport) && !flatTree;
 
   const selectedSet = useMemo(() => new Set(selectedVariables), [selectedVariables]);
 
@@ -72,10 +72,47 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     return nodes;
   }, [treeNodes, flatTree, searchQuery, watchIoName, useDotTreeRoot]);
 
-  const resolveNode = useCallback(
-    (key: string): TreeNode | null => findTreeNode(treeNodes, key),
-    [treeNodes],
+  const treeData = useMemo(() => toVariableTreeData(displayNodes), [displayNodes]);
+
+  const nodeKindMap = useMemo(() => {
+    const map = new Map<string, TreeNode['nodeKind']>();
+    const walk = (nodes: TreeNode[]) => {
+      for (const node of nodes) {
+        map.set(node.key, node.nodeKind);
+        if (node.children?.length) walk(node.children);
+      }
+    };
+    walk(displayNodes);
+    return map;
+  }, [displayNodes]);
+
+  const [expandedKeys, setExpandedKeys] = useState<string[]>(() =>
+    useDotTreeRoot ? [] : [watchIoName],
   );
+
+  useEffect(() => {
+    if (searchQuery) {
+      setExpandedKeys(collectBranchKeys(displayNodes));
+    }
+  }, [searchQuery, displayNodes]);
+
+  useEffect(() => {
+    if (searchQuery) return;
+    setExpandedKeys(useDotTreeRoot ? [] : [watchIoName]);
+  }, [searchQuery, watchIoName, useDotTreeRoot]);
+
+  const treeBodyRef = useRef<HTMLDivElement>(null);
+  const [treeHeight, setTreeHeight] = useState(300);
+
+  useEffect(() => {
+    const el = treeBodyRef.current;
+    if (!el) return;
+    const update = () => setTreeHeight(Math.max(120, el.clientHeight));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const selectVariable = useCallback(
     (fullName: string) => {
@@ -88,86 +125,83 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
 
   const titleRender = useCallback(
     (node: DataNode) => {
-      const meta = resolveNode(String(node.key));
-      if (meta?.nodeKind !== 'variable') return <span>{node.title as string}</span>;
-
-      const fullName = String(node.key);
-      const selected = selectedSet.has(fullName);
-
+      const data = node as VariableTreeDataNode;
+      const nodeKey = String(data.key);
       return (
-        <span
-          className="tree-var-node"
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            addPlotVariable(fullName);
-          }}
-        >
-          <button
-            type="button"
-            className={`tree-var-indicator${selected ? ' is-selected' : ''}`}
-            aria-label={selected ? 'Selected parameter' : 'Select parameter'}
-            aria-pressed={selected}
-            onClick={(e) => {
-              e.stopPropagation();
-              selectVariable(fullName);
-            }}
-          />
-          <span className="tree-var-label">{node.title as string}</span>
-        </span>
+        <VariableTreeNodeTitle
+          nodeKey={nodeKey}
+          title={String(data.title ?? '')}
+          nodeKind={data.nodeKind ?? nodeKindMap.get(nodeKey)}
+          selected={selectedSet.has(nodeKey)}
+          onSelectVariable={selectVariable}
+          onAddPlot={addPlotVariable}
+        />
       );
     },
-    [resolveNode, selectedSet, selectVariable, addPlotVariable],
+    [nodeKindMap, selectedSet, selectVariable, addPlotVariable],
   );
 
-  const selectedKeys =
-    selectedVariables.length > 0
-      ? selectedVariables
-      : selectedBranch
-        ? [selectedBranch]
-        : [];
+  const selectedKeys = useMemo(
+    () =>
+      selectedVariables.length > 0
+        ? selectedVariables
+        : selectedBranch
+          ? [selectedBranch]
+          : [],
+    [selectedVariables, selectedBranch],
+  );
 
-  const isBranchKey = (key: string) => resolveNode(key)?.nodeKind !== 'variable';
+  const isBranchKey = useCallback(
+    (key: string) => nodeKindMap.get(key) !== 'variable',
+    [nodeKindMap],
+  );
 
-  const headerLabel = searchQuery ? `Tree structure (filtered)` : 'Tree structure';
+  const headerLabel = searchQuery ? 'Tree structure (filtered)' : 'Tree structure';
 
   return (
     <div className="panel tree-structure-panel" aria-label="Tree structure">
       <div className="panel-header">{headerLabel}</div>
-      <Tree
-        treeData={toAntTree(displayNodes)}
-        selectedKeys={selectedKeys}
-        titleRender={titleRender}
-        onSelect={(keys) => {
-          const key = (keys[0] as string) ?? null;
-          if (!key || key === watchIoName) return;
-          const meta = resolveNode(key);
-          if (meta?.nodeKind === 'variable') {
-            selectVariable(key);
-            return;
-          }
-          clearSelectedVariables();
-          setSelectedBranch(key);
-        }}
-        onExpand={(_keys, { node }) => {
-          const key = String(node.key);
-          if (!useDotTreeRoot && key === watchIoName) {
-            onExpandBranch?.('');
-            return;
-          }
-          if (isBranchKey(key)) {
-            if (!branchHasLoadedChildren(treeNodes, key)) {
-              onExpandBranch?.(key);
+      <div ref={treeBodyRef} className="tree-body">
+        <Tree
+          height={treeHeight}
+          itemHeight={TREE_ITEM_HEIGHT}
+          virtual
+          treeData={treeData}
+          expandedKeys={expandedKeys}
+          selectedKeys={selectedKeys}
+          titleRender={titleRender}
+          onExpand={(keys, { node, expanded }) => {
+            setExpandedKeys(keys as string[]);
+            if (!expanded) return;
+            const key = String(node.key);
+            if (!useDotTreeRoot && key === watchIoName) {
+              onExpandBranch?.('');
+              return;
             }
-            if (!branchHasLoadedVariables(treeNodes, key)) {
-              onLoadVariables?.(key);
+            if (isBranchKey(key)) {
+              if (!branchHasLoadedChildren(treeNodes, key)) {
+                onExpandBranch?.(key);
+              }
+              if (!branchHasLoadedVariables(treeNodes, key)) {
+                onLoadVariables?.(key);
+              }
             }
-          }
-        }}
-        defaultExpandedKeys={useDotTreeRoot ? [] : [watchIoName]}
-        defaultExpandAll={!!searchQuery}
-        showLine
-        blockNode
-      />
+          }}
+          onSelect={(keys) => {
+            const key = (keys[0] as string) ?? null;
+            if (!key || key === watchIoName) return;
+            const kind = nodeKindMap.get(key);
+            if (kind === 'variable') {
+              selectVariable(key);
+              return;
+            }
+            clearSelectedVariables();
+            setSelectedBranch(key);
+          }}
+          showLine
+          blockNode
+        />
+      </div>
     </div>
   );
 }
