@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { createDefaultWatchIoService, isWatchIoTransport } from '../api/smcHttp';
 import { defaultWsUrl } from '../api/watchIoPaths';
+import { parseTransportEnv } from '../constants/transport';
 import type {
   AppMode,
   ConnectionConfig,
-  ConnectionTransport,
   DiscoveredService,
   ViewMode,
 } from '../api/types';
@@ -43,7 +43,7 @@ const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   config: {
-    transport: (import.meta.env.VITE_TRANSPORT as ConnectionTransport) ?? 'smcServer',
+    transport: parseTransportEnv(import.meta.env.VITE_TRANSPORT),
     httpUrl: import.meta.env.VITE_HTTP_URL ?? '',
     wsUrl:
       import.meta.env.VITE_WS_URL ??

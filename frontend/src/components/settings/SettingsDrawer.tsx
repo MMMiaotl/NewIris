@@ -1,12 +1,7 @@
 import { Drawer, Form, Input, InputNumber, Select } from 'antd';
 import type { ConnectionTransport } from '../../api/types';
+import { transportOptions } from '../../constants/transport';
 import { useConnectionStore } from '../../stores/connectionStore';
-
-const transportOptions = [
-  { label: 'SmcServer API (/SmcServer1)', value: 'smcServer' },
-  { label: 'WatchIO HTTP (/watchio)', value: 'watchIoHttp' },
-  { label: 'WatchIO WebSocket (STOMP)', value: 'watchIoWs' },
-];
 
 export function SettingsDrawer() {
   const { config, settingsDrawerOpen, setSettingsDrawerOpen, setConfig } = useConnectionStore();

@@ -60,7 +60,7 @@ Again use **http://localhost:5173**.
 - `.niris` recording / replay
 - Session save/load
 
-## Legacy reference
+## Legacy reference (local `reference/` folder, not in git)
 
-- [WatchIoGuide.md](WatchIoGuide.md) — SOAP integration
-- [Web/SmcServerView.html](Web/SmcServerView.html) — SmcServer API reference client
+- `reference/WatchIoGuide.md` — SOAP integration
+- `reference/Web/SmcServerView.html` — SmcServer API reference client

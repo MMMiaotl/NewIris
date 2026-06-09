@@ -19,10 +19,25 @@ export function AppShell() {
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';
 
+  const statusClass =
+    status === 'connected'
+      ? 'footer-status--connected'
+      : status === 'error'
+        ? 'footer-status--error'
+        : status === 'connecting'
+          ? 'footer-status--connecting'
+          : 'footer-status--disconnected';
+
+  const modeLabel =
+    appMode === 'offline' ? 'Off Line' : appMode === 'replay' ? 'Replay' : status;
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-title">NewIris — WatchIO Monitor</div>
+        <div className="app-header-top">
+          <div className="app-title">NewIris</div>
+          <span className="app-subtitle">WatchIO Monitor</span>
+        </div>
         <MenuBar onConnect={connect} onDisconnect={disconnect} />
         <ConnectionBar />
       </header>
@@ -60,16 +75,15 @@ export function AppShell() {
       </main>
 
       <footer className="app-footer">
-        <span>
-          {config.transport}
-          {' · '}
+        <span className="footer-item">{config.transport}</span>
+        <span className="footer-sep">·</span>
+        <span className="footer-item">
           {config.hostAddress}
           {config.serverPath}
-          {' · '}
-          {config.watchIoName}
-          {' · '}
-          {status}
         </span>
+        <span className="footer-sep">·</span>
+        <span className="footer-item">{config.watchIoName}</span>
+        <span className={`footer-status ${statusClass}`}>{modeLabel}</span>
       </footer>
 
       <PlotControlDrawer />

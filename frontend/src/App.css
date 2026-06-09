@@ -11,11 +11,23 @@
   padding: 4px 8px;
 }
 
-.app-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
+.app-header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   margin-bottom: 2px;
+}
+
+.app-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: 0.02em;
+}
+
+.app-subtitle {
+  font-size: 11px;
+  color: #666;
 }
 
 .menu-bar {
@@ -158,11 +170,55 @@
 }
 
 .app-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: #e8e8e8;
   border-top: 1px solid #c0c0c0;
   padding: 2px 8px;
   font-size: 11px;
   color: #666;
+}
+
+.footer-item {
+  white-space: nowrap;
+}
+
+.footer-sep {
+  color: #bbb;
+}
+
+.footer-status {
+  margin-left: auto;
+  padding: 1px 8px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.footer-status--connected {
+  color: #389e0d;
+  border-color: #b7eb8f;
+  background: #f6ffed;
+}
+
+.footer-status--connecting {
+  color: #d48806;
+  border-color: #ffe58f;
+  background: #fffbe6;
+}
+
+.footer-status--error {
+  color: #cf1322;
+  border-color: #ffa39e;
+  background: #fff1f0;
+}
+
+.footer-status--disconnected {
+  color: #8c8c8c;
+  border-color: #d9d9d9;
+  background: #fafafa;
 }
 
 .replay-bar {

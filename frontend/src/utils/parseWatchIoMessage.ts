@@ -89,13 +89,6 @@ export function extractBranchNames(msg: WatchIoMessage, parsed?: SmcJsonMessage)
   return [];
 }
 
-export function extractBranchNamesFromText(text: string): string[] {
-  const parsed = parseSmcJson(text);
-  if (!parsed) return [];
-  const msg = smcJsonToWatchIoMessage(parsed);
-  return extractBranchNames(msg, parsed);
-}
-
 /** Parent branch when vartree was requested for a subtree (relative child names in values). */
 export function parseVartreeParent(msg: WatchIoMessage): string | null {
   const params = msg.params;

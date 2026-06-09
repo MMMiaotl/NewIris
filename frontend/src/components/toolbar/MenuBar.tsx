@@ -102,20 +102,23 @@ export function MenuBar({ onConnect, onDisconnect }: MenuBarProps) {
     },
   ];
 
+  const viewLabel = (mode: typeof viewMode, text: string) =>
+    viewMode === mode ? `✓ ${text}` : text;
+
   const viewMenu: MenuProps['items'] = [
     {
       key: 'list',
-      label: 'List View',
+      label: viewLabel('list', 'List View'),
       onClick: () => setViewMode('list'),
     },
     {
       key: 'plot',
-      label: 'Plot View',
+      label: viewLabel('plot', 'Plot View'),
       onClick: () => setViewMode('plot'),
     },
     {
       key: 'splitter',
-      label: 'Splitter View',
+      label: viewLabel('splitter', 'Splitter View'),
       onClick: () => setViewMode('splitter'),
     },
     { type: 'divider' },

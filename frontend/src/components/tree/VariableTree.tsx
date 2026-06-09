@@ -128,8 +128,11 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
 
   const isBranchKey = (key: string) => resolveNode(key)?.nodeKind !== 'variable';
 
+  const headerLabel = searchQuery ? `Tree structure (filtered)` : 'Tree structure';
+
   return (
     <div className="panel tree-structure-panel" aria-label="Tree structure">
+      <div className="panel-header">{headerLabel}</div>
       <Tree
         treeData={toAntTree(displayNodes)}
         selectedKeys={selectedKeys}

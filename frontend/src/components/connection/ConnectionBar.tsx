@@ -6,20 +6,9 @@ import {
 } from '../../api/smcHttp';
 import { defaultWsUrl } from '../../api/watchIoPaths';
 import type { ConnectionTransport } from '../../api/types';
+import { defaultWatchIoNames, transportOptions } from '../../constants/transport';
 import { predefinedHosts, useConnectionStore } from '../../stores/connectionStore';
 import { watchIoLog } from '../../utils/watchIoDebug';
-
-const transportOptions: { label: string; value: ConnectionTransport }[] = [
-  { label: 'SmcServer API', value: 'smcServer' },
-  { label: 'WatchIO HTTP', value: 'watchIoHttp' },
-  { label: 'WatchIO WebSocket', value: 'watchIoWs' },
-];
-
-const defaultWatchIoNames: Record<ConnectionTransport, string> = {
-  smcServer: 'SmcControl1',
-  watchIoHttp: 'SmcControl1',
-  watchIoWs: 'SmcControl1',
-};
 
 function applyWatchIoDefaults(
   setDiscoveredServices: (services: ReturnType<typeof createDefaultWatchIoService>[]) => void,
@@ -117,7 +106,7 @@ export function ConnectionBar() {
       <Space wrap size="small" align="center">
         <Typography.Text type="secondary">Transport</Typography.Text>
         <Select
-          style={{ width: 168 }}
+          style={{ width: 220 }}
           value={config.transport}
           onChange={onTransportChange}
           options={transportOptions}
