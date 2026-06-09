@@ -57,7 +57,7 @@ export class HttpWatchIoClient implements WatchIoClient {
         this.watchIoName,
         'open',
         undefined,
-        `watchioname=${encodeURIComponent(this.watchIoName)}`,
+        `watchioname=${encodeURIComponent(this.watchIoName)} includedescription=1`,
       );
       await smcHttpGet(openUrl, 15_000);
       this.connected = true;

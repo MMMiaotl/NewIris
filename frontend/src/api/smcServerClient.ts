@@ -194,7 +194,7 @@ export class SmcServerClient implements WatchIoClient {
       this.varPrefix = '';
     }
 
-    const entries = normalizeVarEntries(msg);
+    const entries = normalizeEntries(msg.entries);
     this.pathVarPrefix.set(branch, this.varPrefix);
     const withFullNames = entries.map((e) => {
       const shortName = e.name;
@@ -248,7 +248,7 @@ export class SmcServerClient implements WatchIoClient {
         const msg = parseWatchIoResponse(text);
         if (!msg || msg.type !== 'variable') continue;
         const prefix = this.pathVarPrefix.get(path) ?? this.varPrefix;
-        const entries = normalizeVarEntries(msg).map((e) => ({
+        const entries = normalizeEntries(msg.entries).map((e) => ({
           ...e,
           name: e.name.includes('.') || !prefix ? e.name : `${prefix}${e.name}`,
         }));
@@ -306,33 +306,3 @@ export function getSmcChildObjectPaths(
   return Array.from(children.keys()).sort();
 }
 
-function normalizeVarEntries(msg: WatchIoMessage): Array<{
-  name: string;
-  value?: string;
-  params?: Array<{ name: string; value: string }>;
-}> {
-  const raw = msg.entries;
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((e) => ({
-      name: e.name,
-      value: e.value,
-      params: Array.isArray(e.params)
-        ? e.params
-        : e.params && typeof e.params === 'object' && 'name' in e.params
-          ? [e.params as { name: string; value: string }]
-          : [],
-    }));
-  }
-  if (typeof raw === 'object' && 'name' in raw) {
-    const e = raw as { name: string; value?: string; params?: unknown };
-    return [
-      {
-        name: e.name,
-        value: e.value,
-        params: Array.isArray(e.params) ? e.params : [],
-      },
-    ];
-  }
-  return [];
-}

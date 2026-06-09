@@ -13,8 +13,7 @@ import { useReplay } from '../../hooks/useReplay';
 
 export function AppShell() {
   const { viewMode, appMode, config, status } = useConnectionStore();
-  const { connect, disconnect, registerVariable, unregisterVariable, setVariableValue, client } =
-    useWatchIo();
+  const { connect, disconnect, setVariableValue, client } = useWatchIo();
   useReplay();
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
@@ -44,11 +43,7 @@ export function AppShell() {
             <Splitter orientation="vertical" className="right-splitter">
               {showList && (
                 <Splitter.Panel defaultSize="45%" min="20%">
-                  <ParameterTable
-                    onRegister={registerVariable}
-                    onUnregister={unregisterVariable}
-                    onSetValue={setVariableValue}
-                  />
+                  <ParameterTable onSetValue={setVariableValue} />
                 </Splitter.Panel>
               )}
               {showPlot && (

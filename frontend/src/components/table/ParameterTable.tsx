@@ -1,4 +1,4 @@
-import { Input, Switch, Table } from 'antd';
+import { Input, Table } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useVariableStore } from '../../stores/variableStore';
@@ -6,12 +6,10 @@ import { filterVariablesByBranch, variableDisplayName, branchHasLoadedChildren }
 import { usePlotStore } from '../../stores/plotStore';
 
 interface ParameterTableProps {
-  onRegister: (name: string) => void;
-  onUnregister: (name: string) => void;
   onSetValue: (name: string, value: string) => void;
 }
 
-export function ParameterTable({ onRegister, onUnregister, onSetValue }: ParameterTableProps) {
+export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const { searchQuery, appMode } = useConnectionStore();
   const { variables, selectedBranch, branchVarPrefix, selectedVariable, setSelectedVariable, treeNodes } =
     useVariableStore();
@@ -81,26 +79,10 @@ export function ParameterTable({ onRegister, onUnregister, onSetValue }: Paramet
       width: '10%',
     },
     {
-      title: 'registration',
-      dataIndex: 'registered',
-      key: 'registered',
-      width: '12%',
-      render: (on: boolean, row: { name: string }) => (
-        <Switch
-          size="small"
-          checked={on}
-          checkedChildren="on"
-          unCheckedChildren="off"
-          disabled={appMode !== 'live'}
-          onChange={(checked) => (checked ? onRegister(row.name) : onUnregister(row.name))}
-        />
-      ),
-    },
-    {
       title: 'description',
       dataIndex: 'description',
       key: 'description',
-      ellipsis: true,
+      ellipsis: { showTitle: true },
     },
   ];
 

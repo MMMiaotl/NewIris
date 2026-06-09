@@ -131,7 +131,7 @@ export class StompWatchIoClient implements WatchIoClient {
         const frame = formatStompFrame('SUBSCRIBE', {
           destination: this.serverPath,
           id: this.watchIoName,
-          attributes: `watchioname=${this.watchIoName}`,
+          attributes: `watchioname=${this.watchIoName} includedescription=1`,
         });
         ws.send(frame);
         this.subscribed = true;
