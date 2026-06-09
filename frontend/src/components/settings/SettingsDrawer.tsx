@@ -1,10 +1,12 @@
 import { Drawer, Form, Input, InputNumber, Select } from 'antd';
 import type { ConnectionTransport } from '../../api/types';
 import { transportOptions } from '../../constants/transport';
+import { WatchIoNameField } from '../connection/WatchIoNameField';
 import { useConnectionStore } from '../../stores/connectionStore';
 
 export function SettingsDrawer() {
-  const { config, settingsDrawerOpen, setSettingsDrawerOpen, setConfig } = useConnectionStore();
+  const { config, settingsDrawerOpen, setSettingsDrawerOpen, setConfig, status } =
+    useConnectionStore();
   const isWatchIo = config.transport === 'watchIoHttp' || config.transport === 'watchIoWs';
 
   return (
@@ -64,11 +66,12 @@ export function SettingsDrawer() {
 
         <Form.Item
           label="WatchIO instance name"
-          extra="Segment to connect: SmcControl1, CasServer, etc. (watchioname on open/SUBSCRIBE)."
+          extra="Segment to connect: SmcControl1, CasServer, etc. Press Apply to confirm."
         >
-          <Input
-            value={config.watchIoName}
-            onChange={(e) => setConfig({ watchIoName: e.target.value })}
+          <WatchIoNameField
+            appliedName={config.watchIoName}
+            onApply={(watchIoName) => setConfig({ watchIoName })}
+            connected={status === 'connected'}
           />
         </Form.Item>
         <Form.Item label="Sample interval (ms)">

@@ -38,8 +38,8 @@ export function AppShell() {
           <div className="app-title">NewIris</div>
           <span className="app-subtitle">WatchIO Monitor</span>
         </div>
-        <MenuBar onConnect={connect} onDisconnect={disconnect} />
-        <ConnectionBar />
+        <MenuBar />
+        <ConnectionBar onConnect={connect} onDisconnect={disconnect} />
       </header>
 
       {appMode === 'replay' && <ReplayControls />}

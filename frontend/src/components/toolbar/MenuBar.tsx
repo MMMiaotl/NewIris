@@ -1,7 +1,5 @@
 import { Button, Checkbox, Dropdown, Input, Space, Tooltip } from 'antd';
 import {
-  ApiOutlined,
-  DisconnectOutlined,
   FolderOpenOutlined,
   PlayCircleOutlined,
   SaveOutlined,
@@ -24,12 +22,7 @@ import {
 } from '../../utils/recordingFormat';
 import type { SessionFile } from '../../api/types';
 
-interface MenuBarProps {
-  onConnect: () => void;
-  onDisconnect: () => void;
-}
-
-export function MenuBar({ onConnect, onDisconnect }: MenuBarProps) {
+export function MenuBar() {
   const {
     config,
     status,
@@ -215,13 +208,6 @@ export function MenuBar({ onConnect, onDisconnect }: MenuBarProps) {
         </Dropdown>
         <Button type="text" icon={<FolderOpenOutlined />} onClick={openSession} />
         <Button type="text" icon={<SaveOutlined />} onClick={() => saveSession(false)} />
-        <Tooltip title={status === 'connected' ? 'Disconnect' : 'Connect'}>
-          <Button
-            type="text"
-            icon={status === 'connected' ? <DisconnectOutlined /> : <ApiOutlined />}
-            onClick={status === 'connected' ? onDisconnect : onConnect}
-          />
-        </Tooltip>
         <Tooltip title={recording ? 'Stop recording' : 'Start recording'}>
           <Button
             type={recording ? 'primary' : 'text'}

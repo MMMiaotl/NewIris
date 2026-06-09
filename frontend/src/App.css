@@ -40,6 +40,37 @@
   margin-top: 4px;
 }
 
+.transport-connect-group .connect-btn {
+  width: 32px;
+  padding-inline: 0;
+}
+
+.transport-connect-group .connect-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.transport-connect-group .connect-btn--connected {
+  color: #389e0d;
+  border-color: #b7eb8f;
+  background: #f6ffed;
+}
+
+.transport-connect-group .connect-btn--connected:hover {
+  color: #237804 !important;
+  border-color: #95de64 !important;
+  background: #d9f7be !important;
+}
+
+.watchio-name-compact-full {
+  display: flex;
+  width: 100%;
+}
+
+.watchio-name-compact-full .ant-input {
+  flex: 1;
+}
+
 .status-pill {
   font-size: 11px;
   padding: 2px 8px;

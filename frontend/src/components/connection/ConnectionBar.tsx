@@ -1,4 +1,7 @@
-import { Button, Input, Select, Space, Typography } from 'antd';
+import { useEffect } from 'react';
+import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { PlugConnectedIcon, PlugDisconnectedIcon } from './PlugIcons';
+import { WatchIoNameField } from './WatchIoNameField';
 import {
   createDefaultWatchIoService,
   fetchRequestServices,
@@ -19,8 +22,13 @@ function applyWatchIoDefaults(
   selectService(fallback.name);
 }
 
+interface ConnectionBarProps {
+  onConnect: () => void;
+  onDisconnect: () => void;
+}
+
 /** request → select service → Connect (SmcServer or WatchIoWebServer). */
-export function ConnectionBar() {
+export function ConnectionBar({ onConnect, onDisconnect }: ConnectionBarProps) {
   const {
     config,
     discoveredServices,
@@ -31,15 +39,23 @@ export function ConnectionBar() {
     setDiscoveredServices,
     selectService,
     setRequestStatus,
+    status,
+    appMode,
   } = useConnectionStore();
 
   const isWatchIo = isWatchIoTransport(config.transport);
-  const wsDisplay = config.wsUrl || defaultWsUrl(config.hostAddress);
+  const isWatchIoWs = config.transport === 'watchIoWs';
   const defaultWatchIo = createDefaultWatchIoService();
   const watchIoFromRequest = discoveredServices.some(
     (s) =>
       s.uri.toLowerCase().includes('/watchio') && s.description !== defaultWatchIo.description,
   );
+
+  useEffect(() => {
+    if (!isWatchIoWs || selectedServiceName) return;
+    applyWatchIoDefaults(setDiscoveredServices, selectService);
+    setRequestStatus('ok');
+  }, [isWatchIoWs, selectedServiceName, setDiscoveredServices, selectService, setRequestStatus]);
 
   const onTransportChange = (transport: ConnectionTransport) => {
     setConfig({
@@ -94,6 +110,13 @@ export function ConnectionBar() {
     value: s.name,
   }));
 
+  const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+  const connectDisabled =
+    appMode !== 'live' ||
+    isConnecting ||
+    (config.transport === 'smcServer' && !selectedServiceName);
+
   const servicePlaceholder =
     isWatchIo
       ? 'Default /watchio — Connect directly'
@@ -105,58 +128,75 @@ export function ConnectionBar() {
     <div className="connection-bar">
       <Space wrap size="small" align="center">
         <Typography.Text type="secondary">Transport</Typography.Text>
-        <Select
-          style={{ width: 220 }}
-          value={config.transport}
-          onChange={onTransportChange}
-          options={transportOptions}
-        />
-        <Typography.Text type="secondary">
-          {config.transport === 'watchIoWs' ? 'HTTP gateway' : 'Server'}
-        </Typography.Text>
-        <Select
-          style={{ width: 160 }}
-          value={config.hostAddress}
-          onChange={(hostAddress) => setConfig({ hostAddress })}
-          options={predefinedHosts.map((h) => ({ label: h, value: h }))}
-        />
-        {config.transport === 'watchIoWs' && (
+        <Space.Compact className="transport-connect-group">
+          <Select
+            style={{ width: 200 }}
+            value={config.transport}
+            onChange={onTransportChange}
+            options={transportOptions}
+          />
+          <Tooltip
+            title={
+              appMode !== 'live'
+                ? 'Not available in offline/replay mode'
+                : isConnected
+                  ? 'Disconnect'
+                  : config.transport === 'smcServer' && !selectedServiceName
+                    ? 'Select a service first'
+                    : 'Connect'
+            }
+          >
+            <Button
+              className={isConnected ? 'connect-btn connect-btn--connected' : 'connect-btn'}
+              icon={
+                isConnected ? (
+                  <PlugConnectedIcon />
+                ) : (
+                  <PlugDisconnectedIcon />
+                )
+              }
+              loading={isConnecting}
+              disabled={connectDisabled && !isConnected}
+              onClick={isConnected ? onDisconnect : onConnect}
+              aria-label={isConnected ? 'Disconnect' : 'Connect'}
+            />
+          </Tooltip>
+        </Space.Compact>
+        {!isWatchIoWs && (
           <>
-            <Typography.Text type="secondary">WebSocket</Typography.Text>
-            <Typography.Text code style={{ fontSize: 12 }}>
-              {wsDisplay}
-            </Typography.Text>
+            <Typography.Text type="secondary">Server</Typography.Text>
+            <Select
+              style={{ width: 160 }}
+              value={config.hostAddress}
+              onChange={(hostAddress) => setConfig({ hostAddress })}
+              options={predefinedHosts.map((h) => ({ label: h, value: h }))}
+            />
+            <Button loading={requestStatus === 'loading'} onClick={() => void doRequest()}>
+              request
+            </Button>
+            <Typography.Text type="secondary">Service</Typography.Text>
+            <Select
+              style={{ minWidth: 260 }}
+              placeholder={servicePlaceholder}
+              value={selectedServiceName ?? undefined}
+              onChange={selectService}
+              options={serviceOptions}
+            />
           </>
         )}
-        <Button loading={requestStatus === 'loading'} onClick={() => void doRequest()}>
-          request
-        </Button>
-        <Typography.Text type="secondary">Service</Typography.Text>
-        <Select
-          style={{ minWidth: 260 }}
-          placeholder={servicePlaceholder}
-          value={selectedServiceName ?? undefined}
-          onChange={selectService}
-          options={serviceOptions}
-        />
         <Typography.Text type="secondary">WatchIO</Typography.Text>
-        <Input
-          style={{ width: 140 }}
-          value={config.watchIoName}
-          onChange={(e) => setConfig({ watchIoName: e.target.value })}
+        <WatchIoNameField
+          appliedName={config.watchIoName}
+          onApply={(watchIoName) => setConfig({ watchIoName })}
           placeholder={isWatchIo ? 'SmcControl1 / CasServer' : 'SmcControl1'}
+          connected={status === 'connected'}
         />
         {requestStatus === 'error' && (
           <Typography.Text type="danger">{requestError}</Typography.Text>
         )}
-        {isWatchIo && requestStatus === 'ok' && !watchIoFromRequest && config.transport === 'watchIoHttp' && (
+        {isWatchIo && !isWatchIoWs && requestStatus === 'ok' && !watchIoFromRequest && (
           <Typography.Text type="secondary">
             HTTP /request has no /watchio — using default; need http=1 on WatchIoWebServer
-          </Typography.Text>
-        )}
-        {isWatchIo && requestStatus === 'ok' && !watchIoFromRequest && config.transport === 'watchIoWs' && (
-          <Typography.Text type="secondary">
-            WS /request unavailable — using default /watchio; Connect if WatchIoWebServer is on :8083
           </Typography.Text>
         )}
         {requestStatus === 'ok' && !discoveredServices.length && config.transport === 'smcServer' && (
