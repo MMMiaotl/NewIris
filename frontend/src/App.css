@@ -87,6 +87,38 @@
   width: 14px;
 }
 
+.tree-var-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.tree-var-indicator {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1.5px solid #6a6a50;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tree-var-indicator.is-selected {
+  border-color: #1677ff;
+  background: #1677ff;
+}
+
+.tree-var-indicator:hover {
+  border-color: #4096ff;
+}
+
+.tree-var-label {
+  flex: 1;
+  min-width: 0;
+}
+
 .parameter-table-body {
   flex: 1;
   min-height: 0;

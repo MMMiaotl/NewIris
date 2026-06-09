@@ -2,12 +2,15 @@ import { create } from 'zustand';
 import type { TreeNode, VariableType, WatchIoVariable } from '../api/types';
 import { getEntryAttributes } from '../utils/parseAttributes';
 import type { WatchIoEntry } from '../api/types';
+import { attachVariablesToBranch, filterVariablesByBranch } from '../utils/buildVariableTree';
 
 function inferType(attrs: Record<string, string>): VariableType {
   const t = attrs.type ?? 'unknown';
   if (t === 'int' || t === 'double' || t === 'string' || t === 'array') return t;
   return 'unknown';
 }
+
+export const MAX_SELECTED_PARAMETERS = 100;
 
 function normalizeEntries(entries: WatchIoEntry[] | Record<string, string> | undefined): WatchIoEntry[] {
   if (!entries) return [];
@@ -22,12 +25,14 @@ interface VariableState {
   selectedBranch: string | null;
   /** WatchIO dotted prefix for the selected SmcServer object (e.g. C.Filter.Surge.Coefs.) */
   branchVarPrefix: string | null;
-  selectedVariable: string | null;
+  selectedVariables: string[];
   setTreeNodes: (nodes: TreeNode[]) => void;
   setSelectedBranch: (branch: string | null) => void;
   setBranchVarPrefix: (prefix: string | null) => void;
-  setSelectedVariable: (name: string | null) => void;
+  toggleSelectedVariable: (name: string) => boolean;
+  clearSelectedVariables: () => void;
   mergeVarLeaves: (entries: WatchIoEntry[], branchOverride?: string | null) => void;
+  attachBranchVariables: (branch: string) => void;
   mergeVarList: (entries: WatchIoEntry[]) => void;
   applyUpdate: (entries: WatchIoEntry[]) => void;
   setRegistered: (name: string, registered: boolean) => void;
@@ -41,11 +46,21 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   registeredNames: new Set(),
   selectedBranch: null,
   branchVarPrefix: null,
-  selectedVariable: null,
+  selectedVariables: [],
   setTreeNodes: (treeNodes) => set({ treeNodes }),
   setSelectedBranch: (selectedBranch) => set({ selectedBranch }),
   setBranchVarPrefix: (branchVarPrefix) => set({ branchVarPrefix }),
-  setSelectedVariable: (selectedVariable) => set({ selectedVariable }),
+  toggleSelectedVariable: (name) => {
+    const current = get().selectedVariables;
+    if (current.includes(name)) {
+      set({ selectedVariables: current.filter((n) => n !== name) });
+      return true;
+    }
+    if (current.length >= MAX_SELECTED_PARAMETERS) return false;
+    set({ selectedVariables: [...current, name] });
+    return true;
+  },
+  clearSelectedVariables: () => set({ selectedVariables: [] }),
   mergeVarLeaves: (entries, branchOverride) => {
     const list = normalizeEntries(entries);
     const branch = branchOverride ?? get().selectedBranch;
@@ -79,6 +94,15 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       });
     }
     set({ variables: Array.from(existing.values()).sort((a, b) => a.name.localeCompare(b.name)) });
+    if (branch) get().attachBranchVariables(branch);
+  },
+  attachBranchVariables: (branch) => {
+    if (!branch) return;
+    const { treeNodes, variables, branchVarPrefix } = get();
+    const branchVars = filterVariablesByBranch(variables, branch, branchVarPrefix);
+    set({
+      treeNodes: attachVariablesToBranch(treeNodes, branch, branchVars, branchVarPrefix),
+    });
   },
   mergeVarList: (entries) => {
     const list = normalizeEntries(entries);
@@ -138,6 +162,6 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       registeredNames: new Set(),
       selectedBranch: null,
       branchVarPrefix: null,
-      selectedVariable: null,
+      selectedVariables: [],
     }),
 }));

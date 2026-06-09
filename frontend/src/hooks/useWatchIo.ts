@@ -96,6 +96,9 @@ export function useWatchIo() {
             });
           }
           mergeVarLeaves(entries, branch);
+          if (branch && !entries.length) {
+            useVariableStore.getState().attachBranchVariables(branch);
+          }
           if (useDotTree && branch) {
             const prefix = branch.endsWith('.') ? branch : `${branch}.`;
             const vars = useVariableStore.getState().variables.filter(

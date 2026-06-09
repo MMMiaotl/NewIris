@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, theme } from 'antd';
+import { App as AntApp, ConfigProvider, theme } from 'antd';
 import App from './App';
 import './index.css';
 
@@ -12,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
         token: { colorBgLayout: '#f0f0f0' },
       }}
     >
-      <App />
+      <AntApp>
+        <App />
+      </AntApp>
     </ConfigProvider>
   </StrictMode>,
 );

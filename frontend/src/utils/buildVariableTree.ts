@@ -21,9 +21,16 @@ export function wrapWithWatchIoRoot(watchIoName: string, nodes: TreeNode[]): Tre
       title: watchIoName,
       fullPath: watchIoName,
       isLeaf: false,
+      nodeKind: 'branch',
       children: nodes,
     },
   ];
+}
+
+export function parentBranchFromVariableName(fullName: string): string | null {
+  const dot = fullName.lastIndexOf('.');
+  if (dot <= 0) return null;
+  return fullName.slice(0, dot);
 }
 
 export function variableDisplayName(
@@ -46,6 +53,7 @@ export function buildSmcModuleTree(modules: string[]): TreeNode[] {
     title: name,
     fullPath: name,
     isLeaf: false,
+    nodeKind: 'branch' as const,
     children: [],
   }));
 }
@@ -69,6 +77,7 @@ export function buildDotBranchTree(branches: string[]): TreeNode[] {
           title: part,
           fullPath,
           isLeaf: false,
+          nodeKind: 'branch',
           children: [],
         };
         byPath.set(fullPath, node);
@@ -89,13 +98,62 @@ function sortTreeNodes(nodes: TreeNode[]): TreeNode[] {
   return nodes
     .map((n) => {
       const children = n.children?.length ? sortTreeNodes(n.children) : [];
+      const kind = n.nodeKind ?? 'branch';
+      const branchSettled = kind === 'branch' && !!n.variablesLoaded && children.length === 0;
+      const isLeaf = kind === 'variable' ? true : branchSettled ? true : false;
       return {
         ...n,
+        nodeKind: kind,
         children,
-        isLeaf: children.length === 0,
+        isLeaf,
       };
     })
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** Attach variable leaf nodes under a branch; keeps existing sub-branch children. */
+export function attachVariablesToBranch(
+  tree: TreeNode[],
+  branch: string,
+  variables: { name: string }[],
+  branchVarPrefix: string | null,
+): TreeNode[] {
+  const attach = (nodes: TreeNode[]): TreeNode[] =>
+    nodes.map((node) => {
+      if (node.nodeKind === 'variable') return node;
+      if (node.fullPath === branch) {
+        const branchChildren = (node.children ?? []).filter((c) => c.nodeKind !== 'variable');
+        const varChildren: TreeNode[] = variables.map((v) => ({
+          key: v.name,
+          title: variableDisplayName(v.name, branch, branchVarPrefix),
+          fullPath: v.name,
+          isLeaf: true,
+          nodeKind: 'variable',
+        }));
+        const children = [...branchChildren, ...varChildren].sort((a, b) => {
+          if (a.nodeKind !== b.nodeKind) return a.nodeKind === 'branch' ? -1 : 1;
+          return a.title.localeCompare(b.title);
+        });
+        return {
+          ...node,
+          nodeKind: 'branch',
+          variablesLoaded: true,
+          isLeaf: children.length === 0,
+          children,
+        };
+      }
+      if (node.children?.length) {
+        return { ...node, children: attach(node.children) };
+      }
+      return node;
+    });
+
+  return attach(tree);
+}
+
+export function branchHasLoadedVariables(nodes: TreeNode[], branch: string): boolean {
+  const node = findTreeNode(nodes, branch);
+  return node?.variablesLoaded === true;
 }
 
 export function findTreeNode(nodes: TreeNode[], fullPath: string): TreeNode | null {
@@ -126,6 +184,7 @@ export function mergeDotBranchIntoTree(
       title: rel,
       fullPath,
       isLeaf: false,
+      nodeKind: 'branch' as const,
       children: [],
     };
   });
@@ -136,7 +195,9 @@ export function mergeDotBranchIntoTree(
     nodes.map((node) => {
       if (node.fullPath === parentPath) {
         const merged = new Map<string, TreeNode>();
-        for (const c of node.children ?? []) merged.set(c.fullPath, c);
+        for (const c of node.children ?? []) {
+          if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
+        }
         for (const c of childNodes) {
           const prev = merged.get(c.fullPath);
           merged.set(
@@ -146,6 +207,7 @@ export function mergeDotBranchIntoTree(
         }
         return {
           ...node,
+          nodeKind: 'branch',
           isLeaf: false,
           children: Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
         };
@@ -170,6 +232,7 @@ export function mergeSmcBranchIntoTree(
     title: fullPath.slice(fullPath.lastIndexOf('/') + 1),
     fullPath,
     isLeaf: false,
+    nodeKind: 'branch' as const,
     children: [],
   }));
 
@@ -179,10 +242,13 @@ export function mergeSmcBranchIntoTree(
     nodes.map((node) => {
       if (node.fullPath === parentPath) {
         const merged = new Map<string, TreeNode>();
-        for (const c of node.children ?? []) merged.set(c.fullPath, c);
+        for (const c of node.children ?? []) {
+          if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
+        }
         for (const c of childNodes) merged.set(c.fullPath, c);
         return {
           ...node,
+          nodeKind: 'branch',
           isLeaf: false,
           children: Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
         };

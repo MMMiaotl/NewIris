@@ -6,7 +6,7 @@ import { useVariableStore } from '../../stores/variableStore';
 
 export function PlotControlDrawer() {
   const { plotDrawerOpen, setPlotDrawerOpen } = useConnectionStore();
-  const { selectedVariable } = useVariableStore();
+  const { selectedVariables } = useVariableStore();
   const {
     plotVariables,
     colors,
@@ -60,10 +60,15 @@ export function PlotControlDrawer() {
             block
             icon={<PlusOutlined />}
             style={{ marginTop: 8 }}
-            disabled={!selectedVariable || plotVariables.includes(selectedVariable)}
-            onClick={() => selectedVariable && addPlotVariable(selectedVariable)}
+            disabled={
+              !selectedVariables.length ||
+              selectedVariables.every((name) => plotVariables.includes(name))
+            }
+            onClick={() => {
+              for (const name of selectedVariables) addPlotVariable(name);
+            }}
           >
-            Add selected variable
+            Add selected variables
           </Button>
         </div>
 

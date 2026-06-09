@@ -1,8 +1,8 @@
 import { Input, Table } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
-import { useVariableStore } from '../../stores/variableStore';
-import { filterVariablesByBranch, variableDisplayName, branchHasLoadedChildren } from '../../utils/buildVariableTree';
+import { MAX_SELECTED_PARAMETERS, useVariableStore } from '../../stores/variableStore';
+import { parentBranchFromVariableName, variableDisplayName } from '../../utils/buildVariableTree';
 import { usePlotStore } from '../../stores/plotStore';
 
 interface ParameterTableProps {
@@ -11,8 +11,7 @@ interface ParameterTableProps {
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const { searchQuery, appMode } = useConnectionStore();
-  const { variables, selectedBranch, branchVarPrefix, selectedVariable, setSelectedVariable, treeNodes } =
-    useVariableStore();
+  const { variables, selectedBranch, branchVarPrefix, selectedVariables } = useVariableStore();
   const { addPlotVariable } = usePlotStore();
   const [editing, setEditing] = useState<Record<string, string>>({});
   const tableBodyRef = useRef<HTMLDivElement>(null);
@@ -28,14 +27,19 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     return () => observer.disconnect();
   }, []);
 
+  const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
+
   const filtered = useMemo(() => {
-    let list = filterVariablesByBranch(variables, selectedBranch, branchVarPrefix);
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((v) => v.name.toLowerCase().includes(q));
-    }
-    return list;
-  }, [variables, selectedBranch, branchVarPrefix, searchQuery]);
+    if (!selectedVariables.length) return [];
+    const q = searchQuery?.toLowerCase();
+    return selectedVariables
+      .map((name) => variableMap.get(name))
+      .filter((v): v is NonNullable<typeof v> => {
+        if (!v) return false;
+        if (q && !v.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+  }, [selectedVariables, variableMap, searchQuery]);
 
   const columns = [
     {
@@ -44,7 +48,10 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       key: 'name',
       ellipsis: true,
       width: '40%',
-      render: (name: string) => variableDisplayName(name, selectedBranch, branchVarPrefix),
+      render: (name: string) => {
+        const branch = selectedBranch ?? parentBranchFromVariableName(name);
+        return variableDisplayName(name, branch, branchVarPrefix);
+      },
     },
     {
       title: 'value',
@@ -86,9 +93,14 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     },
   ];
 
+  const headerLabel =
+    selectedVariables.length > 0
+      ? `Parameters (${selectedVariables.length}/${MAX_SELECTED_PARAMETERS})`
+      : 'Parameters';
+
   return (
     <div className="panel parameter-table-panel">
-      <div className="panel-header">Parameters</div>
+      <div className="panel-header">{headerLabel}</div>
       <div ref={tableBodyRef} className="parameter-table-body">
         <Table
           size="small"
@@ -96,20 +108,14 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           dataSource={filtered.map((v) => ({ ...v, key: v.name }))}
           pagination={false}
           scroll={{ y: tableScrollY }}
-          rowSelection={{
-            type: 'radio',
-            selectedRowKeys: selectedVariable ? [selectedVariable] : [],
-            onChange: (keys) => setSelectedVariable((keys[0] as string) ?? null),
-          }}
           onRow={(row) => ({
             onDoubleClick: () => addPlotVariable(row.name),
           })}
           locale={{
-            emptyText: selectedBranch
-              ? branchHasLoadedChildren(treeNodes, selectedBranch)
-                ? 'This branch has sub-branches only — select a deeper node (e.g. …Coefs)'
-                : 'No variables at this branch'
-              : 'Select a tree branch to load variables',
+            emptyText:
+              selectedVariables.length > 0
+                ? 'Selected parameters are not loaded yet'
+                : 'Select parameters in the tree (click circles; up to 100)',
           }}
         />
       </div>

@@ -37,6 +37,9 @@ export function AppShell() {
                 if (!branch) client.current?.fetchVarTree();
                 else client.current?.fetchVarTree(branch);
               }}
+              onLoadVariables={(branch) => {
+                client.current?.fetchVarLeaves(branch);
+              }}
             />
           </Splitter.Panel>
           <Splitter.Panel>

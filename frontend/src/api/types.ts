@@ -26,11 +26,16 @@ export interface WatchIoVariable {
   alias?: string;
 }
 
+export type TreeNodeKind = 'branch' | 'variable';
+
 export interface TreeNode {
   key: string;
   title: string;
   fullPath: string;
   isLeaf: boolean;
+  nodeKind?: TreeNodeKind;
+  /** Branch nodes: true after varleaves was fetched (may have zero variables). */
+  variablesLoaded?: boolean;
   children?: TreeNode[];
 }
 
