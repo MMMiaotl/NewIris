@@ -65,21 +65,37 @@
   font-weight: 600;
 }
 
-.variable-tree-panel {
-  background: #f5f5e8;
+.tree-structure-panel {
+  background: #f0f0e4;
+  border-right: 3px solid #b8b88a;
 }
 
-.variable-tree-panel .ant-tree {
+.tree-structure-panel .ant-tree {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 8px;
+  padding: 10px 8px;
   background: transparent;
+  font-size: 12px;
+}
+
+.tree-structure-panel .ant-tree .ant-tree-switcher {
+  color: #8a8a6a;
+}
+
+.tree-structure-panel .ant-tree .ant-tree-indent-unit {
+  width: 14px;
+}
+
+.parameter-table-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 4px 4px;
 }
 
 .parameter-table-panel .ant-table-wrapper {
-  flex: 1;
-  overflow: hidden;
-  padding: 4px;
+  height: 100%;
 }
 
 .plot-panel {

@@ -54,8 +54,7 @@ export function VariableTree({ onExpandBranch }: VariableTreeProps) {
   }, [treeNodes, flatTree, searchQuery, watchIoName, useDotTreeRoot]);
 
   return (
-    <div className="panel variable-tree-panel">
-      <div className="panel-header">Variables</div>
+    <div className="panel tree-structure-panel" aria-label="Tree structure">
       <Tree
         treeData={toAntTree(displayNodes)}
         selectedKeys={selectedBranch ? [selectedBranch] : []}

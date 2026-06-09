@@ -23,3 +23,12 @@ export const WATCHIO_VARLEAVES_ATTRS =
   'addtype=1 adddescription=1 addvalue=1 fullname=1';
 
 export const WATCHIO_VARTREE_BRANCH_ATTRS = 'branch=1';
+
+export function watchIoMonitorAttributes(
+  type?: string,
+  mode: 'value' | 'set' = 'set',
+): string {
+  const parts = [`mode=${mode}`];
+  if (type && type !== 'unknown') parts.push(`type=${type}`);
+  return parts.join(' ');
+}

@@ -1,12 +1,12 @@
 /** WatchIoWebServer HTTP client — GET/POST on /watchio/{name}:option paths. */
 
 import type { WatchIoMessage } from './types';
-import type { MessageHandler, StatusHandler, WatchIoClient } from './watchIoClient';
+import type { MessageHandler, MonitorVariable, StatusHandler, WatchIoClient } from './watchIoClient';
 import { smcHttpGet } from './smcHttp';
 import { normalizeEntries, parseWatchIoResponse } from '../utils/parseWatchIoMessage';
 import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
 import { buildWatchIoBase, buildWatchIoInstanceUrl } from './watchIoPaths';
-import { WATCHIO_VARLEAVES_ATTRS } from './watchIoServerJson';
+import { WATCHIO_VARLEAVES_ATTRS, watchIoEntry, watchIoMonitorAttributes } from './watchIoServerJson';
 
 export class HttpWatchIoClient implements WatchIoClient {
   private messageHandlers = new Set<MessageHandler>();
@@ -91,9 +91,28 @@ export class HttpWatchIoClient implements WatchIoClient {
     void this.requestJson({ type: 'varlist' });
   }
 
+  setMonitorList(variables: MonitorVariable[]): void {
+    if (!variables.length) {
+      this.registered.clear();
+      void this.postJson({ type: 'clear' }).catch(() => undefined);
+      this.stopPolling();
+      return;
+    }
+    this.registered = new Set(variables.map((v) => v.name));
+    const entries = variables.map((v) =>
+      watchIoEntry(v.name, watchIoMonitorAttributes(v.type, v.mode ?? 'set')),
+    );
+    void this.postJson({ type: 'list', entries })
+      .then(() => {
+        watchIoLog('http', 'monitor list', { count: variables.length });
+        this.startPolling();
+      })
+      .catch((err) => watchIoLog('http', 'monitor list failed', err));
+  }
+
   addVariable(name: string, mode: 'value' | 'set' = 'set'): void {
     this.registered.add(name);
-    const attrs = `mode=${mode}`;
+    const attrs = watchIoMonitorAttributes(undefined, mode);
     const url = buildWatchIoInstanceUrl(this.base, this.watchIoName, 'add', name, attrs);
     void smcHttpGet(url, 12_000)
       .then(({ text }) => this.handleResponse(text))

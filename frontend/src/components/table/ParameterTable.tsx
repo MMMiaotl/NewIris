@@ -1,5 +1,5 @@
 import { Input, Switch, Table } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useVariableStore } from '../../stores/variableStore';
 import { filterVariablesByBranch, variableDisplayName, branchHasLoadedChildren } from '../../utils/buildVariableTree';
@@ -17,6 +17,18 @@ export function ParameterTable({ onRegister, onUnregister, onSetValue }: Paramet
     useVariableStore();
   const { addPlotVariable } = usePlotStore();
   const [editing, setEditing] = useState<Record<string, string>>({});
+  const tableBodyRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState(300);
+
+  useEffect(() => {
+    const el = tableBodyRef.current;
+    if (!el) return;
+    const update = () => setTableScrollY(Math.max(120, el.clientHeight));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const filtered = useMemo(() => {
     let list = filterVariablesByBranch(variables, selectedBranch, branchVarPrefix);
@@ -95,28 +107,30 @@ export function ParameterTable({ onRegister, onUnregister, onSetValue }: Paramet
   return (
     <div className="panel parameter-table-panel">
       <div className="panel-header">Parameters</div>
-      <Table
-        size="small"
-        columns={columns}
-        dataSource={filtered.map((v) => ({ ...v, key: v.name }))}
-        pagination={{ pageSize: 50, size: 'small', showSizeChanger: true }}
-        scroll={{ y: 'calc(100% - 48px)' }}
-        rowSelection={{
-          type: 'radio',
-          selectedRowKeys: selectedVariable ? [selectedVariable] : [],
-          onChange: (keys) => setSelectedVariable((keys[0] as string) ?? null),
-        }}
-        onRow={(row) => ({
-          onDoubleClick: () => addPlotVariable(row.name),
-        })}
-        locale={{
-          emptyText: selectedBranch
-            ? branchHasLoadedChildren(treeNodes, selectedBranch)
-              ? 'This branch has sub-branches only — select a deeper node (e.g. …Coefs)'
-              : 'No variables at this branch'
-            : 'Select a tree branch to load variables',
-        }}
-      />
+      <div ref={tableBodyRef} className="parameter-table-body">
+        <Table
+          size="small"
+          columns={columns}
+          dataSource={filtered.map((v) => ({ ...v, key: v.name }))}
+          pagination={false}
+          scroll={{ y: tableScrollY }}
+          rowSelection={{
+            type: 'radio',
+            selectedRowKeys: selectedVariable ? [selectedVariable] : [],
+            onChange: (keys) => setSelectedVariable((keys[0] as string) ?? null),
+          }}
+          onRow={(row) => ({
+            onDoubleClick: () => addPlotVariable(row.name),
+          })}
+          locale={{
+            emptyText: selectedBranch
+              ? branchHasLoadedChildren(treeNodes, selectedBranch)
+                ? 'This branch has sub-branches only — select a deeper node (e.g. …Coefs)'
+                : 'No variables at this branch'
+              : 'Select a tree branch to load variables',
+          }}
+        />
+      </div>
     </div>
   );
 }

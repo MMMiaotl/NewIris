@@ -96,16 +96,29 @@ export function useWatchIo() {
             });
           }
           mergeVarLeaves(entries, branch);
+          if (useDotTree && branch) {
+            const prefix = branch.endsWith('.') ? branch : `${branch}.`;
+            const vars = useVariableStore.getState().variables.filter(
+              (v) => v.name === branch || v.name.startsWith(prefix),
+            );
+            clientRef.current?.setMonitorList(
+              vars.map((v) => ({ name: v.name, type: v.type, mode: 'set' as const })),
+            );
+          }
           break;
         }
         case 'varlist':
           mergeVarList(entries);
           break;
         case 'update': {
-          applyUpdate(entries);
+          let updateEntries = normalizeEntries(msg.entries);
+          if (!updateEntries.length && msg.name && msg.value !== undefined) {
+            updateEntries = [{ name: msg.name, value: msg.value }];
+          }
+          applyUpdate(updateEntries);
           const now = Date.now();
           const values: Record<string, string> = {};
-          for (const e of entries) {
+          for (const e of updateEntries) {
             if (e.value !== undefined) {
               values[e.name] = e.value;
               if (plotVariables.includes(e.name)) {

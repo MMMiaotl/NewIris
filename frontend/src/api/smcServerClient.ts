@@ -87,6 +87,10 @@ export class SmcServerClient implements WatchIoClient {
     if (this.activeObjectPath) void this.loadVariables(this.activeObjectPath);
   }
 
+  setMonitorList(): void {
+    /* SmcServer polls object GET paths; branch vars are refreshed via loadVariables + pollActiveObjects. */
+  }
+
   addVariable(name: string): void {
     const postPath = this.nameToPostPath.get(name);
     if (postPath) {

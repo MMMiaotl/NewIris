@@ -1,13 +1,13 @@
 /** WatchIoWebServer WebSocket/STOMP client — ws://host:8083 destination=/watchio */
 
 import type { WatchIoMessage } from './types';
-import type { MessageHandler, StatusHandler, WatchIoClient } from './watchIoClient';
+import type { MessageHandler, MonitorVariable, StatusHandler, WatchIoClient } from './watchIoClient';
 import {
   decodeWebSocketData,
   formatStompFrame,
   parseStompFrames,
 } from './stompFrame';
-import { watchIoAttributesParam, watchIoEntry, WATCHIO_VARLEAVES_ATTRS, WATCHIO_VARTREE_BRANCH_ATTRS } from './watchIoServerJson';
+import { watchIoAttributesParam, watchIoEntry, WATCHIO_VARLEAVES_ATTRS, WATCHIO_VARTREE_BRANCH_ATTRS, watchIoMonitorAttributes } from './watchIoServerJson';
 import { parseWatchIoResponse, isDataReady, parseVartreeParent } from '../utils/parseWatchIoMessage';
 import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
 
@@ -32,6 +32,7 @@ export class StompWatchIoClient implements WatchIoClient {
   private vartreeRetryCount = 0;
   private rootVarTreeLoaded = false;
   private lastVarLeavesBranch: string | null = null;
+  private monitoredNames = new Set<string>();
 
   constructor(wsUrl: string, serverPath: string, watchIoName: string, _sampleInterval = 500) {
     this.wsUrl = wsUrl.replace(/\/$/, '');
@@ -181,6 +182,7 @@ export class StompWatchIoClient implements WatchIoClient {
     this.vartreeRetryCount = 0;
     this.rootVarTreeLoaded = false;
     this.lastVarLeavesBranch = null;
+    this.monitoredNames.clear();
     if (this.subscribeTimer) {
       clearTimeout(this.subscribeTimer);
       this.subscribeTimer = null;
@@ -265,6 +267,24 @@ export class StompWatchIoClient implements WatchIoClient {
     });
   }
 
+  setMonitorList(variables: MonitorVariable[]): void {
+    const next = new Set(variables.map((v) => v.name));
+    if (variables.length === 0) {
+      if (this.monitoredNames.size === 0) return;
+      this.monitoredNames.clear();
+      this.sendJson({ type: 'clear' });
+      watchIoLog('ws', 'monitor clear');
+      return;
+    }
+
+    const entries = variables.map((v) =>
+      watchIoEntry(v.name, watchIoMonitorAttributes(v.type, v.mode ?? 'set')),
+    );
+    this.monitoredNames = next;
+    this.sendJson({ type: 'list', entries });
+    watchIoLog('ws', 'monitor list', { count: variables.length, sample: variables.slice(0, 5).map((v) => v.name) });
+  }
+
   fetchVarList(filter = ''): void {
     this.sendJson(
       filter
@@ -274,13 +294,15 @@ export class StompWatchIoClient implements WatchIoClient {
   }
 
   addVariable(name: string, mode: 'value' | 'set' = 'set'): void {
+    this.monitoredNames.add(name);
     this.sendJson({
       type: 'add',
-      entries: [watchIoEntry(name, `mode=${mode}`)],
+      entries: [watchIoEntry(name, watchIoMonitorAttributes(undefined, mode))],
     });
   }
 
   removeVariable(name: string): void {
+    this.monitoredNames.delete(name);
     this.sendJson({ type: 'delete', entries: [{ name }] });
   }
 
