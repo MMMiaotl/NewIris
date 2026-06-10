@@ -43,16 +43,18 @@ interface ConnectionState {
 
 const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
 
+const initialTransport = parseTransportEnv(import.meta.env.VITE_TRANSPORT);
+
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   config: {
-    transport: parseTransportEnv(import.meta.env.VITE_TRANSPORT),
+    transport: initialTransport,
     httpUrl: import.meta.env.VITE_HTTP_URL ?? '',
     wsUrl:
       import.meta.env.VITE_WS_URL ??
       defaultWsUrl(import.meta.env.VITE_HOST_ADDRESS ?? 'localhost:8082'),
     hostAddress: import.meta.env.VITE_HOST_ADDRESS ?? 'localhost:8082',
     watchIoName: import.meta.env.VITE_WATCHIO_NAME ?? 'SmcControl1',
-    serverPath: '/SmcServer1',
+    serverPath: initialTransport === 'smcServer' ? '/SmcServer1' : '/watchio',
     sampleInterval: 500,
   },
   discoveredServices: [],

@@ -14,7 +14,7 @@ export function parseTransportEnv(value: string | undefined): ConnectionTranspor
   if (value && validTransports.has(value as ConnectionTransport)) {
     return value as ConnectionTransport;
   }
-  return 'smcServer';
+  return 'watchIoWs';
 }
 
 export const defaultWatchIoNames: Record<ConnectionTransport, string> = {
