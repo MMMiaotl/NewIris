@@ -28,7 +28,9 @@ export function useWatchIo() {
   const sessionRef = useRef(0);
   const refetchedBranchesRef = useRef(new Set<string>());
   const registeredPlotVarsRef = useRef(new Set<string>());
+  const userDisconnectedWatchIoWsRef = useRef(false);
   const { config, appMode, status, setStatus } = useConnectionStore();
+  const prevTransportRef = useRef(config.transport);
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
     setTreeNodes,
@@ -190,12 +192,15 @@ export function useWatchIo() {
     ],
   );
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback((userInitiated = false) => {
     refetchedBranchesRef.current.clear();
     registeredPlotVarsRef.current.clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
     useWatchIoMessageLogStore.getState().clear();
+    if (userInitiated && useConnectionStore.getState().config.transport === 'watchIoWs') {
+      userDisconnectedWatchIoWsRef.current = true;
+    }
     setStatus('disconnected');
   }, [setStatus]);
 
@@ -230,6 +235,21 @@ export function useWatchIo() {
       if (session === sessionRef.current) setStatus('error', 'Connection failed');
     }
   }, [config, appMode, handleMessage, setStatus, setBranchVarPrefix]);
+
+  useEffect(() => {
+    const switchedToWatchIoWs =
+      prevTransportRef.current !== 'watchIoWs' && config.transport === 'watchIoWs';
+    prevTransportRef.current = config.transport;
+
+    if (config.transport !== 'watchIoWs' || appMode !== 'live') return;
+    if (switchedToWatchIoWs) userDisconnectedWatchIoWsRef.current = false;
+    if (userDisconnectedWatchIoWsRef.current) return;
+    if (status === 'connecting') return;
+    if (status === 'connected' && !switchedToWatchIoWs) return;
+    if (status === 'error' && !switchedToWatchIoWs) return;
+
+    void connect();
+  }, [config.transport, appMode, status, connect]);
 
   const refreshBranch = useCallback(() => {
     const client = clientRef.current;

@@ -41,7 +41,7 @@ export function AppShell() {
           <span className="app-subtitle">WatchIO Monitor</span>
         </div>
         <MenuBar />
-        <ConnectionBar onConnect={connect} onDisconnect={disconnect} />
+        <ConnectionBar onConnect={connect} onDisconnect={() => disconnect(true)} />
       </header>
 
       {appMode === 'replay' && <ReplayControls />}
