@@ -20,6 +20,7 @@ import {
   parseVartreeParent,
 } from '../utils/parseWatchIoMessage';
 import { watchIoLog } from '../utils/watchIoDebug';
+import { useWatchIoMessageLogStore } from '../stores/watchIoMessageLogStore';
 
 export function useWatchIo() {
   const clientRef = useRef<WatchIoClient | null>(null);
@@ -108,7 +109,7 @@ export function useWatchIo() {
               (v) => v.name === branch || v.name.startsWith(prefix),
             );
             clientRef.current?.setMonitorList(
-              vars.map((v) => ({ name: v.name, type: v.type, mode: 'set' as const })),
+              vars.map((v) => ({ name: v.name, dataType: v.dataType, mode: 'set' as const })),
             );
           }
           break;
@@ -159,6 +160,7 @@ export function useWatchIo() {
     refetchedBranchesRef.current.clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
+    useWatchIoMessageLogStore.getState().clear();
     setStatus('disconnected');
   }, [setStatus]);
 
@@ -169,6 +171,7 @@ export function useWatchIo() {
     refetchedBranchesRef.current.clear();
     clientRef.current?.disconnect();
     useVariableStore.getState().clear();
+    useWatchIoMessageLogStore.getState().clear();
     setBranchVarPrefix(null);
 
     watchIoLog('connect', `${config.transport} client`, config);
@@ -214,6 +217,18 @@ export function useWatchIo() {
     clientRef.current?.setVariable(name, value);
   }, []);
 
+  const refreshVariable = useCallback(
+    (name: string) => {
+      const client = clientRef.current;
+      if (!client) return;
+      const branch = branchPathForVariableName(name, config.transport);
+      if (branch) client.fetchVarLeaves(branch);
+      client.addVariable(name, 'set');
+      client.requestUpdate();
+    },
+    [config.transport],
+  );
+
   useEffect(() => {
     return () => {
       sessionRef.current += 1;
@@ -252,6 +267,7 @@ export function useWatchIo() {
     registerVariable,
     unregisterVariable,
     setVariableValue,
+    refreshVariable,
     client: clientRef,
   };
 }

@@ -17,7 +17,6 @@ import {
   HORIZONTAL_SCROLL_BUFFER,
   MIN_DESCRIPTION_WIDTH,
   PARAMETER_FIXED_COLUMN_SPECS,
-  sumFixedWidths,
   type ParameterFixedColumnKey,
   type ParameterFixedWidths,
 } from './parameterTableLayout';
@@ -28,13 +27,27 @@ interface ParameterTableProps {
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const { searchQuery, appMode } = useConnectionStore();
-  const { variables, selectedVariables } = useVariableStore();
+  const {
+    variables,
+    selectedVariables,
+    focusedVariable,
+    setFocusedVariable,
+  } = useVariableStore();
+  const setPlotDrawerOpen = useConnectionStore((s) => s.setPlotDrawerOpen);
   const { addPlotVariable } = usePlotStore();
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createDefaultFixedWidths);
   const tableBodyRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState(300);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  const openControlForVariable = useCallback(
+    (name: string) => {
+      setFocusedVariable(name);
+      setPlotDrawerOpen(true);
+    },
+    [setFocusedVariable, setPlotDrawerOpen],
+  );
 
   const handleResize = useCallback(
     (key: ParameterFixedColumnKey) => (width: number) => {
@@ -43,7 +56,28 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     [],
   );
 
-  const fixedSum = sumFixedWidths(fixedWidths);
+  const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
+
+  const tableRows = useMemo(() => {
+    if (!selectedVariables.length) return [];
+    const q = searchQuery?.toLowerCase();
+    return selectedVariables
+      .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name))
+      .filter((v) => !q || v.name.toLowerCase().includes(q));
+  }, [selectedVariables, variableMap, searchQuery]);
+
+  const showTypeColumn = useMemo(
+    () => tableRows.some((row) => Boolean(row.varKind?.trim())),
+    [tableRows],
+  );
+
+  const fixedSum = useMemo(
+    () =>
+      PARAMETER_FIXED_COLUMN_SPECS.filter(
+        (spec) => showTypeColumn || spec.key !== 'type',
+      ).reduce((sum, spec) => sum + fixedWidths[spec.key], 0),
+    [fixedWidths, showTypeColumn],
+  );
 
   const descriptionWidth = useMemo(() => {
     if (containerWidth <= 0) return MIN_DESCRIPTION_WIDTH;
@@ -57,16 +91,6 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const scrollX = overflowX
     ? Math.max(minScrollableWidth, fixedSum + descriptionWidth, containerWidth + 1)
     : undefined;
-
-  const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
-
-  const tableRows = useMemo(() => {
-    if (!selectedVariables.length) return [];
-    const q = searchQuery?.toLowerCase();
-    return selectedVariables
-      .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name))
-      .filter((v) => !q || v.name.toLowerCase().includes(q));
-  }, [selectedVariables, variableMap, searchQuery]);
 
   useEffect(() => {
     const el = tableBodyRef.current;
@@ -84,17 +108,31 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     const observer = new ResizeObserver(() => requestAnimationFrame(update));
     observer.observe(el);
     return () => observer.disconnect();
-  }, [selectedVariables.length, fixedWidths, overflowX]);
+  }, [selectedVariables.length, fixedWidths, overflowX, showTypeColumn]);
 
   const columns: ColumnsType<WatchIoVariable> = useMemo(() => {
-    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.map((spec) => {
+    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.filter(
+      (spec) => showTypeColumn || spec.key !== 'type',
+    ).map((spec) => {
       const width = fixedWidths[spec.key];
       const onResize = handleResize(spec.key);
 
-      if (spec.key === 'type') {
+      if (spec.key === 'name') {
         return buildFixedParameterColumn(spec, width, onResize, {
-          render: (type: WatchIoVariable['type']) => (type === 'unknown' ? '' : type),
+          render: (name: string) => (
+            <button
+              type="button"
+              className="parameter-name-link"
+              onClick={() => openControlForVariable(name)}
+            >
+              {name}
+            </button>
+          ),
         });
+      }
+
+      if (spec.key === 'type') {
+        return buildFixedParameterColumn(spec, width, onResize);
       }
 
       if (spec.key === 'value') {
@@ -155,6 +193,8 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     descriptionWidth,
     overflowX,
     variableMap,
+    openControlForVariable,
+    showTypeColumn,
   ]);
 
   const headerLabel =
@@ -188,6 +228,8 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           pagination={false}
           scroll={scroll}
           onRow={(row) => ({
+            className:
+              row.name === focusedVariable ? 'parameter-row-focused' : undefined,
             onDoubleClick: () => addPlotVariable(row.name),
           })}
           locale={{

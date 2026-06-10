@@ -1,4 +1,5 @@
 import type { WatchIoMessage } from '../api/types';
+import { useWatchIoMessageLogStore } from '../stores/watchIoMessageLogStore';
 import { extractBranchNames, isDataReady, normalizeEntries } from './parseWatchIoMessage';
 
 export function isWatchIoDebugEnabled(): boolean {
@@ -32,6 +33,7 @@ export function watchIoLog(category: string, message: string, data?: unknown): v
 }
 
 export function watchIoLogMessage(direction: 'recv' | 'send', msg: WatchIoMessage): void {
+  useWatchIoMessageLogStore.getState().append(direction, msg);
   if (!isWatchIoDebugEnabled()) return;
   const arrow = direction === 'recv' ? '<<<' : '>>>';
   console.groupCollapsed(`[WatchIO:msg] ${arrow} ${msg.type}`);

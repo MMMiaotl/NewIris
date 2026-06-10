@@ -1,9 +1,7 @@
 export type VariableDataType = 'int' | 'double' | 'string' | 'array';
 
-export type VariableScopeType = 'local' | 'input' | 'output' | 'inout';
-
-/** SmcServer vartype (scope) or WatchIO attributes type= (data type). */
-export type VariableType = VariableDataType | VariableScopeType | 'unknown';
+/** Data type for monitor registration (attributes type=). */
+export type VariableType = VariableDataType | 'unknown';
 
 const VARIABLE_DATA_TYPES: ReadonlySet<VariableDataType> = new Set([
   'int',
@@ -35,7 +33,10 @@ export interface WatchIoMessage {
 export interface WatchIoVariable {
   name: string;
   value: string;
-  type: VariableType;
+  /** WatchIO vartype — Param, local, Input, Output, ... */
+  varKind: string;
+  /** Data type from attributes type= — int, double, ... */
+  dataType: VariableType;
   description: string;
   scale: string;
   registered: boolean;

@@ -4,22 +4,29 @@ import { getEntryAttributes } from '../utils/parseAttributes';
 import type { WatchIoEntry } from '../api/types';
 import { attachVariablesToBranch, filterVariablesByBranch } from '../utils/buildVariableTree';
 
-const KNOWN_VARIABLE_TYPES: ReadonlySet<VariableType> = new Set([
-  'int',
-  'double',
-  'string',
-  'array',
-  'local',
-  'input',
-  'output',
-  'inout',
-]);
+function normalizeDataType(raw?: string): VariableType {
+  const t = raw?.trim().toLowerCase();
+  if (t === 'int' || t === 'double' || t === 'string' || t === 'array') return t;
+  return 'unknown';
+}
 
-function inferType(attrs: Record<string, string>): VariableType {
-  const raw = attrs.type?.trim();
-  if (!raw) return 'unknown';
-  const normalized = raw.toLowerCase() as VariableType;
-  return KNOWN_VARIABLE_TYPES.has(normalized) ? normalized : 'unknown';
+function buildWatchIoVariable(
+  fullName: string,
+  entry: WatchIoEntry,
+  prev: WatchIoVariable | undefined,
+  registered: boolean,
+): WatchIoVariable {
+  const attrs = getEntryAttributes(entry);
+  return {
+    name: fullName,
+    value: entry.value ?? prev?.value ?? '',
+    varKind: attrs.varKind ?? prev?.varKind ?? '',
+    dataType: attrs.dataType ? normalizeDataType(attrs.dataType) : (prev?.dataType ?? 'unknown'),
+    description: attrs.description ?? prev?.description ?? '',
+    scale: attrs.scale ?? prev?.scale ?? '',
+    registered,
+    alias: attrs.alias ?? prev?.alias,
+  };
 }
 
 export const MAX_SELECTED_PARAMETERS = 100;
@@ -28,7 +35,8 @@ export function createPlaceholderVariable(name: string): WatchIoVariable {
   return {
     name,
     value: '',
-    type: 'unknown',
+    varKind: '',
+    dataType: 'unknown',
     description: '',
     scale: '',
     registered: false,
@@ -53,10 +61,16 @@ interface VariableState {
   /** WatchIO dotted prefix for the selected SmcServer object (e.g. C.Filter.Surge.Coefs.) */
   branchVarPrefix: string | null;
   selectedVariables: string[];
+  /** Variable shown in the Control drawer (View tab). */
+  focusedVariable: string | null;
   setTreeNodes: (nodes: TreeNode[]) => void;
   setSelectedBranch: (branch: string | null) => void;
   setBranchVarPrefix: (prefix: string | null) => void;
+  setFocusedVariable: (name: string | null) => void;
   toggleSelectedVariable: (name: string) => boolean;
+  removeSelectedVariable: (name: string) => void;
+  moveSelectedVariable: (name: string, direction: 'up' | 'down') => void;
+  insertSelectedVariable: (name: string) => void;
   clearSelectedVariables: () => void;
   mergeVarLeaves: (
     entries: WatchIoEntry[],
@@ -78,9 +92,11 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   selectedBranch: null,
   branchVarPrefix: null,
   selectedVariables: [],
+  focusedVariable: null,
   setTreeNodes: (treeNodes) => set({ treeNodes }),
   setSelectedBranch: (selectedBranch) => set({ selectedBranch }),
   setBranchVarPrefix: (branchVarPrefix) => set({ branchVarPrefix }),
+  setFocusedVariable: (focusedVariable) => set({ focusedVariable }),
   toggleSelectedVariable: (name) => {
     const current = get().selectedVariables;
     if (current.includes(name)) {
@@ -91,7 +107,36 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     set({ selectedVariables: [...current, name] });
     return true;
   },
-  clearSelectedVariables: () => set({ selectedVariables: [] }),
+  removeSelectedVariable: (name) => {
+    const selectedVariables = get().selectedVariables.filter((n) => n !== name);
+    const focusedVariable =
+      get().focusedVariable === name ? null : get().focusedVariable;
+    set({ selectedVariables, focusedVariable });
+  },
+  moveSelectedVariable: (name, direction) => {
+    const list = [...get().selectedVariables];
+    const index = list.indexOf(name);
+    if (index < 0) return;
+    const swap = direction === 'up' ? index - 1 : index + 1;
+    if (swap < 0 || swap >= list.length) return;
+    [list[index], list[swap]] = [list[swap], list[index]];
+    set({ selectedVariables: list });
+  },
+  insertSelectedVariable: (name) => {
+    const current = get().selectedVariables;
+    if (current.includes(name)) return;
+    if (current.length >= MAX_SELECTED_PARAMETERS) return;
+    const focused = get().focusedVariable;
+    if (!focused || !current.includes(focused)) {
+      set({ selectedVariables: [...current, name] });
+      return;
+    }
+    const index = current.indexOf(focused);
+    const next = [...current];
+    next.splice(index + 1, 0, name);
+    set({ selectedVariables: next });
+  },
+  clearSelectedVariables: () => set({ selectedVariables: [], focusedVariable: null }),
   mergeVarLeaves: (entries, branchOverride, varPrefixOverride) => {
     const list = normalizeEntries(entries);
     const branch = branchOverride ?? get().selectedBranch;
@@ -115,17 +160,11 @@ export const useVariableStore = create<VariableState>((set, get) => ({
         isSmcBranch || entry.name.includes('.') || !branch || branch === '.'
           ? entry.name
           : `${branch}.${entry.name}`;
-      const attrs = getEntryAttributes(entry);
       const prev = existing.get(fullName);
-      existing.set(fullName, {
-        name: fullName,
-        value: entry.value ?? prev?.value ?? '',
-        type: inferType(attrs),
-        description: attrs.description ?? prev?.description ?? '',
-        scale: attrs.scale ?? prev?.scale ?? '',
-        registered: get().registeredNames.has(fullName),
-        alias: attrs.alias,
-      });
+      existing.set(
+        fullName,
+        buildWatchIoVariable(fullName, entry, prev, get().registeredNames.has(fullName)),
+      );
     }
     set({ variables: Array.from(existing.values()).sort((a, b) => a.name.localeCompare(b.name)) });
     if (branch) get().attachBranchVariables(branch);
@@ -140,18 +179,9 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   },
   mergeVarList: (entries) => {
     const list = normalizeEntries(entries);
-    const vars: WatchIoVariable[] = list.map((entry) => {
-      const attrs = getEntryAttributes(entry);
-      return {
-        name: entry.name,
-        value: entry.value ?? '',
-        type: inferType(attrs),
-        description: attrs.description ?? '',
-        scale: attrs.scale ?? '',
-        registered: get().registeredNames.has(entry.name),
-        alias: attrs.alias,
-      };
-    });
+    const vars: WatchIoVariable[] = list.map((entry) =>
+      buildWatchIoVariable(entry.name, entry, undefined, get().registeredNames.has(entry.name)),
+    );
     set({ variables: vars.sort((a, b) => a.name.localeCompare(b.name)) });
   },
   applyUpdate: (entries) => {
@@ -164,7 +194,8 @@ export const useVariableStore = create<VariableState>((set, get) => ({
         map.set(entry.name, {
           name: entry.name,
           value: entry.value ?? '',
-          type: 'unknown',
+          varKind: '',
+          dataType: 'unknown',
           description: '',
           scale: '',
           registered: get().registeredNames.has(entry.name),
@@ -197,5 +228,6 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       selectedBranch: null,
       branchVarPrefix: null,
       selectedVariables: [],
+      focusedVariable: null,
     }),
 }));

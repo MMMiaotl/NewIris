@@ -171,7 +171,7 @@ export class SmcServerClient implements WatchIoClient {
   }
 
   private async loadVariables(branch: string): Promise<void> {
-    const url = `${this.serverBase}/${branch}:?value=1;vartype=1;description=1;override=1`;
+    const url = `${this.serverBase}/${branch}:?value=1;vartype=1;type=1;description=1;override=1`;
     watchIoLog('http', `GET ${url}`);
     const { text } = await smcHttpGet(url, 20_000);
     const msg = parseWatchIoResponse(text);

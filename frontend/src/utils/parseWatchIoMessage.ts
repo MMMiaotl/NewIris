@@ -1,4 +1,5 @@
 import type { WatchIoEntry, WatchIoMessage } from '../api/types';
+import { normalizeEntryParams } from './parseAttributes';
 import { parseSmcJson, smcJsonToWatchIoMessage, type SmcJsonMessage } from './parseSmcJson';
 import { watchIoLog } from './watchIoDebug';
 
@@ -31,11 +32,7 @@ function normalizeEntryBlock(entries: unknown): Array<{
     return entries.map((e) => ({
       name: e.name,
       value: e.value,
-      params: Array.isArray(e.params)
-        ? e.params
-        : e.params && typeof e.params === 'object' && 'name' in e.params
-          ? [e.params as { name: string; value: string }]
-          : [],
+      params: normalizeEntryParams(e.params),
     }));
   }
   if (typeof entries === 'object' && 'name' in entries && typeof entries.name === 'string') {
@@ -44,11 +41,7 @@ function normalizeEntryBlock(entries: unknown): Array<{
       {
         name: e.name,
         value: e.value,
-        params: Array.isArray(e.params)
-          ? e.params
-          : e.params && typeof e.params === 'object' && 'name' in e.params
-            ? [e.params as { name: string; value: string }]
-            : [],
+        params: normalizeEntryParams(e.params),
       },
     ];
   }

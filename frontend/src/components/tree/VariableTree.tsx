@@ -38,6 +38,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const selectedBranch = useVariableStore((s) => s.selectedBranch);
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const setSelectedBranch = useVariableStore((s) => s.setSelectedBranch);
+  const setFocusedVariable = useVariableStore((s) => s.setFocusedVariable);
   const toggleSelectedVariable = useVariableStore((s) => s.toggleSelectedVariable);
 
   const addPlotVariable = usePlotStore((s) => s.addPlotVariable);
@@ -116,11 +117,12 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
 
   const selectVariable = useCallback(
     (fullName: string) => {
+      setFocusedVariable(fullName);
       if (!toggleSelectedVariable(fullName)) {
         message.warning(`At most ${MAX_SELECTED_PARAMETERS} parameters can be selected`);
       }
     },
-    [toggleSelectedVariable, message],
+    [setFocusedVariable, toggleSelectedVariable, message],
   );
 
   const titleRender = useCallback(

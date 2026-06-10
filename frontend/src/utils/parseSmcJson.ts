@@ -4,6 +4,7 @@
  */
 
 import type { WatchIoMessage } from '../api/types';
+import { normalizeEntryParams } from './parseAttributes';
 
 export interface SmcJsonParam {
   name: string;
@@ -35,6 +36,9 @@ function normalizeParamBlock(params: unknown): SmcJsonParam[] {
   if (typeof params === 'object' && 'name' in params) {
     const p = params as SmcJsonParam;
     return [{ name: p.name, value: p.value ?? '' }];
+  }
+  if (typeof params === 'object') {
+    return normalizeEntryParams(params as Record<string, string>);
   }
   return [];
 }

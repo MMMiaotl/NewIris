@@ -16,7 +16,7 @@ export interface ParameterFixedColumnSpec {
 
 export const PARAMETER_FIXED_COLUMN_SPECS: readonly ParameterFixedColumnSpec[] = [
   { key: 'name', title: 'name', dataIndex: 'name', defaultWidth: 320, minWidth: 80 },
-  { key: 'type', title: 'type', dataIndex: 'type', defaultWidth: 72, minWidth: 48 },
+  { key: 'type', title: 'type', dataIndex: 'varKind', defaultWidth: 72, minWidth: 48 },
   { key: 'value', title: 'value', dataIndex: 'value', defaultWidth: 120, minWidth: 64 },
   { key: 'scale', title: 'scale', dataIndex: 'scale', defaultWidth: 80, minWidth: 48 },
 ] as const;

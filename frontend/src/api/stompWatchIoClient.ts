@@ -278,7 +278,7 @@ export class StompWatchIoClient implements WatchIoClient {
     }
 
     const entries = variables.map((v) =>
-      watchIoEntry(v.name, watchIoMonitorAttributes(v.type, v.mode ?? 'set')),
+      watchIoEntry(v.name, watchIoMonitorAttributes(v.dataType, v.mode ?? 'set')),
     );
     this.monitoredNames = next;
     this.sendJson({ type: 'list', entries });

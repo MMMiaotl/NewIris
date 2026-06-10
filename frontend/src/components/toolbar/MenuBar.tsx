@@ -35,7 +35,6 @@ export function MenuBar() {
     setViewMode,
     setFlatTree,
     setSearchQuery,
-    setPlotDrawerOpen,
     setSettingsDrawerOpen,
   } = useConnectionStore();
   const { recording, startRecording, stopRecording, loadReplay, clearReplay, addRecentSession } =
@@ -118,7 +117,7 @@ export function MenuBar() {
     {
       key: 'control',
       label: 'Control Window',
-      onClick: () => setPlotDrawerOpen(true),
+      onClick: openControlDrawer,
     },
   ];
 
@@ -216,7 +215,7 @@ export function MenuBar() {
             onClick={toggleRecord}
           />
         </Tooltip>
-        <Button type="text" icon={<SlidersOutlined />} onClick={() => setPlotDrawerOpen(true)}>
+        <Button type="text" icon={<SlidersOutlined />} onClick={openControlDrawer}>
           Control
         </Button>
         <Input
@@ -238,6 +237,14 @@ export function MenuBar() {
       </Space>
     </div>
   );
+}
+
+function openControlDrawer() {
+  const { focusedVariable, selectedVariables, setFocusedVariable } = useVariableStore.getState();
+  if (!focusedVariable && selectedVariables.length) {
+    setFocusedVariable(selectedVariables[0]);
+  }
+  useConnectionStore.getState().setPlotDrawerOpen(true);
 }
 
 function openFilePicker(accept: string, onLoad: (text: string, name: string) => void) {

@@ -4,16 +4,18 @@ import { MenuBar } from '../toolbar/MenuBar';
 import { VariableTree } from '../tree/VariableTree';
 import { ParameterTable } from '../table/ParameterTable';
 import { PlotPanel } from '../plot/PlotPanel';
-import { PlotControlDrawer } from '../plot/PlotControlDrawer';
+import { ControlPanel } from '../control/ControlPanel';
 import { SettingsDrawer } from '../settings/SettingsDrawer';
+import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ReplayControls } from '../replay/ReplayControls';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useWatchIo } from '../../hooks/useWatchIo';
 import { useReplay } from '../../hooks/useReplay';
 
 export function AppShell() {
-  const { viewMode, appMode, config, status } = useConnectionStore();
-  const { connect, disconnect, setVariableValue, client } = useWatchIo();
+  const { viewMode, appMode, config, status, plotDrawerOpen, setPlotDrawerOpen } =
+    useConnectionStore();
+  const { connect, disconnect, setVariableValue, refreshVariable, client } = useWatchIo();
   useReplay();
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
@@ -45,32 +47,45 @@ export function AppShell() {
       {appMode === 'replay' && <ReplayControls />}
 
       <main className="app-main">
-        <Splitter className="main-splitter">
-          <Splitter.Panel defaultSize="22%" min="15%" max="40%">
-            <VariableTree
-              onExpandBranch={(branch) => {
-                if (!branch) client.current?.fetchVarTree();
-                else client.current?.fetchVarTree(branch);
-              }}
-              onLoadVariables={(branch) => {
-                client.current?.fetchVarLeaves(branch);
-              }}
-            />
-          </Splitter.Panel>
-          <Splitter.Panel>
-            <Splitter orientation="vertical" className="right-splitter">
-              {showList && (
-                <Splitter.Panel defaultSize="45%" min="20%">
-                  <ParameterTable onSetValue={setVariableValue} />
-                </Splitter.Panel>
-              )}
-              {showPlot && (
-                <Splitter.Panel min="25%">
-                  <PlotPanel />
-                </Splitter.Panel>
-              )}
+        <Splitter className="app-main-splitter">
+          <Splitter.Panel min="40%">
+            <Splitter className="main-splitter">
+              <Splitter.Panel defaultSize="22%" min="15%" max="40%">
+                <VariableTree
+                  onExpandBranch={(branch) => {
+                    if (!branch) client.current?.fetchVarTree();
+                    else client.current?.fetchVarTree(branch);
+                  }}
+                  onLoadVariables={(branch) => {
+                    client.current?.fetchVarLeaves(branch);
+                  }}
+                />
+              </Splitter.Panel>
+              <Splitter.Panel>
+                <Splitter orientation="vertical" className="right-splitter">
+                  {showList && (
+                    <Splitter.Panel defaultSize="45%" min="20%">
+                      <ParameterTable onSetValue={setVariableValue} />
+                    </Splitter.Panel>
+                  )}
+                  {showPlot && (
+                    <Splitter.Panel min="25%">
+                      <PlotPanel />
+                    </Splitter.Panel>
+                  )}
+                </Splitter>
+              </Splitter.Panel>
             </Splitter>
           </Splitter.Panel>
+          {plotDrawerOpen && (
+            <Splitter.Panel defaultSize="400" min="280" max="45%">
+              <ControlPanel
+                onClose={() => setPlotDrawerOpen(false)}
+                onSetValue={setVariableValue}
+                onRefreshVariable={refreshVariable}
+              />
+            </Splitter.Panel>
+          )}
         </Splitter>
       </main>
 
@@ -86,8 +101,8 @@ export function AppShell() {
         <span className={`footer-status ${statusClass}`}>{modeLabel}</span>
       </footer>
 
-      <PlotControlDrawer />
       <SettingsDrawer />
+      <WatchIoMessageLogDrawer />
     </div>
   );
 }

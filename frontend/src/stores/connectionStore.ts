@@ -23,6 +23,7 @@ interface ConnectionState {
   searchQuery: string;
   plotDrawerOpen: boolean;
   settingsDrawerOpen: boolean;
+  watchIoLogDrawerOpen: boolean;
   setConfig: (partial: Partial<ConnectionConfig>) => void;
   setDiscoveredServices: (services: DiscoveredService[]) => void;
   selectService: (name: string) => void;
@@ -37,6 +38,7 @@ interface ConnectionState {
   setSearchQuery: (q: string) => void;
   setPlotDrawerOpen: (open: boolean) => void;
   setSettingsDrawerOpen: (open: boolean) => void;
+  setWatchIoLogDrawerOpen: (open: boolean) => void;
 }
 
 const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
@@ -63,6 +65,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   searchQuery: '',
   plotDrawerOpen: false,
   settingsDrawerOpen: false,
+  watchIoLogDrawerOpen: false,
   setConfig: (partial) =>
     set((s) => {
       const next = { ...s.config, ...partial };
@@ -99,6 +102,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setPlotDrawerOpen: (plotDrawerOpen) => set({ plotDrawerOpen }),
   setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
+  setWatchIoLogDrawerOpen: (watchIoLogDrawerOpen) => set({ watchIoLogDrawerOpen }),
 }));
 
 export const predefinedHosts = defaultHosts;

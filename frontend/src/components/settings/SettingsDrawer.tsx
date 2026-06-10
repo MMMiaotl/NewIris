@@ -1,12 +1,18 @@
-import { Drawer, Form, Input, InputNumber, Select } from 'antd';
+import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
 import type { ConnectionTransport } from '../../api/types';
 import { transportOptions } from '../../constants/transport';
 import { WatchIoNameField } from '../connection/WatchIoNameField';
 import { useConnectionStore } from '../../stores/connectionStore';
 
 export function SettingsDrawer() {
-  const { config, settingsDrawerOpen, setSettingsDrawerOpen, setConfig, status } =
-    useConnectionStore();
+  const {
+    config,
+    settingsDrawerOpen,
+    setSettingsDrawerOpen,
+    setWatchIoLogDrawerOpen,
+    setConfig,
+    status,
+  } = useConnectionStore();
   const isWatchIo = config.transport === 'watchIoHttp' || config.transport === 'watchIoWs';
 
   return (
@@ -83,6 +89,20 @@ export function SettingsDrawer() {
             value={config.sampleInterval}
             onChange={(v) => setConfig({ sampleInterval: v ?? 500 })}
           />
+        </Form.Item>
+
+        <Form.Item label="Debug">
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Button
+              block
+              onClick={() => {
+                setSettingsDrawerOpen(false);
+                setWatchIoLogDrawerOpen(true);
+              }}
+            >
+              WatchIO raw messages
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
     </Drawer>

@@ -8,7 +8,7 @@ export type StatusHandler = (
 
 export interface MonitorVariable {
   name: string;
-  type?: VariableType;
+  dataType?: VariableType;
   mode?: 'value' | 'set';
 }
 

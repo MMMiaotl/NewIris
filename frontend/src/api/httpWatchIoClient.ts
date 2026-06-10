@@ -100,7 +100,7 @@ export class HttpWatchIoClient implements WatchIoClient {
     }
     this.registered = new Set(variables.map((v) => v.name));
     const entries = variables.map((v) =>
-      watchIoEntry(v.name, watchIoMonitorAttributes(v.type, v.mode ?? 'set')),
+      watchIoEntry(v.name, watchIoMonitorAttributes(v.dataType, v.mode ?? 'set')),
     );
     void this.postJson({ type: 'list', entries })
       .then(() => {

@@ -22,15 +22,15 @@ export function watchIoEntry(
 
 /** Space-separated — WatchIoWebServer SimpleScanString splits on spaces, not `;`. */
 export const WATCHIO_VARLEAVES_ATTRS =
-  'addtype=1 adddescription=1 addvalue=1 fullname=1';
+  'addtype=1 addvartype=1 adddescription=1 addvalue=1 fullname=1';
 
 export const WATCHIO_VARTREE_BRANCH_ATTRS = 'branch=1';
 
 export function watchIoMonitorAttributes(
-  type?: VariableType,
+  dataType?: VariableType,
   mode: 'value' | 'set' = 'set',
 ): string {
   const parts = [`mode=${mode}`];
-  if (type && isVariableDataType(type)) parts.push(`type=${type}`);
+  if (dataType && isVariableDataType(dataType)) parts.push(`type=${dataType}`);
   return parts.join(' ');
 }
