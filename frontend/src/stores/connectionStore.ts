@@ -22,6 +22,8 @@ interface ConnectionState {
   flatTree: boolean;
   searchQuery: string;
   plotDrawerOpen: boolean;
+  /** Right Control panel width in px when open (Splitter controlled size). */
+  controlPanelWidth: number;
   settingsDrawerOpen: boolean;
   watchIoLogDrawerOpen: boolean;
   setConfig: (partial: Partial<ConnectionConfig>) => void;
@@ -37,11 +39,15 @@ interface ConnectionState {
   setFlatTree: (flat: boolean) => void;
   setSearchQuery: (q: string) => void;
   setPlotDrawerOpen: (open: boolean) => void;
+  setControlPanelWidth: (width: number) => void;
   setSettingsDrawerOpen: (open: boolean) => void;
   setWatchIoLogDrawerOpen: (open: boolean) => void;
 }
 
 const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
+
+export const DEFAULT_CONTROL_PANEL_WIDTH = 400;
+export const MIN_CONTROL_PANEL_WIDTH = 280;
 
 const initialTransport = parseTransportEnv(import.meta.env.VITE_TRANSPORT);
 
@@ -66,6 +72,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   flatTree: false,
   searchQuery: '',
   plotDrawerOpen: false,
+  controlPanelWidth: DEFAULT_CONTROL_PANEL_WIDTH,
   settingsDrawerOpen: false,
   watchIoLogDrawerOpen: false,
   setConfig: (partial) =>
@@ -103,6 +110,8 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   setFlatTree: (flatTree) => set({ flatTree }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setPlotDrawerOpen: (plotDrawerOpen) => set({ plotDrawerOpen }),
+  setControlPanelWidth: (controlPanelWidth) =>
+    set({ controlPanelWidth: Math.max(MIN_CONTROL_PANEL_WIDTH, Math.round(controlPanelWidth)) }),
   setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
   setWatchIoLogDrawerOpen: (watchIoLogDrawerOpen) => set({ watchIoLogDrawerOpen }),
 }));

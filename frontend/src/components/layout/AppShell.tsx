@@ -8,13 +8,24 @@ import { ControlPanel } from '../control/ControlPanel';
 import { SettingsDrawer } from '../settings/SettingsDrawer';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ReplayControls } from '../replay/ReplayControls';
-import { useConnectionStore } from '../../stores/connectionStore';
+import {
+  MIN_CONTROL_PANEL_WIDTH,
+  useConnectionStore,
+} from '../../stores/connectionStore';
 import { useWatchIo } from '../../hooks/useWatchIo';
 import { useReplay } from '../../hooks/useReplay';
 
 export function AppShell() {
-  const { viewMode, appMode, config, status, plotDrawerOpen, setPlotDrawerOpen } =
-    useConnectionStore();
+  const {
+    viewMode,
+    appMode,
+    config,
+    status,
+    plotDrawerOpen,
+    setPlotDrawerOpen,
+    controlPanelWidth,
+    setControlPanelWidth,
+  } = useConnectionStore();
   const { connect, disconnect, applyWatchIoName, setVariableValue, refreshVariable, client } =
     useWatchIo();
   useReplay();
@@ -52,7 +63,15 @@ export function AppShell() {
       {appMode === 'replay' && <ReplayControls />}
 
       <main className="app-main">
-        <Splitter className="app-main-splitter">
+        <Splitter
+          className="app-main-splitter"
+          onResize={(sizes) => {
+            const nextWidth = sizes[1];
+            if (typeof nextWidth === 'number' && nextWidth > 0) {
+              setControlPanelWidth(nextWidth);
+            }
+          }}
+        >
           <Splitter.Panel min="40%">
             <Splitter className="main-splitter">
               <Splitter.Panel defaultSize="15.4%" min="15%" max="40%">
@@ -82,15 +101,22 @@ export function AppShell() {
               </Splitter.Panel>
             </Splitter>
           </Splitter.Panel>
-          {plotDrawerOpen && (
-            <Splitter.Panel defaultSize="400" min="280" max="45%">
+          <Splitter.Panel
+            size={plotDrawerOpen ? controlPanelWidth : 0}
+            min={plotDrawerOpen ? MIN_CONTROL_PANEL_WIDTH : 0}
+            max="45%"
+            collapsible={{ end: true, showCollapsibleIcon: 'auto' }}
+            resizable={plotDrawerOpen}
+            destroyOnHidden
+          >
+            {plotDrawerOpen && (
               <ControlPanel
                 onClose={() => setPlotDrawerOpen(false)}
                 onSetValue={setVariableValue}
                 onRefreshVariable={refreshVariable}
               />
-            </Splitter.Panel>
-          )}
+            )}
+          </Splitter.Panel>
         </Splitter>
       </main>
 

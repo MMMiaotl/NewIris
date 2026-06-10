@@ -117,7 +117,7 @@ export function MenuBar() {
     {
       key: 'control',
       label: 'Control Window',
-      onClick: openControlDrawer,
+      onClick: toggleControlDrawer,
     },
   ];
 
@@ -222,7 +222,7 @@ export function MenuBar() {
             onClick={toggleRecord}
           />
         </Tooltip>
-        <Button type="text" icon={<SlidersOutlined />} onClick={openControlDrawer}>
+        <Button type="text" icon={<SlidersOutlined />} onClick={toggleControlDrawer}>
           Control
         </Button>
         <Input
@@ -246,12 +246,17 @@ export function MenuBar() {
   );
 }
 
-function openControlDrawer() {
+function toggleControlDrawer() {
+  const { plotDrawerOpen, setPlotDrawerOpen } = useConnectionStore.getState();
+  if (plotDrawerOpen) {
+    setPlotDrawerOpen(false);
+    return;
+  }
   const { focusedVariable, selectedVariables, setFocusedVariable } = useVariableStore.getState();
   if (!focusedVariable && selectedVariables.length) {
     setFocusedVariable(selectedVariables[0]);
   }
-  useConnectionStore.getState().setPlotDrawerOpen(true);
+  setPlotDrawerOpen(true);
 }
 
 function openFilePicker(accept: string, onLoad: (text: string, name: string) => void) {
