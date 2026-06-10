@@ -3,7 +3,11 @@ import type { ColumnType, ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import type { WatchIoVariable } from '../../api/types';
-import { MAX_SELECTED_PARAMETERS, useVariableStore } from '../../stores/variableStore';
+import {
+  createPlaceholderVariable,
+  MAX_SELECTED_PARAMETERS,
+  useVariableStore,
+} from '../../stores/variableStore';
 import { usePlotStore } from '../../stores/plotStore';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
 import {
@@ -56,16 +60,12 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
   const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
 
-  const filtered = useMemo(() => {
+  const tableRows = useMemo(() => {
     if (!selectedVariables.length) return [];
     const q = searchQuery?.toLowerCase();
     return selectedVariables
-      .map((name) => variableMap.get(name))
-      .filter((v): v is NonNullable<typeof v> => {
-        if (!v) return false;
-        if (q && !v.name.toLowerCase().includes(q)) return false;
-        return true;
-      });
+      .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name))
+      .filter((v) => !q || v.name.toLowerCase().includes(q));
   }, [selectedVariables, variableMap, searchQuery]);
 
   useEffect(() => {
@@ -100,11 +100,13 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       if (spec.key === 'value') {
         return buildFixedParameterColumn(spec, width, onResize, {
           ellipsis: false,
-          render: (val: string, row) => {
-            if (appMode === 'replay') return val;
-            const draft = editing[row.name];
-            return (
-              <Input
+        render: (val: string, row) => {
+          const isPlaceholder = !variableMap.has(row.name);
+          if (isPlaceholder) return val || '—';
+          if (appMode === 'replay') return val;
+          const draft = editing[row.name];
+          return (
+            <Input
                 size="small"
                 value={draft !== undefined ? draft : val}
                 onChange={(e) => setEditing((s) => ({ ...s, [row.name]: e.target.value }))}
@@ -152,6 +154,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     onSetValue,
     descriptionWidth,
     overflowX,
+    variableMap,
   ]);
 
   const headerLabel =
@@ -181,7 +184,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           components={{
             header: { cell: ResizableTableHeaderCell },
           }}
-          dataSource={filtered.map((v) => ({ ...v, key: v.name }))}
+          dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
           pagination={false}
           scroll={scroll}
           onRow={(row) => ({

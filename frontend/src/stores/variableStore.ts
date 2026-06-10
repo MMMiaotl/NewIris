@@ -24,6 +24,21 @@ function inferType(attrs: Record<string, string>): VariableType {
 
 export const MAX_SELECTED_PARAMETERS = 100;
 
+export function createPlaceholderVariable(name: string): WatchIoVariable {
+  return {
+    name,
+    value: '',
+    type: 'unknown',
+    description: '',
+    scale: '',
+    registered: false,
+  };
+}
+
+function pinnedVariableNames(state: VariableState): Set<string> {
+  return new Set([...state.selectedVariables, ...state.registeredNames]);
+}
+
 function normalizeEntries(entries: WatchIoEntry[] | Record<string, string> | undefined): WatchIoEntry[] {
   if (!entries) return [];
   if (Array.isArray(entries)) return entries;
@@ -43,7 +58,11 @@ interface VariableState {
   setBranchVarPrefix: (prefix: string | null) => void;
   toggleSelectedVariable: (name: string) => boolean;
   clearSelectedVariables: () => void;
-  mergeVarLeaves: (entries: WatchIoEntry[], branchOverride?: string | null) => void;
+  mergeVarLeaves: (
+    entries: WatchIoEntry[],
+    branchOverride?: string | null,
+    varPrefixOverride?: string | null,
+  ) => void;
   attachBranchVariables: (branch: string) => void;
   mergeVarList: (entries: WatchIoEntry[]) => void;
   applyUpdate: (entries: WatchIoEntry[]) => void;
@@ -73,20 +92,23 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     return true;
   },
   clearSelectedVariables: () => set({ selectedVariables: [] }),
-  mergeVarLeaves: (entries, branchOverride) => {
+  mergeVarLeaves: (entries, branchOverride, varPrefixOverride) => {
     const list = normalizeEntries(entries);
     const branch = branchOverride ?? get().selectedBranch;
     const isSmcBranch = Boolean(branch?.includes('/'));
-    const varPrefix = get().branchVarPrefix ?? '';
+    const varPrefix = varPrefixOverride ?? get().branchVarPrefix ?? '';
     const prefix =
       isSmcBranch && varPrefix
         ? varPrefix
         : branch && branch !== '.'
           ? `${branch}.`
           : '';
-    const kept = get().variables.filter(
-      (v) => !prefix || (!v.name.startsWith(prefix) && v.name !== branch),
-    );
+    const pinned = pinnedVariableNames(get());
+    const kept = get().variables.filter((v) => {
+      if (pinned.has(v.name)) return true;
+      if (!prefix) return true;
+      return !v.name.startsWith(prefix) && v.name !== branch;
+    });
     const existing = new Map(kept.map((v) => [v.name, v]));
     for (const entry of list) {
       const fullName =

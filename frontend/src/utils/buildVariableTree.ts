@@ -1,4 +1,4 @@
-import type { TreeNode } from '../api/types';
+import type { ConnectionTransport, TreeNode } from '../api/types';
 
 export function filterVariablesByBranch(
   variables: { name: string }[],
@@ -31,6 +31,26 @@ export function parentBranchFromVariableName(fullName: string): string | null {
   const dot = fullName.lastIndexOf('.');
   if (dot <= 0) return null;
   return fullName.slice(0, dot);
+}
+
+/** C.Control.Roll.Accuracy -> Control/Control.Roll.Accuracy (SmcServer object path). */
+export function watchIoBranchToSmcBranch(watchIoBranch: string): string {
+  const withoutRoot = watchIoBranch.startsWith('C.') ? watchIoBranch.slice(2) : watchIoBranch;
+  const dot = withoutRoot.indexOf('.');
+  if (dot < 0) return withoutRoot;
+  const module = withoutRoot.slice(0, dot);
+  const rest = withoutRoot.slice(dot + 1);
+  return `${module}/${module}.${rest}`;
+}
+
+export function branchPathForVariableName(
+  fullName: string,
+  transport: ConnectionTransport,
+): string | null {
+  const dotBranch = parentBranchFromVariableName(fullName);
+  if (!dotBranch) return null;
+  if (transport === 'smcServer') return watchIoBranchToSmcBranch(dotBranch);
+  return dotBranch;
 }
 
 export function variableDisplayName(

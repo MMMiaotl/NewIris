@@ -39,7 +39,6 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const setSelectedBranch = useVariableStore((s) => s.setSelectedBranch);
   const toggleSelectedVariable = useVariableStore((s) => s.toggleSelectedVariable);
-  const clearSelectedVariables = useVariableStore((s) => s.clearSelectedVariables);
 
   const addPlotVariable = usePlotStore((s) => s.addPlotVariable);
 
@@ -142,14 +141,10 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     [nodeKindMap, selectedSet, selectVariable, addPlotVariable],
   );
 
+  /** Branch highlight only — parameter picks use the circle in titleRender, not Tree selectedKeys. */
   const selectedKeys = useMemo(
-    () =>
-      selectedVariables.length > 0
-        ? selectedVariables
-        : selectedBranch
-          ? [selectedBranch]
-          : [],
-    [selectedVariables, selectedBranch],
+    () => (selectedBranch ? [selectedBranch] : []),
+    [selectedBranch],
   );
 
   const isBranchKey = useCallback(
@@ -196,7 +191,6 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
               selectVariable(key);
               return;
             }
-            clearSelectedVariables();
             setSelectedBranch(key);
           }}
           showLine

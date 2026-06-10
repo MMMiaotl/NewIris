@@ -7,6 +7,7 @@ import { useVariableStore } from '../stores/variableStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useSessionStore } from '../stores/sessionStore';
 import {
+  branchPathForVariableName,
   buildDotBranchTree,
   buildSmcModuleTree,
   mergeDotBranchIntoTree,
@@ -23,7 +24,9 @@ import { watchIoLog } from '../utils/watchIoDebug';
 export function useWatchIo() {
   const clientRef = useRef<WatchIoClient | null>(null);
   const sessionRef = useRef(0);
+  const refetchedBranchesRef = useRef(new Set<string>());
   const { config, appMode, status, setStatus } = useConnectionStore();
+  const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
     setTreeNodes,
     mergeVarLeaves,
@@ -95,7 +98,7 @@ export function useWatchIo() {
               sample: entries.slice(0, 5).map((e) => e.name),
             });
           }
-          mergeVarLeaves(entries, branch);
+          mergeVarLeaves(entries, branch, meta.varprefix);
           if (branch && !entries.length) {
             useVariableStore.getState().attachBranchVariables(branch);
           }
@@ -153,6 +156,7 @@ export function useWatchIo() {
   );
 
   const disconnect = useCallback(() => {
+    refetchedBranchesRef.current.clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
     setStatus('disconnected');
@@ -162,6 +166,7 @@ export function useWatchIo() {
     if (appMode === 'offline') return;
 
     const session = ++sessionRef.current;
+    refetchedBranchesRef.current.clear();
     clientRef.current?.disconnect();
     useVariableStore.getState().clear();
     setBranchVarPrefix(null);
@@ -221,6 +226,24 @@ export function useWatchIo() {
     if (!client || appMode !== 'live' || status !== 'connected') return;
     if (selectedBranch) client.fetchVarLeaves(selectedBranch);
   }, [selectedBranch, appMode, status]);
+
+  useEffect(() => {
+    const client = clientRef.current;
+    if (!client || appMode !== 'live' || status !== 'connected') return;
+
+    const { selectedVariables, variables } = useVariableStore.getState();
+    if (!selectedVariables.length) return;
+
+    const loaded = new Set(variables.map((v) => v.name));
+    for (const name of selectedVariables) {
+      if (loaded.has(name)) continue;
+      const branch = branchPathForVariableName(name, config.transport);
+      if (!branch || refetchedBranchesRef.current.has(branch)) continue;
+      refetchedBranchesRef.current.add(branch);
+      watchIoLog('leaves', `reload branch for selected variable ${name}`, { branch });
+      client.fetchVarLeaves(branch);
+    }
+  }, [config.transport, appMode, status, selectedVariables]);
 
   return {
     connect,
