@@ -89,6 +89,7 @@ export interface SessionFile {
   registeredVariables: string[];
   plotVariables: string[];
   plotColors: Record<string, string>;
+  plotLineWidths?: Record<string, number>;
   plotMin: number;
   plotMax: number;
   plotXWindowSec?: number;

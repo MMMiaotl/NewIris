@@ -39,7 +39,7 @@ export function MenuBar() {
   } = useConnectionStore();
   const { recording, startRecording, stopRecording, loadReplay, clearReplay, addRecentSession } =
     useSessionStore();
-  const { plotVariables, colors, yMin, yMax, xWindowSec } = usePlotStore();
+  const { plotVariables, colors, lineWidths, yMin, yMax, xWindowSec } = usePlotStore();
   const { registeredNames, clear: clearVars } = useVariableStore();
 
   const openSession = () =>
@@ -143,6 +143,7 @@ export function MenuBar() {
       session.plotMin,
       session.plotMax,
       session.plotXWindowSec,
+      session.plotLineWidths,
     );
     for (const name of session.registeredVariables) {
       useVariableStore.getState().setRegistered(name, true);
@@ -160,6 +161,7 @@ export function MenuBar() {
     registeredVariables: Array.from(registeredNames),
     plotVariables,
     plotColors: colors,
+    plotLineWidths: lineWidths,
     plotMin: yMin,
     plotMax: yMax,
     plotXWindowSec: xWindowSec,
@@ -192,9 +194,12 @@ export function MenuBar() {
   const statusColor =
     status === 'connected' ? '#52c41a' : status === 'error' ? '#ff4d4f' : '#faad14';
 
+  const statusLabel =
+    appMode === 'offline' ? 'Off Line' : appMode === 'replay' ? 'Replay' : status;
+
   return (
     <div className="menu-bar">
-      <Space wrap size="small">
+      <Space wrap size="small" className="menu-bar-actions">
         <Dropdown menu={{ items: fileMenu }} trigger={['click']}>
           <Button type="text">File</Button>
         </Dropdown>
@@ -231,12 +236,12 @@ export function MenuBar() {
         <Checkbox checked={flatTree} onChange={(e) => setFlatTree(e.target.checked)}>
           Flat Tree
         </Checkbox>
-        <Tooltip title={statusDetail}>
-          <span className="status-pill" style={{ borderColor: statusColor, color: statusColor }}>
-            {appMode === 'offline' ? 'Off Line' : appMode === 'replay' ? 'Replay' : status}
-          </span>
-        </Tooltip>
       </Space>
+      <Tooltip title={statusDetail}>
+        <span className="status-pill menu-bar-status" style={{ borderColor: statusColor, color: statusColor }}>
+          {statusLabel}
+        </span>
+      </Tooltip>
     </div>
   );
 }

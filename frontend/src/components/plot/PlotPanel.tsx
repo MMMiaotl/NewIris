@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
-import { usePlotStore } from '../../stores/plotStore';
+import { usePlotStore, DEFAULT_PLOT_LINE_WIDTH } from '../../stores/plotStore';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { formatPlotAxisTime, plotXWindowRange } from '../../utils/plotTime';
 
@@ -15,7 +15,7 @@ const PLOT_X_AXIS = {
 export function PlotPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
-  const { plotVariables, colors, seriesData, yMin, yMax, xWindowSec } = usePlotStore();
+  const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } = usePlotStore();
   const { appMode } = useConnectionStore();
   const plotVariableKey = plotVariables.join(',');
 
@@ -48,7 +48,7 @@ export function PlotPanel() {
         ...plotVariables.map((name) => ({
           label: name,
           stroke: colors[name] ?? '#4fc3f7',
-          width: 1,
+          width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
           points: { show: false },
         })),
       ],
@@ -81,7 +81,7 @@ export function PlotPanel() {
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-  }, [plotVariableKey, colors, yMin, yMax, plotVariables, xWindowSec]);
+  }, [plotVariableKey, colors, lineWidths, yMin, yMax, plotVariables, xWindowSec]);
 
   useEffect(() => {
     const u = plotRef.current;

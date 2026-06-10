@@ -4,6 +4,24 @@ import { useVariableStore } from './variableStore';
 
 const PLOT_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#e57373', '#ba68c8', '#4db6ac', '#ffd54f', '#90a4ae'];
 
+export const DEFAULT_PLOT_LINE_WIDTH = 1;
+export const PLOT_LINE_WIDTH_OPTIONS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6] as const;
+
+const MIN_PLOT_LINE_WIDTH = PLOT_LINE_WIDTH_OPTIONS[0];
+const MAX_PLOT_LINE_WIDTH = PLOT_LINE_WIDTH_OPTIONS[PLOT_LINE_WIDTH_OPTIONS.length - 1];
+
+export function snapPlotLineWidth(width: number): number {
+  return PLOT_LINE_WIDTH_OPTIONS.reduce((best, option) =>
+    Math.abs(option - width) < Math.abs(best - width) ? option : best,
+  );
+}
+
+function clampLineWidth(width: number): number {
+  return snapPlotLineWidth(
+    Math.max(MIN_PLOT_LINE_WIDTH, Math.min(MAX_PLOT_LINE_WIDTH, width)),
+  );
+}
+
 export const DEFAULT_PLOT_X_WINDOW_SEC = 600;
 const MIN_PLOT_X_WINDOW_SEC = 30;
 const MAX_PLOT_X_WINDOW_SEC = 3600;
@@ -21,6 +39,7 @@ function maxPointsForWindow(xWindowSec: number): number {
 interface PlotState {
   plotVariables: string[];
   colors: Record<string, string>;
+  lineWidths: Record<string, number>;
   yMin: number;
   yMax: number;
   /** Fixed rolling X-axis window width in seconds (default 10 minutes). */
@@ -34,6 +53,7 @@ interface PlotState {
   setXWindowSec: (seconds: number) => void;
   scaleYRange: (factor: number) => void;
   setColor: (name: string, color: string) => void;
+  setLineWidth: (name: string, width: number) => void;
   /** Append a sample; optional tMs is epoch ms (replay); live mode uses Date.now(). */
   appendPoint: (name: string, value: string, tMs?: number) => void;
   clearSeries: () => void;
@@ -43,12 +63,14 @@ interface PlotState {
     min: number,
     max: number,
     xWindowSec?: number,
+    lineWidths?: Record<string, number>,
   ) => void;
 }
 
 export const usePlotStore = create<PlotState>((set, get) => ({
   plotVariables: [],
   colors: {},
+  lineWidths: {},
   yMin: -10,
   yMax: 10,
   xWindowSec: DEFAULT_PLOT_X_WINDOW_SEC,
@@ -60,9 +82,11 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     if (plotVariables.includes(name) || plotVariables.length >= 8) return;
     const colors = { ...get().colors };
     colors[name] = PLOT_COLORS[plotVariables.length % PLOT_COLORS.length];
+    const lineWidths = { ...get().lineWidths, [name]: DEFAULT_PLOT_LINE_WIDTH };
     set({
       plotVariables: [...plotVariables, name],
       colors,
+      lineWidths,
       seriesData: { ...get().seriesData, [name]: get().seriesData[name] ?? [] },
     });
     const current = useVariableStore.getState().variables.find((v) => v.name === name);
@@ -71,11 +95,13 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     }
   },
   removePlotVariable: (name) => {
-    const { [name]: _, ...seriesData } = get().seriesData;
-    const { [name]: __, ...colors } = get().colors;
+    const { [name]: _series, ...seriesData } = get().seriesData;
+    const { [name]: _color, ...colors } = get().colors;
+    const { [name]: _width, ...lineWidths } = get().lineWidths;
     set({
       plotVariables: get().plotVariables.filter((v) => v !== name),
       colors,
+      lineWidths,
       seriesData,
     });
   },
@@ -90,6 +116,8 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     set({ yMin: mid - half, yMax: mid + half });
   },
   setColor: (name, color) => set({ colors: { ...get().colors, [name]: color } }),
+  setLineWidth: (name, width) =>
+    set({ lineWidths: { ...get().lineWidths, [name]: clampLineWidth(width) } }),
   appendPoint: (name, value, tMs) => {
     const num = parseFloat(value);
     if (Number.isNaN(num)) return;
@@ -105,11 +133,16 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     });
   },
   clearSeries: () => set({ seriesData: {}, plotStartMs: null }),
-  loadPlotConfig: (plotVariables, colors, yMin, yMax, xWindowSec) => {
+  loadPlotConfig: (plotVariables, colors, yMin, yMax, xWindowSec, lineWidths) => {
     const windowSec = clampXWindowSec(xWindowSec ?? get().xWindowSec);
+    const nextLineWidths: Record<string, number> = {};
+    for (const name of plotVariables) {
+      nextLineWidths[name] = clampLineWidth(lineWidths?.[name] ?? DEFAULT_PLOT_LINE_WIDTH);
+    }
     set({
       plotVariables,
       colors,
+      lineWidths: nextLineWidths,
       yMin,
       yMax,
       xWindowSec: windowSec,

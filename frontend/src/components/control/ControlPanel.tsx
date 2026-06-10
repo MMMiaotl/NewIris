@@ -2,6 +2,7 @@ import { Button, ColorPicker, InputNumber, List, Space, Tabs } from 'antd';
 import { CloseOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePlotStore } from '../../stores/plotStore';
 import { useVariableStore } from '../../stores/variableStore';
+import { PlotLineWidthPicker } from './PlotLineWidthPicker';
 import { VariableControlView } from './VariableControlView';
 
 interface ControlPanelProps {
@@ -15,6 +16,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
   const {
     plotVariables,
     colors,
+    lineWidths,
     yMin,
     yMax,
     xWindowSec,
@@ -24,6 +26,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
     setXWindowSec,
     scaleYRange,
     setColor,
+    setLineWidth,
   } = usePlotStore();
 
   const plotTab = (
@@ -36,24 +39,32 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
           dataSource={plotVariables}
           locale={{ emptyText: 'No variables selected' }}
           renderItem={(name) => (
-            <List.Item
-              actions={[
-                <ColorPicker
-                  key="color"
-                  size="small"
-                  value={colors[name]}
-                  onChange={(_, hex) => setColor(name, hex)}
-                />,
-                <Button
-                  key="del"
-                  type="text"
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => removePlotVariable(name)}
-                />,
-              ]}
-            >
-              {name}
+            <List.Item className="plot-variable-row">
+              <div className="plot-variable-row-inner">
+                <span className="plot-variable-name" title={name}>
+                  {name}
+                </span>
+                <div className="plot-variable-controls">
+                  <PlotLineWidthPicker
+                    value={lineWidths[name] ?? 1}
+                    color={colors[name] ?? '#333'}
+                    onChange={(width) => setLineWidth(name, width)}
+                  />
+                  <ColorPicker
+                    size="small"
+                    className="plot-variable-color-picker"
+                    value={colors[name]}
+                    onChange={(_, hex) => setColor(name, hex)}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    className="plot-variable-delete-btn"
+                    icon={<DeleteOutlined />}
+                    onClick={() => removePlotVariable(name)}
+                  />
+                </div>
+              </div>
             </List.Item>
           )}
         />
