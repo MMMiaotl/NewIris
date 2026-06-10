@@ -1,4 +1,4 @@
-import type { WatchIoMessage } from './types';
+import type { VariableType, WatchIoMessage } from './types';
 
 export type MessageHandler = (msg: WatchIoMessage) => void;
 export type StatusHandler = (
@@ -8,7 +8,7 @@ export type StatusHandler = (
 
 export interface MonitorVariable {
   name: string;
-  type?: string;
+  type?: VariableType;
   mode?: 'value' | 'set';
 }
 

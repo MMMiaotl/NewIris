@@ -3,6 +3,8 @@
  * See reference/HttpWeb/WatchIoWebServer/Instance.cpp help examples.
  */
 
+import { isVariableDataType, type VariableType } from './types';
+
 export function watchIoAttributesParam(attributes: string): { name: string; value: string } {
   return { name: 'attributes', value: attributes };
 }
@@ -25,10 +27,10 @@ export const WATCHIO_VARLEAVES_ATTRS =
 export const WATCHIO_VARTREE_BRANCH_ATTRS = 'branch=1';
 
 export function watchIoMonitorAttributes(
-  type?: string,
+  type?: VariableType,
   mode: 'value' | 'set' = 'set',
 ): string {
   const parts = [`mode=${mode}`];
-  if (type && type !== 'unknown') parts.push(`type=${type}`);
+  if (type && isVariableDataType(type)) parts.push(`type=${type}`);
   return parts.join(' ');
 }

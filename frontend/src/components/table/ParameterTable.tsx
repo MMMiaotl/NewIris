@@ -1,54 +1,45 @@
 import { Input, Table } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnType, ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import type { WatchIoVariable } from '../../api/types';
 import { MAX_SELECTED_PARAMETERS, useVariableStore } from '../../stores/variableStore';
 import { usePlotStore } from '../../stores/plotStore';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
+import {
+  buildFixedParameterColumn,
+  createDefaultFixedWidths,
+  fixedCellStyle,
+  HORIZONTAL_SCROLL_BUFFER,
+  MIN_DESCRIPTION_WIDTH,
+  PARAMETER_FIXED_COLUMN_SPECS,
+  sumFixedWidths,
+  type ParameterFixedColumnKey,
+  type ParameterFixedWidths,
+} from './parameterTableLayout';
 
 interface ParameterTableProps {
   onSetValue: (name: string, value: string) => void;
 }
-
-type FixedColumnKey = 'name' | 'value' | 'scale';
-
-const MIN_DESCRIPTION_WIDTH = 80;
-/** Show horizontal scroll before strict overflow so the bar appears earlier. */
-const HORIZONTAL_SCROLL_BUFFER = 128;
-
-function fixedCellStyle(width: number): CSSProperties {
-  return {
-    width,
-    minWidth: width,
-    maxWidth: width,
-  };
-}
-
-const DEFAULT_FIXED_WIDTHS: Record<FixedColumnKey, number> = {
-  name: 320,
-  value: 120,
-  scale: 80,
-};
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const { searchQuery, appMode } = useConnectionStore();
   const { variables, selectedVariables } = useVariableStore();
   const { addPlotVariable } = usePlotStore();
   const [editing, setEditing] = useState<Record<string, string>>({});
-  const [fixedWidths, setFixedWidths] = useState(DEFAULT_FIXED_WIDTHS);
+  const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createDefaultFixedWidths);
   const tableBodyRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState(300);
   const [containerWidth, setContainerWidth] = useState(0);
 
   const handleResize = useCallback(
-    (key: FixedColumnKey) => (width: number) => {
+    (key: ParameterFixedColumnKey) => (width: number) => {
       setFixedWidths((prev) => ({ ...prev, [key]: width }));
     },
     [],
   );
 
-  const fixedSum = fixedWidths.name + fixedWidths.value + fixedWidths.scale;
+  const fixedSum = sumFixedWidths(fixedWidths);
 
   const descriptionWidth = useMemo(() => {
     if (containerWidth <= 0) return MIN_DESCRIPTION_WIDTH;
@@ -95,89 +86,73 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     return () => observer.disconnect();
   }, [selectedVariables.length, fixedWidths, overflowX]);
 
-  const columns: ColumnsType<WatchIoVariable> = useMemo(
-    () => [
-      {
-        title: 'name',
-        dataIndex: 'name',
-        key: 'name',
-        ellipsis: { showTitle: true },
-        width: fixedWidths.name,
-        onHeaderCell: () => ({
-          width: fixedWidths.name,
-          onResize: handleResize('name'),
-        }),
-        onCell: () => ({ style: fixedCellStyle(fixedWidths.name) }),
-      },
-      {
-        title: 'value',
-        dataIndex: 'value',
-        key: 'value',
-        width: fixedWidths.value,
-        onHeaderCell: () => ({
-          width: fixedWidths.value,
-          onResize: handleResize('value'),
-        }),
-        onCell: () => ({ style: fixedCellStyle(fixedWidths.value) }),
-        render: (val: string, row) => {
-          if (appMode === 'replay') return val;
-          const draft = editing[row.name];
-          return (
-            <Input
-              size="small"
-              value={draft !== undefined ? draft : val}
-              onChange={(e) => setEditing((s) => ({ ...s, [row.name]: e.target.value }))}
-              onBlur={() => {
-                const next = editing[row.name];
-                if (next !== undefined && next !== val) onSetValue(row.name, next);
-                setEditing((s) => {
-                  const { [row.name]: _, ...rest } = s;
-                  return rest;
-                });
-              }}
-              onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-            />
-          );
-        },
-      },
-      {
-        title: 'scale',
-        dataIndex: 'scale',
-        key: 'scale',
-        width: fixedWidths.scale,
-        ellipsis: { showTitle: true },
-        onHeaderCell: () => ({
-          width: fixedWidths.scale,
-          onResize: handleResize('scale'),
-        }),
-        onCell: () => ({ style: fixedCellStyle(fixedWidths.scale) }),
-      },
-      {
-        title: 'description',
-        dataIndex: 'description',
-        key: 'description',
-        ellipsis: { showTitle: true },
+  const columns: ColumnsType<WatchIoVariable> = useMemo(() => {
+    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.map((spec) => {
+      const width = fixedWidths[spec.key];
+      const onResize = handleResize(spec.key);
+
+      if (spec.key === 'type') {
+        return buildFixedParameterColumn(spec, width, onResize, {
+          render: (type: WatchIoVariable['type']) => (type === 'unknown' ? '' : type),
+        });
+      }
+
+      if (spec.key === 'value') {
+        return buildFixedParameterColumn(spec, width, onResize, {
+          ellipsis: false,
+          render: (val: string, row) => {
+            if (appMode === 'replay') return val;
+            const draft = editing[row.name];
+            return (
+              <Input
+                size="small"
+                value={draft !== undefined ? draft : val}
+                onChange={(e) => setEditing((s) => ({ ...s, [row.name]: e.target.value }))}
+                onBlur={() => {
+                  const next = editing[row.name];
+                  if (next !== undefined && next !== val) onSetValue(row.name, next);
+                  setEditing((s) => {
+                    const { [row.name]: removed, ...rest } = s;
+                    void removed;
+                    return rest;
+                  });
+                }}
+                onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
+              />
+            );
+          },
+        });
+      }
+
+      return buildFixedParameterColumn(spec, width, onResize);
+    });
+
+    const descriptionColumn: ColumnType<WatchIoVariable> = {
+      title: 'description',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: { showTitle: true },
+      width: descriptionWidth,
+      onHeaderCell: () => ({
         width: descriptionWidth,
-        onHeaderCell: () => ({
-          width: descriptionWidth,
-        }),
-        onCell: () => ({
-          style: overflowX
-            ? fixedCellStyle(descriptionWidth)
-            : { minWidth: MIN_DESCRIPTION_WIDTH },
-        }),
-      },
-    ],
-    [
-      fixedWidths,
-      handleResize,
-      appMode,
-      editing,
-      onSetValue,
-      descriptionWidth,
-      overflowX,
-    ],
-  );
+      }),
+      onCell: () => ({
+        style: overflowX
+          ? fixedCellStyle(descriptionWidth)
+          : { minWidth: MIN_DESCRIPTION_WIDTH },
+      }),
+    };
+
+    return [...fixedColumns, descriptionColumn];
+  }, [
+    fixedWidths,
+    handleResize,
+    appMode,
+    editing,
+    onSetValue,
+    descriptionWidth,
+    overflowX,
+  ]);
 
   const headerLabel =
     selectedVariables.length > 0

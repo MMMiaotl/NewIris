@@ -1,4 +1,20 @@
-export type VariableType = 'int' | 'double' | 'string' | 'array' | 'unknown';
+export type VariableDataType = 'int' | 'double' | 'string' | 'array';
+
+export type VariableScopeType = 'local' | 'input' | 'output' | 'inout';
+
+/** SmcServer vartype (scope) or WatchIO attributes type= (data type). */
+export type VariableType = VariableDataType | VariableScopeType | 'unknown';
+
+const VARIABLE_DATA_TYPES: ReadonlySet<VariableDataType> = new Set([
+  'int',
+  'double',
+  'string',
+  'array',
+]);
+
+export function isVariableDataType(type: VariableType): type is VariableDataType {
+  return VARIABLE_DATA_TYPES.has(type as VariableDataType);
+}
 
 export interface WatchIoEntry {
   name: string;

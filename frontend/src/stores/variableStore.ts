@@ -4,10 +4,22 @@ import { getEntryAttributes } from '../utils/parseAttributes';
 import type { WatchIoEntry } from '../api/types';
 import { attachVariablesToBranch, filterVariablesByBranch } from '../utils/buildVariableTree';
 
+const KNOWN_VARIABLE_TYPES: ReadonlySet<VariableType> = new Set([
+  'int',
+  'double',
+  'string',
+  'array',
+  'local',
+  'input',
+  'output',
+  'inout',
+]);
+
 function inferType(attrs: Record<string, string>): VariableType {
-  const t = attrs.type ?? 'unknown';
-  if (t === 'int' || t === 'double' || t === 'string' || t === 'array') return t;
-  return 'unknown';
+  const raw = attrs.type?.trim();
+  if (!raw) return 'unknown';
+  const normalized = raw.toLowerCase() as VariableType;
+  return KNOWN_VARIABLE_TYPES.has(normalized) ? normalized : 'unknown';
 }
 
 export const MAX_SELECTED_PARAMETERS = 100;
