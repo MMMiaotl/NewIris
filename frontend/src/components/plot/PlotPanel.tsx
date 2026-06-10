@@ -3,30 +3,56 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { usePlotStore } from '../../stores/plotStore';
 import { useConnectionStore } from '../../stores/connectionStore';
+import { formatPlotAxisTime, plotXWindowRange } from '../../utils/plotTime';
+
+const PLOT_Y_AXIS = { stroke: '#9a9a9a', grid: { show: true, stroke: '#4a4a4a' } };
+const PLOT_X_AXIS = {
+  stroke: '#9a9a9a',
+  grid: { show: true, stroke: '#4a4a4a' },
+  values: (_u: uPlot, ticks: number[]) => ticks.map((t) => formatPlotAxisTime(t)),
+};
 
 export function PlotPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
-  const { plotVariables, colors, seriesData, yMin, yMax } = usePlotStore();
+  const { plotVariables, colors, seriesData, yMin, yMax, xWindowSec } = usePlotStore();
   const { appMode } = useConnectionStore();
+  const plotVariableKey = plotVariables.join(',');
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    const windowSec = xWindowSec;
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight - 8,
       scales: {
-        x: { time: true },
-        y: { min: yMin, max: yMax },
-      },
-      series: [{}, ...plotVariables.map((name) => ({ label: name, stroke: colors[name] ?? '#4fc3f7' }))],
-      axes: [
-        {},
-        {
-          grid: { show: true },
+        x: {
+          time: false,
+          auto: false,
+          range: (_u, _min, max) => {
+            const latest =
+              typeof max === 'number' && !Number.isNaN(max) ? max : 0;
+            const { min: xMin, max: xMax } = plotXWindowRange(latest, windowSec);
+            return [xMin, xMax];
+          },
         },
+        y: {
+          auto: false,
+          range: [yMin, yMax],
+        },
+      },
+      series: [
+        {},
+        ...plotVariables.map((name) => ({
+          label: name,
+          stroke: colors[name] ?? '#4fc3f7',
+          width: 1,
+          points: { show: false },
+        })),
       ],
+      axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
     };
 
     const data: uPlot.AlignedData = [
@@ -39,21 +65,23 @@ export function PlotPanel() {
     }
     plotRef.current = new uPlot(opts, data, containerRef.current);
 
+    const el = containerRef.current;
     const onResize = () => {
-      if (containerRef.current && plotRef.current) {
+      if (el && plotRef.current) {
         plotRef.current.setSize({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight - 8,
+          width: el.clientWidth,
+          height: el.clientHeight - 8,
         });
       }
     };
-    window.addEventListener('resize', onResize);
+    const observer = new ResizeObserver(() => requestAnimationFrame(onResize));
+    observer.observe(el);
     return () => {
-      window.removeEventListener('resize', onResize);
+      observer.disconnect();
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-  }, [plotVariables.join(','), colors, yMin, yMax]);
+  }, [plotVariableKey, colors, yMin, yMax, plotVariables, xWindowSec]);
 
   useEffect(() => {
     const u = plotRef.current;
@@ -72,8 +100,9 @@ export function PlotPanel() {
       }),
     ];
     u.setScale('y', { min: yMin, max: yMax });
-    u.setData(data);
-  }, [seriesData, plotVariables, yMin, yMax]);
+    u.setData(data, false);
+    u.redraw();
+  }, [seriesData, plotVariables, yMin, yMax, xWindowSec]);
 
   return (
     <div className="panel plot-panel">

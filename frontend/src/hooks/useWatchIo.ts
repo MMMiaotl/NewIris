@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { WatchIoMessage } from '../api/types';
-import type { WatchIoClient } from '../api/watchIoClient';
+import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
+import { isWatchIoTransport } from '../api/smcHttp';
 import { createWatchIoClient } from '../api/watchIoClientFactory';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useVariableStore } from '../stores/variableStore';
@@ -26,6 +27,7 @@ export function useWatchIo() {
   const clientRef = useRef<WatchIoClient | null>(null);
   const sessionRef = useRef(0);
   const refetchedBranchesRef = useRef(new Set<string>());
+  const registeredPlotVarsRef = useRef(new Set<string>());
   const { config, appMode, status, setStatus } = useConnectionStore();
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
@@ -36,8 +38,29 @@ export function useWatchIo() {
     selectedBranch,
     setBranchVarPrefix,
   } = useVariableStore();
-  const { plotVariables, appendPoint } = usePlotStore();
+  const plotVariables = usePlotStore((s) => s.plotVariables);
   const { recording, appendRecordingFrame } = useSessionStore();
+
+  const buildWatchIoMonitorList = useCallback((): MonitorVariable[] => {
+    const { variables, selectedVariables } = useVariableStore.getState();
+    const plotVars = usePlotStore.getState().plotVariables;
+    const names = new Set([...selectedVariables, ...plotVars]);
+    return [...names].map((name) => {
+      const variable = variables.find((v) => v.name === name);
+      return {
+        name,
+        dataType: variable?.dataType,
+        mode: plotVars.includes(name) ? 'value' : 'set',
+      };
+    });
+  }, []);
+
+  const syncWatchIoMonitorList = useCallback(() => {
+    const client = clientRef.current;
+    if (!client || !isWatchIoTransport(config.transport)) return;
+    const list = buildWatchIoMonitorList();
+    if (list.length) client.setMonitorList(list);
+  }, [buildWatchIoMonitorList, config.transport]);
 
   const handleMessage = useCallback(
     (msg: WatchIoMessage) => {
@@ -100,17 +123,29 @@ export function useWatchIo() {
             });
           }
           mergeVarLeaves(entries, branch, meta.varprefix);
+          const plotVars = usePlotStore.getState().plotVariables;
+          if (plotVars.length && entries.length) {
+            const isSmcBranch = Boolean(branch?.includes('/'));
+            const varPrefix = meta.varprefix ?? useVariableStore.getState().branchVarPrefix ?? '';
+            for (const entry of entries) {
+              if (entry.value === undefined) continue;
+              let fullName = entry.name;
+              if (isSmcBranch) {
+                fullName =
+                  entry.name.includes('.') || !varPrefix ? entry.name : `${varPrefix}${entry.name}`;
+              } else if (branch && branch !== '.' && !entry.name.includes('.')) {
+                fullName = `${branch}.${entry.name}`;
+              }
+              if (plotVars.includes(fullName)) {
+                usePlotStore.getState().appendPoint(fullName, entry.value);
+              }
+            }
+          }
           if (branch && !entries.length) {
             useVariableStore.getState().attachBranchVariables(branch);
           }
           if (useDotTree && branch) {
-            const prefix = branch.endsWith('.') ? branch : `${branch}.`;
-            const vars = useVariableStore.getState().variables.filter(
-              (v) => v.name === branch || v.name.startsWith(prefix),
-            );
-            clientRef.current?.setMonitorList(
-              vars.map((v) => ({ name: v.name, dataType: v.dataType, mode: 'set' as const })),
-            );
+            syncWatchIoMonitorList();
           }
           break;
         }
@@ -123,13 +158,13 @@ export function useWatchIo() {
             updateEntries = [{ name: msg.name, value: msg.value }];
           }
           applyUpdate(updateEntries);
-          const now = Date.now();
           const values: Record<string, string> = {};
+          const plotVars = usePlotStore.getState().plotVariables;
           for (const e of updateEntries) {
             if (e.value !== undefined) {
               values[e.name] = e.value;
-              if (plotVariables.includes(e.name)) {
-                appendPoint(e.name, now, e.value);
+              if (plotVars.includes(e.name)) {
+                usePlotStore.getState().appendPoint(e.name, e.value);
               }
             }
           }
@@ -148,16 +183,16 @@ export function useWatchIo() {
       mergeVarLeaves,
       mergeVarList,
       applyUpdate,
-      plotVariables,
-      appendPoint,
       recording,
       appendRecordingFrame,
       setBranchVarPrefix,
+      syncWatchIoMonitorList,
     ],
   );
 
   const disconnect = useCallback(() => {
     refetchedBranchesRef.current.clear();
+    registeredPlotVarsRef.current.clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
     useWatchIoMessageLogStore.getState().clear();
@@ -169,6 +204,7 @@ export function useWatchIo() {
 
     const session = ++sessionRef.current;
     refetchedBranchesRef.current.clear();
+    registeredPlotVarsRef.current.clear();
     clientRef.current?.disconnect();
     useVariableStore.getState().clear();
     useWatchIoMessageLogStore.getState().clear();
@@ -259,6 +295,50 @@ export function useWatchIo() {
       client.fetchVarLeaves(branch);
     }
   }, [config.transport, appMode, status, selectedVariables]);
+
+  useEffect(() => {
+    const client = clientRef.current;
+    if (!client || appMode !== 'live' || status !== 'connected') return;
+
+    const registered = registeredPlotVarsRef.current;
+    const currentPlotVars = usePlotStore.getState().plotVariables;
+
+    for (const name of [...registered]) {
+      if (!currentPlotVars.includes(name)) {
+        registered.delete(name);
+        if (isWatchIoTransport(config.transport)) {
+          client.removeVariable(name);
+        }
+      }
+    }
+
+    const newVars = currentPlotVars.filter((name) => !registered.has(name));
+    if (!newVars.length) return;
+
+    for (const name of newVars) {
+      registered.add(name);
+      const branch = branchPathForVariableName(name, config.transport);
+      if (branch) client.fetchVarLeaves(branch);
+      client.addVariable(name, 'value');
+    }
+    client.requestUpdate();
+  }, [plotVariables, appMode, status, config.transport]);
+
+  useEffect(() => {
+    if (appMode !== 'live' || status !== 'connected') return;
+    syncWatchIoMonitorList();
+  }, [selectedVariables, plotVariables, appMode, status, syncWatchIoMonitorList]);
+
+  useEffect(() => {
+    const client = clientRef.current;
+    if (!client || appMode !== 'live' || status !== 'connected') return;
+    if (!plotVariables.length || !isWatchIoTransport(config.transport)) return;
+
+    const interval = Math.max(100, config.sampleInterval);
+    client.requestUpdate();
+    const id = setInterval(() => client.requestUpdate(), interval);
+    return () => clearInterval(id);
+  }, [plotVariables, appMode, status, config.sampleInterval, config.transport]);
 
   return {
     connect,

@@ -17,9 +17,11 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
     colors,
     yMin,
     yMax,
+    xWindowSec,
     addPlotVariable,
     removePlotVariable,
     setYRange,
+    setXWindowSec,
     scaleYRange,
     setColor,
   } = usePlotStore();
@@ -72,7 +74,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
       </div>
 
       <div>
-        <div className="control-label">Range</div>
+        <div className="control-label">Y range</div>
         <Space>
           <span>Min</span>
           <InputNumber value={yMin} onChange={(v) => setYRange(v ?? yMin, yMax)} step={1} />
@@ -89,6 +91,26 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
           <Button size="small" onClick={() => setYRange(-10, 10)}>
             Set default
           </Button>
+        </Space>
+      </div>
+
+      <div>
+        <div className="control-label">Time window</div>
+        <Space>
+          <InputNumber
+            min={0.5}
+            max={60}
+            step={0.5}
+            value={xWindowSec / 60}
+            onChange={(v) => setXWindowSec(Math.round((v ?? xWindowSec / 60) * 60))}
+          />
+          <span>min</span>
+        </Space>
+        <Space style={{ marginTop: 8 }} wrap>
+          <Button size="small" onClick={() => setXWindowSec(60)}>1 min</Button>
+          <Button size="small" onClick={() => setXWindowSec(300)}>5 min</Button>
+          <Button size="small" onClick={() => setXWindowSec(600)}>10 min</Button>
+          <Button size="small" onClick={() => setXWindowSec(1800)}>30 min</Button>
         </Space>
       </div>
     </Space>

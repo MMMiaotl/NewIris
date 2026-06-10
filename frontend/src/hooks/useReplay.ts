@@ -40,7 +40,7 @@ export function useReplay() {
           );
           for (const [name, value] of Object.entries(next.values)) {
             if (plotVariables.includes(name)) {
-              appendPoint(name, next.t, value);
+              appendPoint(name, value, next.t);
             }
           }
           lastTickRef.current = now;
@@ -69,7 +69,7 @@ export function useReplay() {
     for (let i = 0; i <= index; i++) {
       const f = data.frames[i];
       for (const [name, value] of Object.entries(f.values)) {
-        if (plotVars.includes(name)) appendPoint(name, f.t, value);
+        if (plotVars.includes(name)) appendPoint(name, value, f.t);
       }
     }
   };

@@ -91,6 +91,7 @@ export interface SessionFile {
   plotColors: Record<string, string>;
   plotMin: number;
   plotMax: number;
+  plotXWindowSec?: number;
   flatTree: boolean;
   viewMode: ViewMode;
 }

@@ -4,6 +4,7 @@ import type { WatchIoMessage } from './types';
 import type { MessageHandler, StatusHandler, WatchIoClient } from './watchIoClient';
 import { buildServiceAddress, smcHttpGet } from './smcHttp';
 import { normalizeEntries, parseWatchIoResponse } from '../utils/parseWatchIoMessage';
+import { branchPathForVariableName } from '../utils/buildVariableTree';
 import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
 
 export class SmcServerClient implements WatchIoClient {
@@ -92,22 +93,39 @@ export class SmcServerClient implements WatchIoClient {
   }
 
   addVariable(name: string): void {
+    this.registerPollPathForVariable(name);
+    this.startPolling();
+    void this.pollActiveObjects();
+  }
+
+  removeVariable(name: string): void {
+    this.unregisterPollPathForVariable(name);
+  }
+
+  private registerPollPathForVariable(name: string): void {
     const postPath = this.nameToPostPath.get(name);
     if (postPath) {
       const slash = postPath.lastIndexOf('/');
       if (slash > 0) this.pollPaths.add(postPath.slice(0, slash));
-    } else if (this.activeObjectPath) {
-      this.pollPaths.add(this.activeObjectPath);
+      return;
     }
-    this.startPolling();
+    const branch = branchPathForVariableName(name, 'smcServer');
+    if (branch) {
+      this.pollPaths.add(branch);
+      return;
+    }
+    if (this.activeObjectPath) this.pollPaths.add(this.activeObjectPath);
   }
 
-  removeVariable(name: string): void {
+  private unregisterPollPathForVariable(name: string): void {
     const postPath = this.nameToPostPath.get(name);
     if (postPath) {
       const slash = postPath.lastIndexOf('/');
       if (slash > 0) this.pollPaths.delete(postPath.slice(0, slash));
+      return;
     }
+    const branch = branchPathForVariableName(name, 'smcServer');
+    if (branch) this.pollPaths.delete(branch);
   }
 
   setVariable(name: string, value: string): void {

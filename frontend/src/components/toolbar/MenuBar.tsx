@@ -39,7 +39,7 @@ export function MenuBar() {
   } = useConnectionStore();
   const { recording, startRecording, stopRecording, loadReplay, clearReplay, addRecentSession } =
     useSessionStore();
-  const { plotVariables, colors, yMin, yMax } = usePlotStore();
+  const { plotVariables, colors, yMin, yMax, xWindowSec } = usePlotStore();
   const { registeredNames, clear: clearVars } = useVariableStore();
 
   const openSession = () =>
@@ -142,6 +142,7 @@ export function MenuBar() {
       session.plotColors,
       session.plotMin,
       session.plotMax,
+      session.plotXWindowSec,
     );
     for (const name of session.registeredVariables) {
       useVariableStore.getState().setRegistered(name, true);
@@ -161,6 +162,7 @@ export function MenuBar() {
     plotColors: colors,
     plotMin: yMin,
     plotMax: yMax,
+    plotXWindowSec: xWindowSec,
     flatTree,
     viewMode,
   });
