@@ -6,13 +6,70 @@ export function formatPlotAxisTime(seconds: number): string {
   return `${minutes}:${String(secs).padStart(2, '0')}`;
 }
 
-/** Compute fixed rolling window [min, max] on elapsed-time axis. */
-export function plotXWindowRange(
-  latestSec: number,
+/**
+ * Rolling X-axis viewport on absolute elapsed time.
+ *
+ * - elapsed <= window: axis [0, window] (e.g. 3 min data, 10 min window → 0:00–10:00)
+ * - elapsed > window:  axis [elapsed − window, elapsed] (live tail, scrolls with new data)
+ *
+ * Series data stays in absolute coordinates; only uPlot scale min/max changes.
+ */
+export function computePlotXViewport(
+  elapsedSec: number,
   windowSec: number,
 ): { min: number; max: number } {
-  if (latestSec <= windowSec) {
+  if (elapsedSec <= windowSec) {
     return { min: 0, max: windowSec };
   }
-  return { min: latestSec - windowSec, max: latestSec };
+  return {
+    min: elapsedSec - windowSec,
+    max: elapsedSec,
+  };
+}
+
+export function collectPlotTimes(
+  seriesData: Record<string, { t: number; v: number }[]>,
+  plotVariables: string[],
+): number[] {
+  const allTimes = new Set<number>();
+  for (const name of plotVariables) {
+    for (const p of seriesData[name] ?? []) allTimes.add(p.t);
+  }
+  return Array.from(allTimes).sort((a, b) => a - b);
+}
+
+export function latestPlotTimeSec(times: number[]): number {
+  return times.length > 0 ? times[times.length - 1]! : 0;
+}
+
+/** Cap buffer size only; never trim by visible X window. */
+export function trimSeriesPoints(
+  points: { t: number; v: number }[],
+  maxPoints: number,
+): { t: number; v: number }[] {
+  if (points.length <= maxPoints) return points;
+  return points.slice(-maxPoints);
+}
+
+/** Build uPlot aligned data; single-series uses native arrays, multi-series unions times. */
+export function buildPlotAlignedData(
+  seriesData: Record<string, { t: number; v: number }[]>,
+  plotVariables: string[],
+): (number | null)[][] {
+  if (plotVariables.length === 0) return [[]];
+
+  if (plotVariables.length === 1) {
+    const name = plotVariables[0]!;
+    const points = seriesData[name] ?? [];
+    return [points.map((p) => p.t), points.map((p) => p.v)];
+  }
+
+  const allTimes = collectPlotTimes(seriesData, plotVariables);
+  return [
+    allTimes,
+    ...plotVariables.map((name) => {
+      const map = new Map((seriesData[name] ?? []).map((p) => [p.t, p.v]));
+      return allTimes.map((t) => map.get(t) ?? null);
+    }),
+  ];
 }

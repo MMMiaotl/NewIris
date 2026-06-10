@@ -127,6 +127,7 @@ export function useWatchIo() {
           mergeVarLeaves(entries, branch, meta.varprefix);
           const plotVars = usePlotStore.getState().plotVariables;
           if (plotVars.length && entries.length) {
+            const sampleMs = Date.now();
             const isSmcBranch = Boolean(branch?.includes('/'));
             const varPrefix = meta.varprefix ?? useVariableStore.getState().branchVarPrefix ?? '';
             for (const entry of entries) {
@@ -139,7 +140,7 @@ export function useWatchIo() {
                 fullName = `${branch}.${entry.name}`;
               }
               if (plotVars.includes(fullName)) {
-                usePlotStore.getState().appendPoint(fullName, entry.value);
+                usePlotStore.getState().appendPoint(fullName, entry.value, sampleMs);
               }
             }
           }
@@ -162,11 +163,12 @@ export function useWatchIo() {
           applyUpdate(updateEntries);
           const values: Record<string, string> = {};
           const plotVars = usePlotStore.getState().plotVariables;
+          const sampleMs = Date.now();
           for (const e of updateEntries) {
             if (e.value !== undefined) {
               values[e.name] = e.value;
               if (plotVars.includes(e.name)) {
-                usePlotStore.getState().appendPoint(e.name, e.value);
+                usePlotStore.getState().appendPoint(e.name, e.value, sampleMs);
               }
             }
           }

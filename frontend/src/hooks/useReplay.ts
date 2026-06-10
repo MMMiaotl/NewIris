@@ -5,7 +5,7 @@ import { useVariableStore } from '../stores/variableStore';
 
 export function useReplay() {
   const { replayData, replayPlaying, replaySpeed, setReplayIndex } = useSessionStore();
-  const { plotVariables, appendPoint, clearSeries } = usePlotStore();
+  const { plotVariables, appendPoint } = usePlotStore();
   const { applyUpdate } = useVariableStore();
   const rafRef = useRef<number>(0);
   const lastTickRef = useRef(0);
@@ -64,7 +64,8 @@ export function useReplay() {
     setReplayIndex(index);
     const frame = data.frames[index];
     applyUpdate(Object.entries(frame.values).map(([name, value]) => ({ name, value })));
-    clearSeries();
+    const firstFrameMs = data.frames[0]?.t ?? Date.now();
+    usePlotStore.getState().setPlotInitMs(firstFrameMs);
     const plotVars = usePlotStore.getState().plotVariables;
     for (let i = 0; i <= index; i++) {
       const f = data.frames[i];

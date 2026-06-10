@@ -3,7 +3,13 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { usePlotStore, DEFAULT_PLOT_LINE_WIDTH } from '../../stores/plotStore';
 import { useConnectionStore } from '../../stores/connectionStore';
-import { formatPlotAxisTime, plotXWindowRange } from '../../utils/plotTime';
+import {
+  buildPlotAlignedData,
+  collectPlotTimes,
+  computePlotXViewport,
+  formatPlotAxisTime,
+  latestPlotTimeSec,
+} from '../../utils/plotTime';
 
 const PLOT_Y_AXIS = { stroke: '#9a9a9a', grid: { show: true, stroke: '#4a4a4a' } };
 const PLOT_X_AXIS = {
@@ -12,58 +18,68 @@ const PLOT_X_AXIS = {
   values: (_u: uPlot, ticks: number[]) => ticks.map((t) => formatPlotAxisTime(t)),
 };
 
+function seriesOptions(
+  plotVariables: string[],
+  colors: Record<string, string>,
+  lineWidths: Record<string, number>,
+): uPlot.Series[] {
+  return plotVariables.map((name) => ({
+    label: name,
+    stroke: colors[name] ?? '#4fc3f7',
+    width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
+    spanGaps: true,
+    points: { show: false },
+  }));
+}
+
+function syncPlot(
+  u: uPlot,
+  plotVariables: string[],
+  seriesData: Record<string, { t: number; v: number }[]>,
+  yMin: number,
+  yMax: number,
+  xWindowSec: number,
+): void {
+  const allTimes = collectPlotTimes(seriesData, plotVariables);
+  const elapsedSec = latestPlotTimeSec(allTimes);
+  const { min: viewMin, max: viewMax } = computePlotXViewport(elapsedSec, xWindowSec);
+  const data = buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData;
+
+  u.setData(data, false);
+  u.setScale('x', { min: viewMin, max: viewMax });
+  u.setScale('y', { min: yMin, max: yMax });
+}
+
 export function PlotPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
-  const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } = usePlotStore();
+  const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } =
+    usePlotStore();
   const { appMode } = useConnectionStore();
   const plotVariableKey = plotVariables.join(',');
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const windowSec = xWindowSec;
-
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight - 8,
       scales: {
-        x: {
-          time: false,
-          auto: false,
-          range: (_u, _min, max) => {
-            const latest =
-              typeof max === 'number' && !Number.isNaN(max) ? max : 0;
-            const { min: xMin, max: xMax } = plotXWindowRange(latest, windowSec);
-            return [xMin, xMax];
-          },
-        },
-        y: {
-          auto: false,
-          range: [yMin, yMax],
-        },
+        x: { time: false, auto: false },
+        y: { auto: false },
       },
-      series: [
-        {},
-        ...plotVariables.map((name) => ({
-          label: name,
-          stroke: colors[name] ?? '#4fc3f7',
-          width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
-          points: { show: false },
-        })),
-      ],
+      series: [{}, ...seriesOptions(plotVariables, colors, lineWidths)],
       axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
     };
 
-    const data: uPlot.AlignedData = [
-      [],
-      ...plotVariables.map(() => [] as number[]),
-    ];
+    plotRef.current?.destroy();
+    plotRef.current = new uPlot(
+      opts,
+      buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData,
+      containerRef.current,
+    );
 
-    if (plotRef.current) {
-      plotRef.current.destroy();
-    }
-    plotRef.current = new uPlot(opts, data, containerRef.current);
+    syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec);
 
     const el = containerRef.current;
     const onResize = () => {
@@ -81,27 +97,24 @@ export function PlotPanel() {
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-  }, [plotVariableKey, colors, lineWidths, yMin, yMax, plotVariables, xWindowSec]);
+  }, [plotVariableKey]);
+
+  useEffect(() => {
+    const u = plotRef.current;
+    if (!u) return;
+    plotVariables.forEach((name, i) => {
+      u.setSeries(i + 1, {
+        stroke: colors[name] ?? '#4fc3f7',
+        width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
+        spanGaps: true,
+      } as uPlot.Series);
+    });
+  }, [colors, lineWidths, plotVariables]);
 
   useEffect(() => {
     const u = plotRef.current;
     if (!u || plotVariables.length === 0) return;
-
-    const allTimes = new Set<number>();
-    for (const name of plotVariables) {
-      for (const p of seriesData[name] ?? []) allTimes.add(p.t);
-    }
-    const times = Array.from(allTimes).sort((a, b) => a - b);
-    const data: uPlot.AlignedData = [
-      times,
-      ...plotVariables.map((name) => {
-        const map = new Map((seriesData[name] ?? []).map((p) => [p.t, p.v]));
-        return times.map((t) => map.get(t) ?? null) as number[];
-      }),
-    ];
-    u.setScale('y', { min: yMin, max: yMax });
-    u.setData(data, false);
-    u.redraw();
+    syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec);
   }, [seriesData, plotVariables, yMin, yMax, xWindowSec]);
 
   return (
