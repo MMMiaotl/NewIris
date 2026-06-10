@@ -1,4 +1,4 @@
-import { Input, Table } from 'antd';
+import { Table } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
@@ -9,6 +9,7 @@ import {
   useVariableStore,
 } from '../../stores/variableStore';
 import { usePlotStore } from '../../stores/plotStore';
+import { ParameterValueCell } from './ParameterValueCell';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
 import {
   buildFixedParameterColumn,
@@ -48,6 +49,18 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     },
     [setFocusedVariable, setPlotDrawerOpen],
   );
+
+  const setValueDraft = useCallback((name: string, value: string) => {
+    setEditing((s) => ({ ...s, [name]: value }));
+  }, []);
+
+  const clearValueDraft = useCallback((name: string) => {
+    setEditing((s) => {
+      const { [name]: removed, ...rest } = s;
+      void removed;
+      return rest;
+    });
+  }, []);
 
   const handleResize = useCallback(
     (key: ParameterFixedColumnKey) => (width: number) => {
@@ -142,24 +155,16 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           const isPlaceholder = !variableMap.has(row.name);
           if (isPlaceholder) return val || '—';
           if (appMode === 'replay') return val;
-          const draft = editing[row.name];
           return (
-            <Input
-                size="small"
-                value={draft !== undefined ? draft : val}
-                onChange={(e) => setEditing((s) => ({ ...s, [row.name]: e.target.value }))}
-                onBlur={() => {
-                  const next = editing[row.name];
-                  if (next !== undefined && next !== val) onSetValue(row.name, next);
-                  setEditing((s) => {
-                    const { [row.name]: removed, ...rest } = s;
-                    void removed;
-                    return rest;
-                  });
-                }}
-                onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-              />
-            );
+            <ParameterValueCell
+              name={row.name}
+              value={val}
+              draft={editing[row.name]}
+              onDraftChange={setValueDraft}
+              onClearDraft={clearValueDraft}
+              onSetValue={onSetValue}
+            />
+          );
           },
         });
       }
@@ -195,6 +200,8 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     variableMap,
     openControlForVariable,
     showTypeColumn,
+    setValueDraft,
+    clearValueDraft,
   ]);
 
   const headerLabel =

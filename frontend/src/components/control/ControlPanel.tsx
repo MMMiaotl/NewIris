@@ -54,7 +54,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
                     size="small"
                     className="plot-variable-color-picker"
                     value={colors[name]}
-                    onChange={(_, hex) => setColor(name, hex)}
+                    onChangeComplete={(color) => setColor(name, color.toHexString())}
                   />
                   <Button
                     type="text"

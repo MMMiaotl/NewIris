@@ -273,6 +273,27 @@
   height: 22px;
 }
 
+.parameter-table-panel .parameter-value-field {
+  display: flex;
+  width: 100%;
+}
+
+.parameter-table-panel .parameter-value-field .ant-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.parameter-table-panel .parameter-value-field .ant-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 11px;
+}
+
+.parameter-table-panel .parameter-value-field .ant-btn .anticon {
+  font-size: 11px;
+}
+
 .parameter-table-panel .parameter-table-resize-handle {
   position: absolute;
   top: 0;

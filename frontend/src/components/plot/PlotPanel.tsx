@@ -56,7 +56,7 @@ export function PlotPanel() {
   const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } =
     usePlotStore();
   const { appMode } = useConnectionStore();
-  const plotVariableKey = plotVariables.join(',');
+  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}`;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -97,19 +97,7 @@ export function PlotPanel() {
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-  }, [plotVariableKey]);
-
-  useEffect(() => {
-    const u = plotRef.current;
-    if (!u) return;
-    plotVariables.forEach((name, i) => {
-      u.setSeries(i + 1, {
-        stroke: colors[name] ?? '#4fc3f7',
-        width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
-        spanGaps: true,
-      } as uPlot.Series);
-    });
-  }, [colors, lineWidths, plotVariables]);
+  }, [plotChartKey]);
 
   useEffect(() => {
     const u = plotRef.current;
