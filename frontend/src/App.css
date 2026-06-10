@@ -200,6 +200,8 @@
   min-height: 0;
   overflow: hidden;
   padding: 0 4px 4px;
+  display: flex;
+  flex-direction: column;
 }
 
 .parameter-table-panel .ant-table-thead > tr > th,
@@ -227,14 +229,40 @@
   background: rgba(22, 119, 255, 0.15);
 }
 
-.parameter-table-panel .ant-table-wrapper {
-  height: 100%;
+.parameter-table-panel .ant-table-wrapper,
+.parameter-table-panel .ant-table,
+.parameter-table-panel .ant-table-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.parameter-table-panel .ant-table-header table,
-.parameter-table-panel .ant-table-body table,
-.parameter-table-panel .ant-table-content > table {
+.parameter-table-panel .ant-table-header {
+  flex-shrink: 0;
+}
+
+.parameter-table-panel .ant-table-body {
+  flex: 1;
+  min-height: var(--parameter-table-body-height, 0px);
+  max-height: var(--parameter-table-body-height, none);
+}
+
+.parameter-table-panel:not(.has-horizontal-scroll) .ant-table-body {
+  overflow-x: hidden !important;
+}
+
+.parameter-table-panel:not(.has-horizontal-scroll) .ant-table-header table,
+.parameter-table-panel:not(.has-horizontal-scroll) .ant-table-body table,
+.parameter-table-panel:not(.has-horizontal-scroll) .ant-table-content > table {
   width: 100% !important;
+  table-layout: fixed;
+}
+
+.parameter-table-panel.has-horizontal-scroll .ant-table-header table,
+.parameter-table-panel.has-horizontal-scroll .ant-table-body table {
+  width: auto !important;
+  min-width: 100%;
   table-layout: fixed;
 }
 

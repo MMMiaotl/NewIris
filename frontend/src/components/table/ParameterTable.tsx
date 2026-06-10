@@ -14,6 +14,8 @@ interface ParameterTableProps {
 type FixedColumnKey = 'name' | 'value' | 'scale';
 
 const MIN_DESCRIPTION_WIDTH = 80;
+/** Show horizontal scroll before strict overflow so the bar appears earlier. */
+const HORIZONTAL_SCROLL_BUFFER = 128;
 
 function fixedCellStyle(width: number): CSSProperties {
   return {
@@ -39,19 +41,6 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const [tableScrollY, setTableScrollY] = useState(300);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  useEffect(() => {
-    const el = tableBodyRef.current;
-    if (!el) return;
-    const update = () => {
-      setTableScrollY(Math.max(120, el.clientHeight));
-      setContainerWidth(el.clientWidth);
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   const handleResize = useCallback(
     (key: FixedColumnKey) => (width: number) => {
       setFixedWidths((prev) => ({ ...prev, [key]: width }));
@@ -66,8 +55,13 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     return Math.max(MIN_DESCRIPTION_WIDTH, containerWidth - fixedSum);
   }, [containerWidth, fixedSum]);
 
-  const overflowX = fixedSum + MIN_DESCRIPTION_WIDTH > containerWidth && containerWidth > 0;
-  const scrollX = overflowX ? fixedSum + MIN_DESCRIPTION_WIDTH : undefined;
+  const minScrollableWidth = fixedSum + MIN_DESCRIPTION_WIDTH;
+  const overflowX =
+    containerWidth > 0 &&
+    minScrollableWidth > containerWidth - HORIZONTAL_SCROLL_BUFFER;
+  const scrollX = overflowX
+    ? Math.max(minScrollableWidth, fixedSum + descriptionWidth, containerWidth + 1)
+    : undefined;
 
   const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
 
@@ -82,6 +76,24 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
         return true;
       });
   }, [selectedVariables, variableMap, searchQuery]);
+
+  useEffect(() => {
+    const el = tableBodyRef.current;
+    if (!el) return;
+    const update = () => {
+      const header = el.querySelector<HTMLElement>('.ant-table-header');
+      const headerHeight = header?.offsetHeight ?? 28;
+      setTableScrollY(Math.max(80, el.clientHeight - headerHeight));
+      const style = getComputedStyle(el);
+      const paddingX =
+        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      setContainerWidth(Math.max(0, el.clientWidth - paddingX));
+    };
+    update();
+    const observer = new ResizeObserver(() => requestAnimationFrame(update));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [selectedVariables.length, fixedWidths, overflowX]);
 
   const columns: ColumnsType<WatchIoVariable> = useMemo(
     () => [
@@ -145,13 +157,13 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
         dataIndex: 'description',
         key: 'description',
         ellipsis: { showTitle: true },
-        width: overflowX ? MIN_DESCRIPTION_WIDTH : descriptionWidth,
+        width: descriptionWidth,
         onHeaderCell: () => ({
-          width: overflowX ? MIN_DESCRIPTION_WIDTH : descriptionWidth,
+          width: descriptionWidth,
         }),
         onCell: () => ({
           style: overflowX
-            ? fixedCellStyle(MIN_DESCRIPTION_WIDTH)
+            ? fixedCellStyle(descriptionWidth)
             : { minWidth: MIN_DESCRIPTION_WIDTH },
         }),
       },
@@ -172,10 +184,21 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       ? `Parameters (${selectedVariables.length}/${MAX_SELECTED_PARAMETERS})`
       : 'Parameters';
 
+  const scroll = useMemo(
+    () => (overflowX ? { x: scrollX, y: tableScrollY } : { y: tableScrollY }),
+    [overflowX, scrollX, tableScrollY],
+  );
+
   return (
-    <div className="panel parameter-table-panel">
+    <div
+      className={`panel parameter-table-panel${overflowX ? ' has-horizontal-scroll' : ''}`}
+    >
       <div className="panel-header">{headerLabel}</div>
-      <div ref={tableBodyRef} className="parameter-table-body">
+      <div
+        ref={tableBodyRef}
+        className="parameter-table-body"
+        style={{ '--parameter-table-body-height': `${tableScrollY}px` } as CSSProperties}
+      >
         <Table<WatchIoVariable>
           size="small"
           tableLayout="fixed"
@@ -185,7 +208,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           }}
           dataSource={filtered.map((v) => ({ ...v, key: v.name }))}
           pagination={false}
-          scroll={{ x: scrollX, y: tableScrollY }}
+          scroll={scroll}
           onRow={(row) => ({
             onDoubleClick: () => addPlotVariable(row.name),
           })}
