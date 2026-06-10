@@ -9,6 +9,8 @@ import type { TreeNode } from '../../api/types';
 import {
   branchHasLoadedChildren,
   branchHasLoadedVariables,
+  filterFlatTreeByVariableSearch,
+  filterTreeByVariableSearch,
   flattenTree,
   wrapWithWatchIoRoot,
 } from '../../utils/buildVariableTree';
@@ -54,21 +56,9 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
         ? treeNodes
         : wrapWithWatchIoRoot(watchIoName, treeNodes);
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const filter = (list: TreeNode[]): TreeNode[] =>
-        list
-          .map((n) => ({
-            ...n,
-            children: n.children ? filter(n.children) : undefined,
-          }))
-          .filter(
-            (n) =>
-              n.fullPath.toLowerCase().includes(q) ||
-              (n.children && n.children.length > 0),
-          );
       nodes = flatTree
-        ? nodes.filter((n) => n.fullPath.toLowerCase().includes(q))
-        : filter(nodes);
+        ? filterFlatTreeByVariableSearch(nodes, searchQuery)
+        : filterTreeByVariableSearch(nodes, searchQuery);
     }
     return nodes;
   }, [treeNodes, flatTree, searchQuery, watchIoName, useDotTreeRoot]);

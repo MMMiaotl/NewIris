@@ -33,6 +33,68 @@ export function parentBranchFromVariableName(fullName: string): string | null {
   return fullName.slice(0, dot);
 }
 
+/** Group variables under their immediate parent branch (deepest branch in the path). */
+export function groupVariablesByParentBranch(
+  variables: { name: string }[],
+): Map<string, { name: string }[]> {
+  const byParent = new Map<string, { name: string }[]>();
+  for (const variable of variables) {
+    const parent = parentBranchFromVariableName(variable.name);
+    if (!parent) continue;
+    const list = byParent.get(parent) ?? [];
+    list.push(variable);
+    byParent.set(parent, list);
+  }
+  return byParent;
+}
+
+export function variableNodeMatchesSearch(node: TreeNode, query: string): boolean {
+  const q = query.toLowerCase();
+  return node.fullPath.toLowerCase().includes(q) || node.title.toLowerCase().includes(q);
+}
+
+function sortTreeChildren(a: TreeNode, b: TreeNode): number {
+  if (a.nodeKind !== b.nodeKind) return a.nodeKind === 'branch' ? -1 : 1;
+  return a.title.localeCompare(b.title);
+}
+
+/** Keep ancestor branches only when a matching variable (deepest leaf) exists below. */
+export function filterTreeByVariableSearch(nodes: TreeNode[], query: string): TreeNode[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const walk = (list: TreeNode[]): TreeNode[] => {
+    const result: TreeNode[] = [];
+    for (const node of list) {
+      if (node.nodeKind === 'variable') {
+        if (variableNodeMatchesSearch(node, q)) result.push({ ...node, children: undefined });
+        continue;
+      }
+
+      const branchChildren = (node.children ?? []).filter((c) => c.nodeKind !== 'variable');
+      const variableChildren = (node.children ?? []).filter((c) => c.nodeKind === 'variable');
+      const filteredBranches = walk(branchChildren);
+      const matchingVariables = variableChildren.filter((v) => variableNodeMatchesSearch(v, q));
+
+      if (filteredBranches.length || matchingVariables.length) {
+        result.push({
+          ...node,
+          children: [...filteredBranches, ...matchingVariables].sort(sortTreeChildren),
+        });
+      }
+    }
+    return result;
+  };
+
+  return walk(nodes);
+}
+
+export function filterFlatTreeByVariableSearch(nodes: TreeNode[], query: string): TreeNode[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+  return nodes.filter((n) => n.nodeKind === 'variable' && variableNodeMatchesSearch(n, q));
+}
+
 /** C.Control.Roll.Accuracy -> Control/Control.Roll.Accuracy (SmcServer object path). */
 export function watchIoBranchToSmcBranch(watchIoBranch: string): string {
   const withoutRoot = watchIoBranch.startsWith('C.') ? watchIoBranch.slice(2) : watchIoBranch;
@@ -138,6 +200,41 @@ function branchPathContains(nodePath: string, branch: string): boolean {
   return branch.startsWith(`${nodePath}${sep}`);
 }
 
+function nodeAtOrBelowBranch(nodePath: string, branch: string): boolean {
+  if (nodePath === branch) return true;
+  const sep = branch.includes('/') ? '/' : '.';
+  return nodePath.startsWith(`${branch}${sep}`);
+}
+
+/** Remove variable leaves under branch (before re-attaching at deepest parent branches). */
+export function stripVariableLeavesInBranchScope(
+  tree: TreeNode[],
+  branch: string,
+): TreeNode[] {
+  const strip = (nodes: TreeNode[]): TreeNode[] => {
+    let changed = false;
+    const next = nodes.map((node) => {
+      if (node.nodeKind === 'variable') return node;
+      let children = node.children;
+      if (children?.length) {
+        if (nodeAtOrBelowBranch(node.fullPath, branch)) {
+          const filtered = children.filter((c) => c.nodeKind !== 'variable');
+          if (filtered.length !== children.length) changed = true;
+          children = filtered;
+        }
+        const nextChildren = strip(children);
+        if (nextChildren !== children) {
+          changed = true;
+          children = nextChildren;
+        }
+      }
+      return children !== node.children ? { ...node, children } : node;
+    });
+    return changed ? next : nodes;
+  };
+  return strip(tree);
+}
+
 /** Attach variable leaf nodes under a branch; keeps existing sub-branch children. */
 export function attachVariablesToBranch(
   tree: TreeNode[],
@@ -159,10 +256,7 @@ export function attachVariablesToBranch(
           isLeaf: true,
           nodeKind: 'variable',
         }));
-        const children = [...branchChildren, ...varChildren].sort((a, b) => {
-          if (a.nodeKind !== b.nodeKind) return a.nodeKind === 'branch' ? -1 : 1;
-          return a.title.localeCompare(b.title);
-        });
+        const children = [...branchChildren, ...varChildren].sort(sortTreeChildren);
         return {
           ...node,
           nodeKind: 'branch' as const,

@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import type { TreeNode, VariableType, WatchIoVariable } from '../api/types';
 import { getEntryAttributes } from '../utils/parseAttributes';
 import type { WatchIoEntry } from '../api/types';
-import { attachVariablesToBranch, filterVariablesByBranch } from '../utils/buildVariableTree';
+import {
+  attachVariablesToBranch,
+  filterVariablesByBranch,
+  groupVariablesByParentBranch,
+  stripVariableLeavesInBranchScope,
+} from '../utils/buildVariableTree';
 
 function normalizeDataType(raw?: string): VariableType {
   const t = raw?.trim().toLowerCase();
@@ -173,9 +178,12 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     if (!branch) return;
     const { treeNodes, variables, branchVarPrefix } = get();
     const branchVars = filterVariablesByBranch(variables, branch, branchVarPrefix);
-    set({
-      treeNodes: attachVariablesToBranch(treeNodes, branch, branchVars, branchVarPrefix),
-    });
+    const byParent = groupVariablesByParentBranch(branchVars);
+    let nextTree = stripVariableLeavesInBranchScope(treeNodes, branch);
+    for (const [parentBranch, vars] of byParent) {
+      nextTree = attachVariablesToBranch(nextTree, parentBranch, vars, branchVarPrefix);
+    }
+    set({ treeNodes: nextTree });
   },
   mergeVarList: (entries) => {
     const list = normalizeEntries(entries);

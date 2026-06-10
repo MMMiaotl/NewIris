@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { WatchIoMessage } from '../api/types';
+import type { ConnectionTransport, WatchIoMessage } from '../api/types';
 import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
 import { isWatchIoTransport } from '../api/smcHttp';
 import { createWatchIoClient } from '../api/watchIoClientFactory';
@@ -30,8 +30,8 @@ export function useWatchIo() {
   const registeredPlotVarsRef = useRef(new Set<string>());
   const userDisconnectedWatchIoWsRef = useRef(false);
   const suppressAutoConnectRef = useRef(false);
+  const prevTransportRef = useRef<ConnectionTransport | null>(null);
   const { config, appMode, status, setStatus } = useConnectionStore();
-  const prevTransportRef = useRef(config.transport);
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
     setTreeNodes,
@@ -210,6 +210,7 @@ export function useWatchIo() {
   const connect = useCallback(async (): Promise<boolean> => {
     if (appMode === 'offline') return false;
 
+    userDisconnectedWatchIoWsRef.current = false;
     suppressAutoConnectRef.current = true;
     const session = ++sessionRef.current;
     refetchedBranchesRef.current.clear();
@@ -273,12 +274,11 @@ export function useWatchIo() {
     prevTransportRef.current = config.transport;
 
     if (config.transport !== 'watchIoWs' || appMode !== 'live') return;
-    if (suppressAutoConnectRef.current) return;
     if (switchedToWatchIoWs) userDisconnectedWatchIoWsRef.current = false;
+    if (suppressAutoConnectRef.current) return;
     if (userDisconnectedWatchIoWsRef.current) return;
-    if (status === 'connecting') return;
-    if (status === 'connected' && !switchedToWatchIoWs) return;
-    if (status === 'error' && !switchedToWatchIoWs) return;
+    if (status === 'connecting' || status === 'connected') return;
+    if (status !== 'disconnected') return;
 
     void connect();
   }, [config.transport, appMode, status, connect]);
@@ -320,6 +320,7 @@ export function useWatchIo() {
   useEffect(() => {
     return () => {
       sessionRef.current += 1;
+      suppressAutoConnectRef.current = false;
       disconnect();
     };
   }, [disconnect]);
