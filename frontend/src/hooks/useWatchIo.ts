@@ -5,7 +5,7 @@ import { isWatchIoTransport } from '../api/smcHttp';
 import { createWatchIoClient } from '../api/watchIoClientFactory';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useVariableStore } from '../stores/variableStore';
-import { usePlotStore } from '../stores/plotStore';
+import { usePlotStore, sampleLivePlotVariables } from '../stores/plotStore';
 import { useSessionStore } from '../stores/sessionStore';
 import {
   branchPathForVariableName,
@@ -163,15 +163,11 @@ export function useWatchIo() {
           }
           applyUpdate(updateEntries);
           const values: Record<string, string> = {};
-          const plotVars = usePlotStore.getState().plotVariables;
-          const sampleMs = Date.now();
           for (const e of updateEntries) {
-            if (e.value !== undefined) {
-              values[e.name] = e.value;
-              if (plotVars.includes(e.name)) {
-                usePlotStore.getState().appendPoint(e.name, e.value, sampleMs);
-              }
-            }
+            if (e.value !== undefined) values[e.name] = e.value;
+          }
+          if (usePlotStore.getState().plotVariables.length) {
+            sampleLivePlotVariables();
           }
           if (recording && Object.keys(values).length) appendRecordingFrame(values);
           break;
@@ -376,6 +372,16 @@ export function useWatchIo() {
     }
     client.requestUpdate();
   }, [plotVariables, appMode, status, config.transport]);
+
+  useEffect(() => {
+    if (appMode !== 'live' || status !== 'connected') return;
+    if (!plotVariables.length) return;
+
+    sampleLivePlotVariables();
+    const interval = Math.max(100, config.sampleInterval);
+    const id = setInterval(() => sampleLivePlotVariables(), interval);
+    return () => clearInterval(id);
+  }, [plotVariables, appMode, status, config.sampleInterval]);
 
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;

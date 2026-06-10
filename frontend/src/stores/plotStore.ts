@@ -40,8 +40,27 @@ function maxPointsForStore(): number {
   return Math.ceil(MAX_PLOT_X_WINDOW_SEC / intervalSec) + 50;
 }
 
+/** Minimal segment at add time so uPlot can draw a line (two distinct timestamps). */
+const PLOT_SEED_SEGMENT_MS = 50;
+
+/** Seed from when the variable was added — not before. */
+function seedPlotVariable(
+  get: () => PlotState,
+  name: string,
+  value: string,
+  startedMs: number,
+): void {
+  const state = get();
+  const startT = (startedMs - state.plotInitMs) / 1000;
+  if (startT < 0) return;
+  get().appendPoint(name, value, startedMs);
+  get().appendPoint(name, value, startedMs + PLOT_SEED_SEGMENT_MS);
+}
+
 interface PlotState {
   plotVariables: string[];
+  /** Epoch ms when each variable was added to the plot (plot timeline anchor). */
+  plotStartedAtMs: Record<string, number>;
   colors: Record<string, string>;
   lineWidths: Record<string, number>;
   yMin: number;
@@ -76,6 +95,7 @@ interface PlotState {
 
 export const usePlotStore = create<PlotState>((set, get) => ({
   plotVariables: [],
+  plotStartedAtMs: {},
   colors: {},
   lineWidths: {},
   yMin: -10,
@@ -90,23 +110,28 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     const colors = { ...get().colors };
     colors[name] = PLOT_COLORS[plotVariables.length % PLOT_COLORS.length];
     const lineWidths = { ...get().lineWidths, [name]: DEFAULT_PLOT_LINE_WIDTH };
+    const startedMs = Date.now();
     set({
       plotVariables: [...plotVariables, name],
+      plotStartedAtMs: { ...get().plotStartedAtMs, [name]: startedMs },
       colors,
       lineWidths,
       seriesData: { ...get().seriesData, [name]: get().seriesData[name] ?? [] },
     });
     const current = useVariableStore.getState().variables.find((v) => v.name === name);
-    if (current?.value) {
-      get().appendPoint(name, current.value);
+    const value = current?.value;
+    if (value !== undefined && value !== '') {
+      seedPlotVariable(get, name, value, startedMs);
     }
   },
   removePlotVariable: (name) => {
     const { [name]: _series, ...seriesData } = get().seriesData;
     const { [name]: _color, ...colors } = get().colors;
     const { [name]: _width, ...lineWidths } = get().lineWidths;
+    const { [name]: _started, ...plotStartedAtMs } = get().plotStartedAtMs;
     set({
       plotVariables: get().plotVariables.filter((v) => v !== name),
+      plotStartedAtMs,
       colors,
       lineWidths,
       seriesData,
@@ -129,6 +154,8 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     if (Number.isNaN(num)) return;
     const sampleMs = tMs ?? Date.now();
     const state = get();
+    const startedMs = state.plotStartedAtMs[name];
+    if (startedMs !== undefined && sampleMs < startedMs) return;
     const t = (sampleMs - state.plotInitMs) / 1000;
     if (t < 0) return;
     const prev = state.seriesData[name] ?? [];
@@ -142,16 +169,20 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       seriesData: { ...state.seriesData, [name]: arr },
     });
   },
-  clearSeries: () => set({ seriesData: {} }),
-  setPlotInitMs: (plotInitMs) => set({ plotInitMs, seriesData: {} }),
+  clearSeries: () => set({ seriesData: {}, plotStartedAtMs: {} }),
+  setPlotInitMs: (plotInitMs) => set({ plotInitMs, seriesData: {}, plotStartedAtMs: {} }),
   loadPlotConfig: (plotVariables, colors, yMin, yMax, xWindowSec, lineWidths) => {
     const windowSec = clampXWindowSec(xWindowSec ?? get().xWindowSec);
     const nextLineWidths: Record<string, number> = {};
+    const startedMs = Date.now();
+    const plotStartedAtMs: Record<string, number> = {};
     for (const name of plotVariables) {
       nextLineWidths[name] = clampLineWidth(lineWidths?.[name] ?? DEFAULT_PLOT_LINE_WIDTH);
+      plotStartedAtMs[name] = startedMs;
     }
     set({
       plotVariables,
+      plotStartedAtMs,
       colors,
       lineWidths: nextLineWidths,
       yMin,
@@ -161,3 +192,25 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     });
   },
 }));
+
+/** Append one sample per plot variable from the parameter table (live plot tick). */
+export function sampleLivePlotVariables(sampleMs = Date.now()): void {
+  const { plotVariables, plotStartedAtMs, appendPoint } = usePlotStore.getState();
+  if (!plotVariables.length) return;
+
+  const variables = useVariableStore.getState().variables;
+  for (const name of plotVariables) {
+    const value = variables.find((v) => v.name === name)?.value;
+    if (value === undefined || value === '') continue;
+
+    const startedMs = plotStartedAtMs[name];
+    if (startedMs !== undefined) {
+      const points = usePlotStore.getState().seriesData[name] ?? [];
+      if (points.length === 0) {
+        seedPlotVariable(usePlotStore.getState, name, value, startedMs);
+        continue;
+      }
+    }
+    appendPoint(name, value, sampleMs);
+  }
+}
