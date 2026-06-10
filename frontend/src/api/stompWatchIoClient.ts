@@ -11,11 +11,9 @@ import { watchIoAttributesParam, watchIoEntry, WATCHIO_VARLEAVES_ATTRS, WATCHIO_
 import { parseWatchIoResponse, isDataReady, parseVartreeParent, extractBranchNames } from '../utils/parseWatchIoMessage';
 import { watchIoLog, watchIoLogMessage, watchIoLogSendBody, watchIoLogVerbose } from '../utils/watchIoDebug';
 
-/** Wait after STOMP SUBSCRIBE before first SEND (match watchIoWsDiscovery). */
-const SUBSCRIBE_SETTLE_MS = 120;
 /** Retry root vartree when segment is not dataok yet or response is empty. */
-const VARTREE_RETRY_MS = 400;
-const VARTREE_MAX_RETRIES = 10;
+const VARTREE_RETRY_MS = 150;
+const VARTREE_MAX_RETRIES = 15;
 
 export class StompWatchIoClient implements WatchIoClient {
   private messageHandlers = new Set<MessageHandler>();
@@ -27,8 +25,6 @@ export class StompWatchIoClient implements WatchIoClient {
   private watchIoName: string;
   private subscribed = false;
   private pendingSend: Array<Record<string, unknown>> = [];
-  private subscribeTimer: ReturnType<typeof setTimeout> | null = null;
-  private vartreeDebounce: ReturnType<typeof setTimeout> | null = null;
   private vartreeRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private awaitingVartree = false;
   private vartreeRetryCount = 0;
@@ -118,12 +114,15 @@ export class StompWatchIoClient implements WatchIoClient {
           msg = { ...msg, params };
         } else if (
           msg.type === 'status' &&
-          isDataReady(msg) &&
           this.awaitingVartree &&
           !this.rootVarTreeLoaded
         ) {
-          watchIoLog('ws', 'dataok — requesting vartree');
-          this.sendJsonNow({ type: 'vartree' });
+          if (isDataReady(msg)) {
+            watchIoLog('ws', 'dataok — requesting vartree');
+            this.sendJsonNow({ type: 'vartree' });
+          } else {
+            this.scheduleVarTreeRetry();
+          }
         }
         this.emit(msg);
       } else {
@@ -148,13 +147,11 @@ export class StompWatchIoClient implements WatchIoClient {
         ws.send(frame);
         this.subscribed = true;
         this.emitStatus('connected');
-
-        this.subscribeTimer = setTimeout(() => {
-          this.subscribeTimer = null;
+        queueMicrotask(() => {
           this.flushPendingSend();
           this.beginRootVarTreeLoad();
           resolve();
-        }, SUBSCRIBE_SETTLE_MS);
+        });
       };
 
       ws.onmessage = (ev) => {
@@ -171,10 +168,6 @@ export class StompWatchIoClient implements WatchIoClient {
 
       ws.onclose = () => {
         this.subscribed = false;
-        if (this.subscribeTimer) {
-          clearTimeout(this.subscribeTimer);
-          this.subscribeTimer = null;
-        }
         this.pendingSend = [];
         if (this.ws === ws) {
           this.ws = null;
@@ -185,20 +178,12 @@ export class StompWatchIoClient implements WatchIoClient {
   }
 
   disconnect(): void {
-    if (this.vartreeDebounce) {
-      clearTimeout(this.vartreeDebounce);
-      this.vartreeDebounce = null;
-    }
     this.clearVarTreeRetry();
     this.awaitingVartree = false;
     this.vartreeRetryCount = 0;
     this.rootVarTreeLoaded = false;
     this.lastVarLeavesBranch = null;
     this.monitoredNames.clear();
-    if (this.subscribeTimer) {
-      clearTimeout(this.subscribeTimer);
-      this.subscribeTimer = null;
-    }
     this.pendingSend = [];
     if (this.ws && this.subscribed) {
       try {
@@ -216,18 +201,14 @@ export class StompWatchIoClient implements WatchIoClient {
   }
 
   fetchVarTree(branch?: string): void {
-    if (this.vartreeDebounce) clearTimeout(this.vartreeDebounce);
-    this.vartreeDebounce = setTimeout(() => {
-      this.vartreeDebounce = null;
-      if (!branch) {
-        this.beginRootVarTreeLoad();
-        return;
-      }
-      this.sendJson({
-        type: 'vartree',
-        entries: [watchIoEntry(branch, WATCHIO_VARTREE_BRANCH_ATTRS)],
-      });
-    }, 50);
+    if (!branch) {
+      this.beginRootVarTreeLoad();
+      return;
+    }
+    this.sendJson({
+      type: 'vartree',
+      entries: [watchIoEntry(branch, WATCHIO_VARTREE_BRANCH_ATTRS)],
+    });
   }
 
   /** Poll vartree until WatchIO segment is dataok or retries exhausted. */
@@ -329,7 +310,7 @@ export class StompWatchIoClient implements WatchIoClient {
 
   private sendJson(body: Record<string, unknown>): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    if (this.pendingSend.length > 0 || this.subscribeTimer) {
+    if (!this.subscribed) {
       this.pendingSend.push(body);
       return;
     }
