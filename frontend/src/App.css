@@ -212,8 +212,35 @@
   height: 22px;
 }
 
+.parameter-table-panel .parameter-table-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 1;
+  touch-action: none;
+}
+
+.parameter-table-panel .parameter-table-resize-handle:hover {
+  background: rgba(22, 119, 255, 0.15);
+}
+
 .parameter-table-panel .ant-table-wrapper {
   height: 100%;
+}
+
+.parameter-table-panel .ant-table-header table,
+.parameter-table-panel .ant-table-body table,
+.parameter-table-panel .ant-table-content > table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.parameter-table-panel .ant-table-thead > tr > th,
+.parameter-table-panel .ant-table-tbody > tr > td {
+  overflow: hidden;
 }
 
 .plot-panel {
