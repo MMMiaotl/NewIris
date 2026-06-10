@@ -1,0 +1,152 @@
+# Frontend architecture (for code changes)
+
+This document maps the NewIris React app so agents and developers know **where to edit** and **what not to cross**.
+
+Connection and backend setup: [NewIrisConnection.md](NewIrisConnection.md). Agent quick start: [../AGENTS.md](../AGENTS.md).
+
+## Runtime architecture
+
+```
+Browser (:5173)
+  │
+  ├─ AppShell ── ConnectionBar / MenuBar / drawers
+  │
+  ├─ useWatchIo() ── createWatchIoClient(config)
+  │       │
+  │       ├─ smcServer      → SmcServerClient     → GET /SmcServerN/...
+  │       ├─ watchIoHttp    → HttpWatchIoClient    → GET /watchio/...
+  │       └─ watchIoWs      → StompWatchIoClient   → STOMP ws://:8083
+  │
+  ├─ Zustand stores ← WatchIoMessage handlers in useWatchIo
+  │
+  └─ VariableTree / ParameterTable / PlotPanel / ReplayControls
+```
+
+Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:8082` in dev (`vite.config.ts`). Leave `VITE_HTTP_URL` empty in dev so requests stay same-origin.
+
+## Source layout
+
+| Path | Responsibility |
+|------|----------------|
+| `api/watchIoClient.ts` | `WatchIoClient` interface — all transports implement this |
+| `api/watchIoClientFactory.ts` | `createWatchIoClient()` switch on `config.transport` |
+| `api/smcServerClient.ts` | SmcServer HTTP polling client (default) |
+| `api/httpWatchIoClient.ts` | WatchIO over HTTP `/watchio` |
+| `api/stompWatchIoClient.ts` | WatchIO over STOMP WebSocket |
+| `api/smcHttp.ts` | `/request` discovery, service list helpers |
+| `api/types.ts` | Shared types: `WatchIoMessage`, `ConnectionConfig`, `SessionFile`, etc. |
+| `api/watchIoPaths.ts`, `watchIoServerJson.ts`, `watchIoWsDiscovery.ts` | URL builders and discovery |
+| `api/stompFrame.ts` | STOMP frame encode/decode |
+| `stores/connectionStore.ts` | Transport config, discovered services, UI mode (live/offline/replay), layout |
+| `stores/variableStore.ts` | Tree nodes, branch variables, selection, registration flags |
+| `stores/plotStore.ts` | Plot series, colors, Y range (max 8 series) |
+| `stores/sessionStore.ts` | Recording frames, replay state, recent sessions in localStorage |
+| `hooks/useWatchIo.ts` | **Single orchestrator** for connect/disconnect, message routing, write/register |
+| `hooks/useReplay.ts` | Replay playback loop; feeds variableStore + plotStore |
+| `utils/parseWatchIoMessage.ts` | Normalize `WatchIoMessage` entries |
+| `utils/parseSmcJson.ts` | SmcServer JSON response parsing |
+| `utils/buildVariableTree.ts` | Merge vartree/varleaves into Ant Design tree data |
+| `utils/recordingFormat.ts` | `.niris` file read/write |
+| `utils/parseAttributes.ts` | Variable metadata from params |
+| `constants/transport.ts` | `ConnectionTransport` labels and env default |
+| `components/layout/AppShell.tsx` | Root layout; wires hooks to panels |
+
+Components are grouped by feature under `components/{connection,tree,table,plot,replay,settings,toolbar,layout}/`. Prefer adding UI there rather than bloating `AppShell`.
+
+## Data flow (live mode)
+
+1. User clicks **Request** → `smcHttp` fetches `/request` → `connectionStore.discoveredServices`.
+2. User selects service → `connectionStore.config.serverPath` (e.g. `/SmcServer1`).
+3. **Connect** → `useWatchIo.connect()` → factory creates client → `client.connect()`.
+4. Client emits `WatchIoMessage` → `useWatchIo.handleMessage`:
+   - `vartree` / module objects → `buildSmcModuleTree` or `buildDotBranchTree` → `variableStore.setTreeNodes` / merge
+   - `varleaves` → `variableStore.mergeVarLeaves`
+   - `varlist` → `variableStore.mergeVarList`
+   - updates → `variableStore.applyUpdate`, optional `plotStore.appendPoint`, `sessionStore.appendRecordingFrame`
+5. User edits table → `setVariableValue` → client `setVariable` + local optimistic update.
+6. User registers variable for polling → `registerVariable` → client `addVariable`.
+
+**Rule:** Components should not instantiate API clients directly. Go through `useWatchIo` or extend it.
+
+## Store boundaries
+
+| Store | Owns | Does not own |
+|-------|------|----------------|
+| `connectionStore` | `ConnectionConfig`, transport, service discovery, `appMode`, `viewMode`, drawer flags | Variable values, plot points |
+| `variableStore` | Tree, table rows, `selectedBranch`, `branchVarPrefix`, multi-select for plot | Socket/HTTP client |
+| `plotStore` | Series data, plot variable list, Y axis | Connection status |
+| `sessionStore` | Recording/replay buffers, replay transport controls | Live client lifecycle |
+
+Cross-store reads in hooks are OK (`useWatchIo`, `useReplay`). Avoid circular imports between stores.
+
+## Transports — naming and trees
+
+| Transport | Tree shape | Path example | `watchIoName` role |
+|-----------|------------|--------------|-------------------|
+| `smcServer` | Slash object tree under modules | `Control/Control.Filter.Surge.Coefs` | Display label; paths come from SmcServer API |
+| `watchIoHttp` / `watchIoWs` | Dot-separated WatchIO paths | `C.Filter.Surge.Coefs` | Segment name in `/watchio/{name}:...` |
+
+Do not reuse SmcServer URL builders for WatchIO clients or vice versa.
+
+## App modes
+
+| Mode | `connectionStore.appMode` | Behavior |
+|------|---------------------------|----------|
+| Live | `live` | `useWatchIo` connects when user clicks Connect |
+| Offline | `offline` | No network; UI still usable for session files |
+| Replay | `replay` | `useReplay` drives updates from `sessionStore.replayData` |
+
+## Session and file formats
+
+- **Session file** (`.niris` session export): `SessionFile` in `api/types.ts` — transport, registered vars, plot config.
+- **Recording file**: `RecordingFile` — time series of variable snapshots; replay via `sessionStore` + `useReplay`.
+
+Parsers live in `utils/recordingFormat.ts`. Keep version field `version: 1` when extending.
+
+## UI stack conventions
+
+- **Ant Design 6** for layout (`Splitter`, drawers, tables, forms).
+- **uPlot** in `PlotPanel` — not Ant Design charts.
+- Global styles: `App.css`, `index.css`; avoid CSS-in-JS libraries.
+- Functional components only; state in Zustand or local `useState` for purely local UI.
+
+## Change checklists
+
+### New connection transport
+
+1. Implement `WatchIoClient` in `api/`.
+2. Add case in `watchIoClientFactory.ts`.
+3. Add to `ConnectionTransport` and `transportOptions` in `constants/transport.ts` and `api/types.ts`.
+4. Update `connectionStore` defaults if needed.
+5. Add Vite proxy paths in `vite.config.ts` if new HTTP prefixes.
+6. Document in `docs/NewIrisConnection.md`.
+7. Add or extend `frontend/scripts/verify-*.mjs` if testable via HTTP/WS.
+
+### New variable UI behavior
+
+1. Prefer extending `variableStore` actions.
+2. Route server I/O through `useWatchIo` callbacks passed into components (see `AppShell` props pattern).
+3. Update tree builders in `utils/buildVariableTree.ts` if tree shape changes.
+
+### New plot behavior
+
+1. `plotStore` for data; `PlotPanel` / `PlotControlDrawer` for UI.
+2. Ensure `useWatchIo` still calls `appendPoint` for registered plot variables in live mode.
+3. Update `useReplay` if replay should mirror the behavior.
+
+## Verification
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+node scripts/verify-smc-api.mjs    # needs :8082 + SmcServer
+```
+
+Pure parsing logic (`parseSmcJson`, `parseWatchIoMessage`, `stompFrame`) can be tested offline via existing scripts or future unit tests.
+
+## Related docs
+
+- [NewIrisConnection.md](NewIrisConnection.md) — endpoints, UI connect steps
+- [WatchIoBackendSetup.md](WatchIoBackendSetup.md) — process layout
+- [WatchIoWebSocket.md](WatchIoWebSocket.md) — STOMP details for `watchIoWs`

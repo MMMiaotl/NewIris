@@ -48,6 +48,8 @@ Again use **http://localhost:5173**.
 
 ## Documentation
 
+- **[AGENTS.md](AGENTS.md)** — Cursor Agent entry (commands, constraints, change map)
+- **[docs/FrontendArchitecture.md](docs/FrontendArchitecture.md)** — frontend code layout and data flow
 - **[docs/NewIrisConnection.md](docs/NewIrisConnection.md)** — verified connection (SmcServer1 API, steps, endpoints)
 - [docs/WatchIoBackendSetup.md](docs/WatchIoBackendSetup.md) — HttpWebServer / WatchIoWebServer process layout
 - [docs/WatchIoWebSocket.md](docs/WatchIoWebSocket.md) — WatchIO WebSocket protocol (not used by NewIris today)
