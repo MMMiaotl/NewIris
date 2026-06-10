@@ -50,7 +50,7 @@ export function AppShell() {
         <Splitter className="app-main-splitter">
           <Splitter.Panel min="40%">
             <Splitter className="main-splitter">
-              <Splitter.Panel defaultSize="22%" min="15%" max="40%">
+              <Splitter.Panel defaultSize="15.4%" min="15%" max="40%">
                 <VariableTree
                   onExpandBranch={(branch) => {
                     if (!branch) client.current?.fetchVarTree();
