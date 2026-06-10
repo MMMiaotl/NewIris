@@ -3,7 +3,8 @@ import { App, Button, Input, Space, Tooltip } from 'antd';
 
 interface WatchIoNameFieldProps {
   appliedName: string;
-  onApply: (name: string) => void;
+  /** Return false when auto-reconnect fails (connected session). */
+  onApply: (name: string) => void | Promise<boolean | void>;
   placeholder?: string;
   connected?: boolean;
   /** Fixed input width; omit for full-width (e.g. Settings drawer). */
@@ -19,6 +20,7 @@ export function WatchIoNameField({
 }: WatchIoNameFieldProps) {
   const { message } = App.useApp();
   const [draft, setDraft] = useState(appliedName);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     setDraft(appliedName);
@@ -26,20 +28,37 @@ export function WatchIoNameField({
 
   const trimmed = draft.trim();
   const hasPending = trimmed !== appliedName;
-  const canApply = trimmed.length > 0 && hasPending;
+  const canApply = trimmed.length > 0 && hasPending && !applying;
 
-  const apply = () => {
+  const apply = async () => {
     if (!trimmed) {
       message.warning('WatchIO instance name cannot be empty');
       return;
     }
-    if (!hasPending) return;
-    onApply(trimmed);
-    setDraft(trimmed);
-    if (connected) {
-      message.success(`Instance "${trimmed}" applied — reconnect to switch`);
-    } else {
-      message.success(`Instance "${trimmed}" applied`);
+    if (!hasPending || applying) return;
+
+    setApplying(true);
+    try {
+      const wasConnected = connected;
+      const result = await onApply(trimmed);
+      if (result === false) {
+        message.error(
+          `Could not connect to WatchIO instance "${trimmed}". Check the name and use Connect to retry.`,
+        );
+        return;
+      }
+      setDraft(trimmed);
+      if (wasConnected) {
+        message.success(`Connected to "${trimmed}"`);
+      } else {
+        message.success(`Instance "${trimmed}" applied`);
+      }
+    } catch {
+      message.error(
+        `Could not connect to WatchIO instance "${trimmed}". Check the name and use Connect to retry.`,
+      );
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -51,12 +70,28 @@ export function WatchIoNameField({
         style={inputWidth ? { width: inputWidth } : undefined}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onPressEnter={apply}
+        onPressEnter={() => void apply()}
         placeholder={placeholder}
         status={hasPending ? 'warning' : undefined}
+        disabled={applying}
       />
-      <Tooltip title={hasPending ? 'Apply instance name' : 'No changes'}>
-        <Button type={hasPending ? 'primary' : 'default'} onClick={apply} disabled={!canApply}>
+      <Tooltip
+        title={
+          applying
+            ? 'Reconnecting…'
+            : hasPending
+              ? connected
+                ? 'Apply and reconnect'
+                : 'Apply instance name'
+              : 'No changes'
+        }
+      >
+        <Button
+          type={hasPending ? 'primary' : 'default'}
+          onClick={() => void apply()}
+          disabled={!canApply}
+          loading={applying}
+        >
           Apply
         </Button>
       </Tooltip>

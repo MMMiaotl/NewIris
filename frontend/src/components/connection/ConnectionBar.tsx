@@ -23,12 +23,17 @@ function applyWatchIoDefaults(
 }
 
 interface ConnectionBarProps {
-  onConnect: () => void;
+  onConnect: () => void | Promise<boolean | void>;
   onDisconnect: () => void;
+  onApplyWatchIoName: (name: string) => Promise<boolean>;
 }
 
 /** request → select service → Connect (SmcServer or WatchIoWebServer). */
-export function ConnectionBar({ onConnect, onDisconnect }: ConnectionBarProps) {
+export function ConnectionBar({
+  onConnect,
+  onDisconnect,
+  onApplyWatchIoName,
+}: ConnectionBarProps) {
   const {
     config,
     discoveredServices,
@@ -187,9 +192,9 @@ export function ConnectionBar({ onConnect, onDisconnect }: ConnectionBarProps) {
         <Typography.Text type="secondary">WatchIO</Typography.Text>
         <WatchIoNameField
           appliedName={config.watchIoName}
-          onApply={(watchIoName) => setConfig({ watchIoName })}
+          onApply={onApplyWatchIoName}
           placeholder={isWatchIo ? 'SmcControl1 / CasServer' : 'SmcControl1'}
-          connected={status === 'connected'}
+          connected={status === 'connected' || status === 'connecting'}
         />
         {requestStatus === 'error' && (
           <Typography.Text type="danger">{requestError}</Typography.Text>

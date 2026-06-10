@@ -29,6 +29,7 @@ export function useWatchIo() {
   const refetchedBranchesRef = useRef(new Set<string>());
   const registeredPlotVarsRef = useRef(new Set<string>());
   const userDisconnectedWatchIoWsRef = useRef(false);
+  const suppressAutoConnectRef = useRef(false);
   const { config, appMode, status, setStatus } = useConnectionStore();
   const prevTransportRef = useRef(config.transport);
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
@@ -206,37 +207,65 @@ export function useWatchIo() {
     setStatus('disconnected');
   }, [setStatus]);
 
-  const connect = useCallback(async () => {
-    if (appMode === 'offline') return;
+  const connect = useCallback(async (): Promise<boolean> => {
+    if (appMode === 'offline') return false;
 
+    suppressAutoConnectRef.current = true;
     const session = ++sessionRef.current;
     refetchedBranchesRef.current.clear();
     registeredPlotVarsRef.current.clear();
     clientRef.current?.disconnect();
+    clientRef.current = null;
     useVariableStore.getState().clear();
     useWatchIoMessageLogStore.getState().clear();
     setBranchVarPrefix(null);
 
-    watchIoLog('connect', `${config.transport} client`, config);
-    const client = createWatchIoClient(config);
-    client.onStatus((status, detail) => {
-      if (session === sessionRef.current) setStatus(status, detail);
+    const liveConfig = useConnectionStore.getState().config;
+    watchIoLog('connect', `${liveConfig.transport} client`, liveConfig);
+    const client = createWatchIoClient(liveConfig);
+    client.onStatus((nextStatus, detail) => {
+      if (session === sessionRef.current) setStatus(nextStatus, detail);
     });
     client.onMessage(handleMessage);
     clientRef.current = client;
 
     try {
       await client.connect();
-      if (session !== sessionRef.current) return;
+      if (session !== sessionRef.current) return false;
       const branch = useVariableStore.getState().selectedBranch;
       if (branch) client.fetchVarLeaves(branch);
       for (const name of useVariableStore.getState().registeredNames) {
         client.addVariable(name, 'set');
       }
+      return useConnectionStore.getState().status === 'connected';
     } catch {
       if (session === sessionRef.current) setStatus('error', 'Connection failed');
+      return false;
+    } finally {
+      suppressAutoConnectRef.current = false;
     }
-  }, [config, appMode, handleMessage, setStatus, setBranchVarPrefix]);
+  }, [appMode, handleMessage, setStatus, setBranchVarPrefix]);
+
+  const applyWatchIoName = useCallback(
+    async (watchIoName: string): Promise<boolean> => {
+      const state = useConnectionStore.getState();
+      const prevName = state.config.watchIoName;
+      if (watchIoName === prevName) return true;
+
+      state.setConfig({ watchIoName });
+
+      if (state.appMode !== 'live' || !isWatchIoTransport(state.config.transport)) {
+        return true;
+      }
+      if (state.status !== 'connected' && state.status !== 'connecting') {
+        return true;
+      }
+
+      userDisconnectedWatchIoWsRef.current = false;
+      return connect();
+    },
+    [connect],
+  );
 
   useEffect(() => {
     const switchedToWatchIoWs =
@@ -244,6 +273,7 @@ export function useWatchIo() {
     prevTransportRef.current = config.transport;
 
     if (config.transport !== 'watchIoWs' || appMode !== 'live') return;
+    if (suppressAutoConnectRef.current) return;
     if (switchedToWatchIoWs) userDisconnectedWatchIoWsRef.current = false;
     if (userDisconnectedWatchIoWsRef.current) return;
     if (status === 'connecting') return;
@@ -365,6 +395,7 @@ export function useWatchIo() {
   return {
     connect,
     disconnect,
+    applyWatchIoName,
     refreshBranch,
     registerVariable,
     unregisterVariable,

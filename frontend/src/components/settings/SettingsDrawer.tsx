@@ -4,7 +4,11 @@ import { transportOptions } from '../../constants/transport';
 import { WatchIoNameField } from '../connection/WatchIoNameField';
 import { useConnectionStore } from '../../stores/connectionStore';
 
-export function SettingsDrawer() {
+interface SettingsDrawerProps {
+  onApplyWatchIoName: (name: string) => Promise<boolean>;
+}
+
+export function SettingsDrawer({ onApplyWatchIoName }: SettingsDrawerProps) {
   const {
     config,
     settingsDrawerOpen,
@@ -72,12 +76,12 @@ export function SettingsDrawer() {
 
         <Form.Item
           label="WatchIO instance name"
-          extra="Segment to connect: SmcControl1, CasServer, etc. Press Apply to confirm."
+          extra="Segment to connect: SmcControl1, CasServer, etc. Reconnects automatically when live."
         >
           <WatchIoNameField
             appliedName={config.watchIoName}
-            onApply={(watchIoName) => setConfig({ watchIoName })}
-            connected={status === 'connected'}
+            onApply={onApplyWatchIoName}
+            connected={status === 'connected' || status === 'connecting'}
           />
         </Form.Item>
         <Form.Item label="Sample interval (ms)">

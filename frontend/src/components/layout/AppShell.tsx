@@ -15,7 +15,8 @@ import { useReplay } from '../../hooks/useReplay';
 export function AppShell() {
   const { viewMode, appMode, config, status, plotDrawerOpen, setPlotDrawerOpen } =
     useConnectionStore();
-  const { connect, disconnect, setVariableValue, refreshVariable, client } = useWatchIo();
+  const { connect, disconnect, applyWatchIoName, setVariableValue, refreshVariable, client } =
+    useWatchIo();
   useReplay();
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
@@ -41,7 +42,11 @@ export function AppShell() {
           <span className="app-subtitle">WatchIO Monitor</span>
         </div>
         <MenuBar />
-        <ConnectionBar onConnect={connect} onDisconnect={() => disconnect(true)} />
+        <ConnectionBar
+          onConnect={connect}
+          onDisconnect={() => disconnect(true)}
+          onApplyWatchIoName={applyWatchIoName}
+        />
       </header>
 
       {appMode === 'replay' && <ReplayControls />}
@@ -101,7 +106,7 @@ export function AppShell() {
         <span className={`footer-status ${statusClass}`}>{modeLabel}</span>
       </footer>
 
-      <SettingsDrawer />
+      <SettingsDrawer onApplyWatchIoName={applyWatchIoName} />
       <WatchIoMessageLogDrawer />
     </div>
   );
