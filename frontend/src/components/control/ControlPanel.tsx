@@ -12,7 +12,7 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: ControlPanelProps) {
-  const { selectedVariables } = useVariableStore();
+  const { selectedVariables, focusedVariable } = useVariableStore();
   const {
     plotVariables,
     colors,
@@ -28,6 +28,11 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
     setColor,
     setLineWidth,
   } = usePlotStore();
+
+  const lastSelectedParameter =
+    focusedVariable && selectedVariables.includes(focusedVariable)
+      ? focusedVariable
+      : (selectedVariables.at(-1) ?? null);
 
   const plotTab = (
     <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -73,14 +78,14 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
           icon={<PlusOutlined />}
           style={{ marginTop: 8 }}
           disabled={
-            !selectedVariables.length ||
-            selectedVariables.every((name) => plotVariables.includes(name))
+            !lastSelectedParameter ||
+            plotVariables.includes(lastSelectedParameter)
           }
           onClick={() => {
-            for (const name of selectedVariables) addPlotVariable(name);
+            if (lastSelectedParameter) addPlotVariable(lastSelectedParameter);
           }}
         >
-          Add selected variables
+          Add selected variable
         </Button>
       </div>
 
