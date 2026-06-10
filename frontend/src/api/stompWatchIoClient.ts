@@ -8,11 +8,13 @@ import {
   parseStompFrames,
 } from './stompFrame';
 import { watchIoAttributesParam, watchIoEntry, WATCHIO_VARLEAVES_ATTRS, WATCHIO_VARTREE_BRANCH_ATTRS, watchIoMonitorAttributes } from './watchIoServerJson';
-import { parseWatchIoResponse, isDataReady, parseVartreeParent } from '../utils/parseWatchIoMessage';
-import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
+import { parseWatchIoResponse, isDataReady, parseVartreeParent, extractBranchNames } from '../utils/parseWatchIoMessage';
+import { watchIoLog, watchIoLogMessage, watchIoLogSendBody, watchIoLogVerbose } from '../utils/watchIoDebug';
 
-const SUBSCRIBE_SETTLE_MS = 400;
-const VARTREE_RETRY_MS = 800;
+/** Wait after STOMP SUBSCRIBE before first SEND (match watchIoWsDiscovery). */
+const SUBSCRIBE_SETTLE_MS = 120;
+/** Retry root vartree when segment is not dataok yet or response is empty. */
+const VARTREE_RETRY_MS = 400;
 const VARTREE_MAX_RETRIES = 10;
 
 export class StompWatchIoClient implements WatchIoClient {
@@ -67,12 +69,12 @@ export class StompWatchIoClient implements WatchIoClient {
 
   private handleIncoming(text: string): void {
     if (!text) return;
-    watchIoLog('ws', 'raw chunk', { bytes: text.length, buffer: this.stompBuffer.length + text.length });
+    watchIoLogVerbose('ws', 'raw chunk', { bytes: text.length, buffer: this.stompBuffer.length + text.length });
     this.stompBuffer += text;
     const { frames, rest } = parseStompFrames(this.stompBuffer);
     this.stompBuffer = rest;
     if (frames.length) {
-      watchIoLog('ws', `STOMP ${frames.length} MESSAGE frame(s)`);
+      watchIoLogVerbose('ws', `STOMP ${frames.length} MESSAGE frame(s)`);
     } else if (this.stompBuffer.length > 200) {
       watchIoLog('ws', 'unparsed STOMP buffer head', this.stompBuffer.slice(0, 200));
     }
@@ -86,9 +88,19 @@ export class StompWatchIoClient implements WatchIoClient {
       let msg = parseWatchIoResponse(frame.body.trim());
       if (msg) {
         if (msg.type === 'vartree') {
-          this.awaitingVartree = false;
-          this.clearVarTreeRetry();
-          if (!parseVartreeParent(msg)) this.rootVarTreeLoaded = true;
+          const parent = parseVartreeParent(msg);
+          const branches = extractBranchNames(msg);
+          if (parent) {
+            this.awaitingVartree = false;
+            this.clearVarTreeRetry();
+          } else if (branches.length > 0) {
+            this.awaitingVartree = false;
+            this.clearVarTreeRetry();
+            this.rootVarTreeLoaded = true;
+          } else if (this.awaitingVartree) {
+            watchIoLog('ws', 'empty root vartree — segment may not be dataok yet, retrying');
+            this.scheduleVarTreeRetry();
+          }
         } else if (msg.type === 'varleaves' && this.lastVarLeavesBranch) {
           const branch = this.lastVarLeavesBranch;
           const existingParams = msg.params
@@ -331,7 +343,7 @@ export class StompWatchIoClient implements WatchIoClient {
       destination: this.serverPath,
       id: this.watchIoName,
     }, payload);
-    watchIoLog('ws', 'SEND', body);
+    watchIoLogSendBody(body);
     try {
       this.ws.send(frame);
     } catch (err) {
