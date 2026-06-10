@@ -48,9 +48,92 @@ export function groupVariablesByParentBranch(
   return byParent;
 }
 
+export function variableNameMatchesSearch(fullName: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return fullName.toLowerCase().includes(q);
+}
+
 export function variableNodeMatchesSearch(node: TreeNode, query: string): boolean {
-  const q = query.toLowerCase();
-  return node.fullPath.toLowerCase().includes(q) || node.title.toLowerCase().includes(q);
+  if (node.nodeKind !== 'variable') return false;
+  return variableNameMatchesSearch(node.fullPath, query);
+}
+
+/** All loaded + selected variables whose full name matches the query. */
+export function collectMatchingVariableNames(
+  variables: { name: string }[],
+  selectedNames: string[],
+  query: string,
+): string[] {
+  const q = query.trim();
+  if (!q) return [];
+  const out = new Set<string>();
+  for (const v of variables) {
+    if (variableNameMatchesSearch(v.name, q)) out.add(v.name);
+  }
+  for (const name of selectedNames) {
+    if (variableNameMatchesSearch(name, q)) out.add(name);
+  }
+  return [...out].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAncestorBranchesForVariables(names: string[]): string[] {
+  const set = new Set<string>();
+  for (const name of names) {
+    const parts = name.split('.');
+    for (let i = 1; i < parts.length; i++) {
+      set.add(parts.slice(0, i).join('.'));
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function mergeTreeNodesByPath(base: TreeNode[], incoming: TreeNode[]): TreeNode[] {
+  const map = new Map<string, TreeNode>();
+  for (const node of base) map.set(node.fullPath, { ...node, children: node.children ? [...node.children] : [] });
+  for (const node of incoming) {
+    const prev = map.get(node.fullPath);
+    if (!prev) {
+      map.set(node.fullPath, { ...node, children: node.children ? [...node.children] : [] });
+      continue;
+    }
+    const mergedChildren = mergeTreeNodesByPath(prev.children ?? [], node.children ?? []);
+    map.set(node.fullPath, {
+      ...prev,
+      ...node,
+      nodeKind: prev.nodeKind ?? node.nodeKind,
+      children: mergedChildren.length ? mergedChildren : prev.children,
+    });
+  }
+  return sortTreeNodes(Array.from(map.values()));
+}
+
+/** Ensure ancestor branches + matching variable leaves exist (dot-path tree). */
+export function mergeSearchVariablesIntoDotTree(
+  tree: TreeNode[],
+  matchingNames: string[],
+  branchVarPrefix: string | null,
+): TreeNode[] {
+  if (!matchingNames.length) return tree;
+
+  const branchPaths = collectAncestorBranchesForVariables(matchingNames);
+  let merged = branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
+
+  const byParent = groupVariablesByParentBranch(matchingNames.map((name) => ({ name })));
+  for (const [parentBranch, vars] of byParent) {
+    merged = attachVariablesToBranch(merged, parentBranch, vars, branchVarPrefix);
+  }
+  return merged;
+}
+
+export function buildFlatVariableSearchNodes(matchingNames: string[]): TreeNode[] {
+  return matchingNames.map((name) => ({
+    key: name,
+    title: name,
+    fullPath: name,
+    isLeaf: true,
+    nodeKind: 'variable' as const,
+  }));
 }
 
 function sortTreeChildren(a: TreeNode, b: TreeNode): number {

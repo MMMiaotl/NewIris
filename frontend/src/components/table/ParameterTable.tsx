@@ -8,6 +8,7 @@ import {
   MAX_SELECTED_PARAMETERS,
   useVariableStore,
 } from '../../stores/variableStore';
+import { variableNameMatchesSearch } from '../../utils/buildVariableTree';
 import { usePlotStore } from '../../stores/plotStore';
 import { ParameterValueCell } from './ParameterValueCell';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
@@ -76,7 +77,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     const q = searchQuery?.toLowerCase();
     return selectedVariables
       .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name))
-      .filter((v) => !q || v.name.toLowerCase().includes(q));
+      .filter((v) => !q || variableNameMatchesSearch(v.name, q));
   }, [selectedVariables, variableMap, searchQuery]);
 
   const showTypeColumn = useMemo(

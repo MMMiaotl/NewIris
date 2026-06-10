@@ -6,7 +6,7 @@ import { smcHttpGet } from './smcHttp';
 import { normalizeEntries, parseWatchIoResponse } from '../utils/parseWatchIoMessage';
 import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
 import { buildWatchIoBase, buildWatchIoInstanceUrl } from './watchIoPaths';
-import { WATCHIO_VARLEAVES_ATTRS, watchIoEntry, watchIoMonitorAttributes } from './watchIoServerJson';
+import { WATCHIO_VARLEAVES_ATTRS, watchIoAttributesParam, watchIoEntry, watchIoMonitorAttributes } from './watchIoServerJson';
 
 export class HttpWatchIoClient implements WatchIoClient {
   private messageHandlers = new Set<MessageHandler>();
@@ -87,8 +87,12 @@ export class HttpWatchIoClient implements WatchIoClient {
     void this.loadVarLeaves(branch, withMeta);
   }
 
-  fetchVarList(_filter = ''): void {
-    void this.requestJson({ type: 'varlist' });
+  fetchVarList(filter = ''): void {
+    void this.requestJson(
+      filter
+        ? { type: 'varlist', params: watchIoAttributesParam(`matchfilter=${filter}`) }
+        : { type: 'varlist' },
+    );
   }
 
   setMonitorList(variables: MonitorVariable[]): void {

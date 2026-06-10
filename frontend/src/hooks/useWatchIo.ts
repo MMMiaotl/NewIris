@@ -31,7 +31,7 @@ export function useWatchIo() {
   const userDisconnectedWatchIoWsRef = useRef(false);
   const suppressAutoConnectRef = useRef(false);
   const prevTransportRef = useRef<ConnectionTransport | null>(null);
-  const { config, appMode, status, setStatus } = useConnectionStore();
+  const { config, appMode, status, setStatus, searchQuery } = useConnectionStore();
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
     setTreeNodes,
@@ -372,6 +372,17 @@ export function useWatchIo() {
     }
     client.requestUpdate();
   }, [plotVariables, appMode, status, config.transport]);
+
+  useEffect(() => {
+    if (appMode !== 'live' || status !== 'connected') return;
+    const q = searchQuery.trim();
+    if (!q || !isWatchIoTransport(config.transport)) return;
+
+    const id = window.setTimeout(() => {
+      clientRef.current?.fetchVarList(q);
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [searchQuery, appMode, status, config.transport]);
 
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;

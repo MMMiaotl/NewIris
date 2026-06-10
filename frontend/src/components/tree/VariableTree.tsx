@@ -9,9 +9,12 @@ import type { TreeNode } from '../../api/types';
 import {
   branchHasLoadedChildren,
   branchHasLoadedVariables,
+  buildFlatVariableSearchNodes,
+  collectMatchingVariableNames,
   filterFlatTreeByVariableSearch,
   filterTreeByVariableSearch,
   flattenTree,
+  mergeSearchVariablesIntoDotTree,
   wrapWithWatchIoRoot,
 } from '../../utils/buildVariableTree';
 import { VariableTreeNodeTitle } from './VariableTreeNodeTitle';
@@ -37,6 +40,8 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const watchIoName = useConnectionStore((s) => s.config.watchIoName);
 
   const treeNodes = useVariableStore((s) => s.treeNodes);
+  const variables = useVariableStore((s) => s.variables);
+  const branchVarPrefix = useVariableStore((s) => s.branchVarPrefix);
   const selectedBranch = useVariableStore((s) => s.selectedBranch);
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const setSelectedBranch = useVariableStore((s) => s.setSelectedBranch);
@@ -55,13 +60,46 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       : useDotTreeRoot
         ? treeNodes
         : wrapWithWatchIoRoot(watchIoName, treeNodes);
-    if (searchQuery) {
-      nodes = flatTree
-        ? filterFlatTreeByVariableSearch(nodes, searchQuery)
-        : filterTreeByVariableSearch(nodes, searchQuery);
+
+    const q = searchQuery.trim();
+    if (!q) return nodes;
+
+    const matchingNames = collectMatchingVariableNames(variables, selectedVariables, q);
+
+    if (flatTree) {
+      return matchingNames.length
+        ? buildFlatVariableSearchNodes(matchingNames)
+        : filterFlatTreeByVariableSearch(nodes, q);
     }
-    return nodes;
-  }, [treeNodes, flatTree, searchQuery, watchIoName, useDotTreeRoot]);
+
+    if (matchingNames.length) {
+      if (useDotTreeRoot) {
+        nodes = mergeSearchVariablesIntoDotTree(nodes, matchingNames, branchVarPrefix);
+      } else {
+        nodes = [
+          {
+            key: watchIoName,
+            title: watchIoName,
+            fullPath: watchIoName,
+            isLeaf: false,
+            nodeKind: 'branch' as const,
+            children: buildFlatVariableSearchNodes(matchingNames),
+          },
+        ];
+      }
+    }
+
+    return filterTreeByVariableSearch(nodes, q);
+  }, [
+    treeNodes,
+    variables,
+    selectedVariables,
+    branchVarPrefix,
+    flatTree,
+    searchQuery,
+    watchIoName,
+    useDotTreeRoot,
+  ]);
 
   const treeData = useMemo(() => toVariableTreeData(displayNodes), [displayNodes]);
 

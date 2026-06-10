@@ -187,10 +187,15 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   },
   mergeVarList: (entries) => {
     const list = normalizeEntries(entries);
-    const vars: WatchIoVariable[] = list.map((entry) =>
-      buildWatchIoVariable(entry.name, entry, undefined, get().registeredNames.has(entry.name)),
-    );
-    set({ variables: vars.sort((a, b) => a.name.localeCompare(b.name)) });
+    const map = new Map(get().variables.map((v) => [v.name, v]));
+    for (const entry of list) {
+      const prev = map.get(entry.name);
+      map.set(
+        entry.name,
+        buildWatchIoVariable(entry.name, entry, prev, get().registeredNames.has(entry.name)),
+      );
+    }
+    set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
   },
   applyUpdate: (entries) => {
     const list = normalizeEntries(entries);
