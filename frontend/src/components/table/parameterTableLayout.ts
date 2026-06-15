@@ -15,7 +15,7 @@ export interface ParameterFixedColumnSpec {
 }
 
 export const PARAMETER_FIXED_COLUMN_SPECS: readonly ParameterFixedColumnSpec[] = [
-  { key: 'name', title: 'name', dataIndex: 'name', defaultWidth: 320, minWidth: 80 },
+  { key: 'name', title: 'name', dataIndex: 'name', defaultWidth: 220, minWidth: 80 },
   { key: 'type', title: 'type', dataIndex: 'varKind', defaultWidth: 72, minWidth: 48 },
   { key: 'value', title: 'value', dataIndex: 'value', defaultWidth: 120, minWidth: 64 },
   { key: 'scale', title: 'scale', dataIndex: 'scale', defaultWidth: 80, minWidth: 48 },
@@ -32,6 +32,41 @@ export function createDefaultFixedWidths(): ParameterFixedWidths {
   return Object.fromEntries(
     PARAMETER_FIXED_COLUMN_SPECS.map((spec) => [spec.key, spec.defaultWidth]),
   ) as ParameterFixedWidths;
+}
+
+const PERSISTED_COLUMN_WIDTHS_KEY = 'newiris-parameter-column-widths-v1';
+
+function clampWidth(key: ParameterFixedColumnKey, width: number): number {
+  const spec = PARAMETER_FIXED_COLUMN_SPECS.find((s) => s.key === key);
+  if (!spec) return width;
+  return Math.max(spec.minWidth, Math.round(width));
+}
+
+export function readPersistedParameterColumnWidths(): ParameterFixedWidths | null {
+  try {
+    const raw = sessionStorage.getItem(PERSISTED_COLUMN_WIDTHS_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as Partial<ParameterFixedWidths>;
+    const defaults = createDefaultFixedWidths();
+    const next = { ...defaults };
+    for (const spec of PARAMETER_FIXED_COLUMN_SPECS) {
+      const value = data[spec.key];
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        next[spec.key] = clampWidth(spec.key, value);
+      }
+    }
+    return next;
+  } catch {
+    return null;
+  }
+}
+
+export function writePersistedParameterColumnWidths(widths: ParameterFixedWidths): void {
+  try {
+    sessionStorage.setItem(PERSISTED_COLUMN_WIDTHS_KEY, JSON.stringify(widths));
+  } catch {
+    // ignore quota / private mode
+  }
 }
 
 export function fixedCellStyle(width: number): CSSProperties {

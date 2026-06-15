@@ -1,6 +1,6 @@
 import { Table } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import type { WatchIoVariable } from '../../api/types';
 import {
@@ -16,15 +16,22 @@ import {
   buildFixedParameterColumn,
   createDefaultFixedWidths,
   fixedCellStyle,
-  HORIZONTAL_SCROLL_BUFFER,
   MIN_DESCRIPTION_WIDTH,
   PARAMETER_FIXED_COLUMN_SPECS,
+  readPersistedParameterColumnWidths,
+  writePersistedParameterColumnWidths,
   type ParameterFixedColumnKey,
   type ParameterFixedWidths,
 } from './parameterTableLayout';
 
+const COLUMN_WIDTH_SAVE_MS = 300;
+
 interface ParameterTableProps {
   onSetValue: (name: string, value: string) => void;
+}
+
+function createInitialFixedWidths(): ParameterFixedWidths {
+  return readPersistedParameterColumnWidths() ?? createDefaultFixedWidths();
 }
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
@@ -38,10 +45,11 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const setPlotDrawerOpen = useConnectionStore((s) => s.setPlotDrawerOpen);
   const { addPlotVariable } = usePlotStore();
   const [editing, setEditing] = useState<Record<string, string>>({});
-  const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createDefaultFixedWidths);
+  const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createInitialFixedWidths);
   const tableBodyRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState(300);
   const [containerWidth, setContainerWidth] = useState(0);
+  const columnWidthSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openControlForVariable = useCallback(
     (name: string) => {
@@ -65,7 +73,21 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
   const handleResize = useCallback(
     (key: ParameterFixedColumnKey) => (width: number) => {
-      setFixedWidths((prev) => ({ ...prev, [key]: width }));
+      setFixedWidths((prev) => {
+        const next = { ...prev, [key]: width };
+        if (columnWidthSaveTimerRef.current) clearTimeout(columnWidthSaveTimerRef.current);
+        columnWidthSaveTimerRef.current = setTimeout(() => {
+          writePersistedParameterColumnWidths(next);
+        }, COLUMN_WIDTH_SAVE_MS);
+        return next;
+      });
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      if (columnWidthSaveTimerRef.current) clearTimeout(columnWidthSaveTimerRef.current);
     },
     [],
   );
@@ -87,10 +109,8 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
   const fixedSum = useMemo(
     () =>
-      PARAMETER_FIXED_COLUMN_SPECS.filter(
-        (spec) => showTypeColumn || spec.key !== 'type',
-      ).reduce((sum, spec) => sum + fixedWidths[spec.key], 0),
-    [fixedWidths, showTypeColumn],
+      PARAMETER_FIXED_COLUMN_SPECS.reduce((sum, spec) => sum + fixedWidths[spec.key], 0),
+    [fixedWidths],
   );
 
   const descriptionWidth = useMemo(() => {
@@ -98,15 +118,10 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     return Math.max(MIN_DESCRIPTION_WIDTH, containerWidth - fixedSum);
   }, [containerWidth, fixedSum]);
 
-  const minScrollableWidth = fixedSum + MIN_DESCRIPTION_WIDTH;
-  const overflowX =
-    containerWidth > 0 &&
-    minScrollableWidth > containerWidth - HORIZONTAL_SCROLL_BUFFER;
-  const scrollX = overflowX
-    ? Math.max(minScrollableWidth, fixedSum + descriptionWidth, containerWidth + 1)
-    : undefined;
+  /** Sum of column widths — always pass as scroll.x so header/body stay aligned. */
+  const tableWidth = fixedSum + descriptionWidth;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = tableBodyRef.current;
     if (!el) return;
     const update = () => {
@@ -122,12 +137,10 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     const observer = new ResizeObserver(() => requestAnimationFrame(update));
     observer.observe(el);
     return () => observer.disconnect();
-  }, [selectedVariables.length, fixedWidths, overflowX, showTypeColumn]);
+  }, [selectedVariables.length, fixedWidths, containerWidth]);
 
   const columns: ColumnsType<WatchIoVariable> = useMemo(() => {
-    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.filter(
-      (spec) => showTypeColumn || spec.key !== 'type',
-    ).map((spec) => {
+    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.map((spec) => {
       const width = fixedWidths[spec.key];
       const onResize = handleResize(spec.key);
 
@@ -146,7 +159,9 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       }
 
       if (spec.key === 'type') {
-        return buildFixedParameterColumn(spec, width, onResize);
+        return buildFixedParameterColumn(spec, width, onResize, {
+          render: (kind: string) => (showTypeColumn ? kind : ''),
+        });
       }
 
       if (spec.key === 'value') {
@@ -183,9 +198,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
         width: descriptionWidth,
       }),
       onCell: () => ({
-        style: overflowX
-          ? fixedCellStyle(descriptionWidth)
-          : { minWidth: MIN_DESCRIPTION_WIDTH },
+        style: fixedCellStyle(descriptionWidth),
       }),
     };
 
@@ -197,7 +210,6 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     editing,
     onSetValue,
     descriptionWidth,
-    overflowX,
     variableMap,
     openControlForVariable,
     showTypeColumn,
@@ -211,42 +223,49 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       : 'Parameters';
 
   const scroll = useMemo(
-    () => (overflowX ? { x: scrollX, y: tableScrollY } : { y: tableScrollY }),
-    [overflowX, scrollX, tableScrollY],
+    () => ({ x: tableWidth, y: tableScrollY }),
+    [tableWidth, tableScrollY],
   );
 
+  const tableReady = containerWidth > 0;
+
   return (
-    <div
-      className={`panel parameter-table-panel${overflowX ? ' has-horizontal-scroll' : ''}`}
-    >
+    <div className="panel parameter-table-panel">
       <div className="panel-header">{headerLabel}</div>
       <div
         ref={tableBodyRef}
         className="parameter-table-body"
-        style={{ '--parameter-table-body-height': `${tableScrollY}px` } as CSSProperties}
+        style={
+          {
+            '--parameter-table-body-height': `${tableScrollY}px`,
+            '--parameter-table-width': `${tableWidth}px`,
+          } as CSSProperties
+        }
       >
-        <Table<WatchIoVariable>
-          size="small"
-          tableLayout="fixed"
-          columns={columns}
-          components={{
-            header: { cell: ResizableTableHeaderCell },
-          }}
-          dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
-          pagination={false}
-          scroll={scroll}
-          onRow={(row) => ({
-            className:
-              row.name === focusedVariable ? 'parameter-row-focused' : undefined,
-            onDoubleClick: () => addPlotVariable(row.name),
-          })}
-          locale={{
-            emptyText:
-              selectedVariables.length > 0
-                ? 'Selected parameters are not loaded yet'
-                : 'Select parameters in the tree (click circles; up to 100)',
-          }}
-        />
+        {tableReady ? (
+          <Table<WatchIoVariable>
+            size="small"
+            tableLayout="fixed"
+            columns={columns}
+            components={{
+              header: { cell: ResizableTableHeaderCell },
+            }}
+            dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
+            pagination={false}
+            scroll={scroll}
+            onRow={(row) => ({
+              className:
+                row.name === focusedVariable ? 'parameter-row-focused' : undefined,
+              onDoubleClick: () => addPlotVariable(row.name),
+            })}
+            locale={{
+              emptyText:
+                selectedVariables.length > 0
+                  ? 'Selected parameters are not loaded yet'
+                  : 'Select parameters in the tree (click circles; up to 100)',
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
