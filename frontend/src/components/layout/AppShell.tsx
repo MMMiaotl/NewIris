@@ -9,13 +9,17 @@ import { SettingsDrawer } from '../settings/SettingsDrawer';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ReplayControls } from '../replay/ReplayControls';
 import {
+  DEFAULT_TREE_PANEL_WIDTH,
   MIN_CONTROL_PANEL_WIDTH,
+  MIN_TREE_PANEL_WIDTH,
   useConnectionStore,
 } from '../../stores/connectionStore';
 import { useWatchIo } from '../../hooks/useWatchIo';
 import { useReplay } from '../../hooks/useReplay';
+import { useWorkspacePersistence } from '../../hooks/useWorkspacePersistence';
 
 export function AppShell() {
+  useWorkspacePersistence();
   const {
     viewMode,
     appMode,
@@ -74,7 +78,12 @@ export function AppShell() {
         >
           <Splitter.Panel min="40%">
             <Splitter className="main-splitter">
-              <Splitter.Panel defaultSize="15.4%" min="15%" max="40%">
+              <Splitter.Panel
+                className="tree-splitter-panel"
+                defaultSize={DEFAULT_TREE_PANEL_WIDTH}
+                min={MIN_TREE_PANEL_WIDTH}
+                max="40%"
+              >
                 <VariableTree
                   onExpandBranch={(branch) => {
                     if (!branch) client.current?.fetchVarTree();

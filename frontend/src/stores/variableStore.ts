@@ -77,6 +77,13 @@ interface VariableState {
   moveSelectedVariable: (name: string, direction: 'up' | 'down') => void;
   insertSelectedVariable: (name: string) => void;
   clearSelectedVariables: () => void;
+  /** Restore parameter list after refresh; does not load variable values. */
+  restoreWorkspaceSelection: (
+    selectedVariables: string[],
+    focusedVariable: string | null,
+  ) => void;
+  /** Drop cached tree/leaves; keep selected parameters (reconnect / refresh). */
+  clearConnectionCache: () => void;
   mergeVarLeaves: (
     entries: WatchIoEntry[],
     branchOverride?: string | null,
@@ -142,6 +149,20 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     set({ selectedVariables: next });
   },
   clearSelectedVariables: () => set({ selectedVariables: [], focusedVariable: null }),
+  restoreWorkspaceSelection: (selectedVariables, focusedVariable) => {
+    const capped = selectedVariables.slice(0, MAX_SELECTED_PARAMETERS);
+    const focused =
+      focusedVariable && capped.includes(focusedVariable) ? focusedVariable : null;
+    set({ selectedVariables: capped, focusedVariable: focused });
+  },
+  clearConnectionCache: () =>
+    set({
+      treeNodes: [],
+      variables: [],
+      registeredNames: new Set(),
+      selectedBranch: null,
+      branchVarPrefix: null,
+    }),
   mergeVarLeaves: (entries, branchOverride, varPrefixOverride) => {
     const list = normalizeEntries(entries);
     const branch = branchOverride ?? get().selectedBranch;

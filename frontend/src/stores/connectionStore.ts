@@ -48,6 +48,8 @@ const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
 
 export const DEFAULT_CONTROL_PANEL_WIDTH = 400;
 export const MIN_CONTROL_PANEL_WIDTH = 280;
+export const DEFAULT_TREE_PANEL_WIDTH = 240;
+export const MIN_TREE_PANEL_WIDTH = 200;
 
 const initialTransport = parseTransportEnv(import.meta.env.VITE_TRANSPORT);
 

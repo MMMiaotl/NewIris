@@ -213,7 +213,7 @@ export function useWatchIo() {
     registeredPlotVarsRef.current.clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
-    useVariableStore.getState().clear();
+    useVariableStore.getState().clearConnectionCache();
     useWatchIoMessageLogStore.getState().clear();
     setBranchVarPrefix(null);
 
