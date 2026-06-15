@@ -8,6 +8,7 @@ import {
   writeWorkspaceSnapshot,
   workspaceScope,
 } from '../utils/workspacePersistence';
+import { collectPinnedVariableNames } from '../utils/pinnedVariables';
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -57,7 +58,16 @@ export function useWorkspacePersistence(): void {
         state.focusedVariable !== prev.focusedVariable
       ) {
         scheduleWorkspaceSave();
+        return;
       }
+      const pinned = new Set(collectPinnedVariableNames());
+      if (!pinned.size) return;
+      const valuesChanged = state.variables.some((v) => {
+        if (!pinned.has(v.name)) return false;
+        const prevVar = prev.variables.find((p) => p.name === v.name);
+        return prevVar?.value !== v.value;
+      });
+      if (valuesChanged) scheduleWorkspaceSave();
     });
 
     const unsubPlot = usePlotStore.subscribe((state, prev) => {

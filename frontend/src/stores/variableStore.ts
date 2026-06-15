@@ -83,7 +83,9 @@ interface VariableState {
     focusedVariable: string | null,
   ) => void;
   /** Drop cached tree/leaves; keep selected parameters (reconnect / refresh). */
-  clearConnectionCache: () => void;
+  clearConnectionCache: (keepVariableNames?: Iterable<string>) => void;
+  /** Seed table rows from sessionStorage until live values arrive. */
+  seedPinnedVariableCache: (values: Record<string, string>) => void;
   mergeVarLeaves: (
     entries: WatchIoEntry[],
     branchOverride?: string | null,
@@ -155,14 +157,42 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       focusedVariable && capped.includes(focusedVariable) ? focusedVariable : null;
     set({ selectedVariables: capped, focusedVariable: focused });
   },
-  clearConnectionCache: () =>
+  seedPinnedVariableCache: (values) => {
+    const names = Object.keys(values);
+    if (!names.length) return;
+    const map = new Map(get().variables.map((v) => [v.name, v]));
+    for (const name of names) {
+      const cached = values[name];
+      if (cached === undefined || cached === '') continue;
+      const prev = map.get(name);
+      map.set(
+        name,
+        prev
+          ? { ...prev, value: cached }
+          : {
+              name,
+              value: cached,
+              varKind: '',
+              dataType: 'unknown',
+              description: '',
+              scale: '',
+              registered: false,
+            },
+      );
+    }
+    set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
+  },
+  clearConnectionCache: (keepVariableNames) => {
+    const keep = keepVariableNames ? new Set(keepVariableNames) : new Set<string>();
+    const kept = keep.size ? get().variables.filter((v) => keep.has(v.name)) : [];
     set({
       treeNodes: [],
-      variables: [],
+      variables: kept,
       registeredNames: new Set(),
       selectedBranch: null,
       branchVarPrefix: null,
-    }),
+    });
+  },
   mergeVarLeaves: (entries, branchOverride, varPrefixOverride) => {
     const list = normalizeEntries(entries);
     const branch = branchOverride ?? get().selectedBranch;

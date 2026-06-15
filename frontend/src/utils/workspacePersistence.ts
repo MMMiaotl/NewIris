@@ -2,6 +2,7 @@ import type { ConnectionConfig, ViewMode } from '../api/types';
 import { useConnectionStore } from '../stores/connectionStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
+import { collectPinnedVariableValues } from './pinnedVariables';
 
 /** sessionStorage: survives refresh, cleared when the tab closes. */
 export const WORKSPACE_STORAGE_KEY = 'newiris-workspace-v1';
@@ -21,6 +22,8 @@ export interface WorkspaceSnapshot {
   plotXWindowSec: number;
   flatTree: boolean;
   viewMode: ViewMode;
+  /** Last known values for pinned parameters — small cache for refresh display. */
+  pinnedValues?: Record<string, string>;
 }
 
 export function workspaceScope(config: ConnectionConfig): string {
@@ -53,6 +56,7 @@ export function collectWorkspaceSnapshot(): WorkspaceSnapshot {
     plotXWindowSec: xWindowSec,
     flatTree,
     viewMode,
+    pinnedValues: collectPinnedVariableValues(),
   };
 }
 
@@ -105,6 +109,10 @@ export function restoreWorkspaceSnapshotIfMatching(): boolean {
     snapshot.selectedVariables,
     snapshot.focusedVariable,
   );
+
+  if (snapshot.pinnedValues && Object.keys(snapshot.pinnedValues).length) {
+    useVariableStore.getState().seedPinnedVariableCache(snapshot.pinnedValues);
+  }
 
   const plot = usePlotStore.getState();
   plot.loadPlotConfig(
