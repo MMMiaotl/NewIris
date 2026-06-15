@@ -1,6 +1,6 @@
 import { Table } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import type { WatchIoVariable } from '../../api/types';
 import {
@@ -107,10 +107,17 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     [tableRows],
   );
 
-  const fixedSum = useMemo(
+  const visibleFixedSpecs = useMemo(
     () =>
-      PARAMETER_FIXED_COLUMN_SPECS.reduce((sum, spec) => sum + fixedWidths[spec.key], 0),
-    [fixedWidths],
+      showTypeColumn
+        ? PARAMETER_FIXED_COLUMN_SPECS
+        : PARAMETER_FIXED_COLUMN_SPECS.filter((spec) => spec.key !== 'type'),
+    [showTypeColumn],
+  );
+
+  const fixedSum = useMemo(
+    () => visibleFixedSpecs.reduce((sum, spec) => sum + fixedWidths[spec.key], 0),
+    [fixedWidths, visibleFixedSpecs],
   );
 
   const descriptionWidth = useMemo(() => {
@@ -118,20 +125,16 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     return Math.max(MIN_DESCRIPTION_WIDTH, containerWidth - fixedSum);
   }, [containerWidth, fixedSum]);
 
-  /** Sum of column widths — always pass as scroll.x so header/body stay aligned. */
+  /** Sum of column widths — scroll.x keeps horizontal layout stable. */
   const tableWidth = fixedSum + descriptionWidth;
+  const tableReady = containerWidth > 0;
 
   useLayoutEffect(() => {
     const el = tableBodyRef.current;
     if (!el) return;
     const update = () => {
-      const header = el.querySelector<HTMLElement>('.ant-table-header');
-      const headerHeight = header?.offsetHeight ?? 28;
-      setTableScrollY(Math.max(80, el.clientHeight - headerHeight));
-      const style = getComputedStyle(el);
-      const paddingX =
-        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      setContainerWidth(Math.max(0, el.clientWidth - paddingX));
+      setContainerWidth(Math.max(0, el.clientWidth));
+      setTableScrollY(Math.max(80, el.clientHeight));
     };
     update();
     const observer = new ResizeObserver(() => requestAnimationFrame(update));
@@ -140,7 +143,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   }, [selectedVariables.length, fixedWidths]);
 
   const columns: ColumnsType<WatchIoVariable> = useMemo(() => {
-    const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.map((spec) => {
+    const fixedColumns = visibleFixedSpecs.map((spec) => {
       const width = fixedWidths[spec.key];
       const onResize = handleResize(spec.key);
 
@@ -158,29 +161,23 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
         });
       }
 
-      if (spec.key === 'type') {
-        return buildFixedParameterColumn(spec, width, onResize, {
-          render: (kind: string) => (showTypeColumn ? kind : ''),
-        });
-      }
-
       if (spec.key === 'value') {
         return buildFixedParameterColumn(spec, width, onResize, {
           ellipsis: false,
-        render: (val: string, row) => {
-          const isPlaceholder = !variableMap.has(row.name);
-          if (isPlaceholder) return val || '—';
-          if (appMode === 'replay') return val;
-          return (
-            <ParameterValueCell
-              name={row.name}
-              value={val}
-              draft={editing[row.name]}
-              onDraftChange={setValueDraft}
-              onClearDraft={clearValueDraft}
-              onSetValue={onSetValue}
-            />
-          );
+          render: (val: string, row) => {
+            const isPlaceholder = !variableMap.has(row.name);
+            if (isPlaceholder) return val || '—';
+            if (appMode === 'replay') return val;
+            return (
+              <ParameterValueCell
+                name={row.name}
+                value={val}
+                draft={editing[row.name]}
+                onDraftChange={setValueDraft}
+                onClearDraft={clearValueDraft}
+                onSetValue={onSetValue}
+              />
+            );
           },
         });
       }
@@ -196,6 +193,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       width: descriptionWidth,
       onHeaderCell: () => ({
         width: descriptionWidth,
+        style: fixedCellStyle(descriptionWidth),
       }),
       onCell: () => ({
         style: fixedCellStyle(descriptionWidth),
@@ -212,7 +210,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     descriptionWidth,
     variableMap,
     openControlForVariable,
-    showTypeColumn,
+    visibleFixedSpecs,
     setValueDraft,
     clearValueDraft,
   ]);
@@ -222,46 +220,44 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       ? `Parameters (${selectedVariables.length}/${MAX_SELECTED_PARAMETERS})`
       : 'Parameters';
 
-  const scroll = useMemo(
-    () => ({ x: tableWidth, y: tableScrollY }),
-    [tableWidth, tableScrollY],
-  );
+  const scroll = useMemo(() => {
+    if (tableWidth > containerWidth) return { x: tableWidth };
+    return undefined;
+  }, [tableWidth, containerWidth]);
 
   return (
     <div className="panel parameter-table-panel">
       <div className="panel-header">{headerLabel}</div>
-      <div
-        ref={tableBodyRef}
-        className="parameter-table-body"
-        style={
-          {
-            '--parameter-table-body-height': `${tableScrollY}px`,
-            '--parameter-table-width': `${tableWidth}px`,
-          } as CSSProperties
-        }
-      >
-        <Table<WatchIoVariable>
-          size="small"
-          tableLayout="fixed"
-          columns={columns}
-          components={{
-            header: { cell: ResizableTableHeaderCell },
-          }}
-          dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
-          pagination={false}
-          scroll={scroll}
-          onRow={(row) => ({
-            className:
-              row.name === focusedVariable ? 'parameter-row-focused' : undefined,
-            onDoubleClick: () => addPlotVariable(row.name),
-          })}
-          locale={{
-            emptyText:
-              selectedVariables.length > 0
-                ? 'Selected parameters are not loaded yet'
-                : 'Select parameters in the tree (click circles; up to 100)',
-          }}
-        />
+      <div ref={tableBodyRef} className="parameter-table-body">
+        <div
+          className="parameter-table-scroll"
+          style={tableReady ? { maxHeight: tableScrollY } : undefined}
+        >
+          {tableReady ? (
+            <Table<WatchIoVariable>
+              size="small"
+              tableLayout="fixed"
+              columns={columns}
+              components={{
+                header: { cell: ResizableTableHeaderCell },
+              }}
+              dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
+              pagination={false}
+              scroll={scroll}
+              onRow={(row) => ({
+                className:
+                  row.name === focusedVariable ? 'parameter-row-focused' : undefined,
+                onDoubleClick: () => addPlotVariable(row.name),
+              })}
+              locale={{
+                emptyText:
+                  selectedVariables.length > 0
+                    ? 'Selected parameters are not loaded yet'
+                    : 'Select parameters in the tree (click circles; up to 100)',
+              }}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

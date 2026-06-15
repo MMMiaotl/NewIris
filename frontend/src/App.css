@@ -264,15 +264,58 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 0 4px 4px;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
 
+/* Single-table scroll + sticky thead — avoids split header/body column drift. */
+.parameter-table-scroll {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  overflow: auto;
+}
+
+.parameter-table-panel .ant-table-wrapper {
+  width: 100%;
+  margin: 0;
+}
+
+.parameter-table-panel .ant-table,
+.parameter-table-panel .ant-table-container,
+.parameter-table-panel .ant-table-content,
+.parameter-table-panel .ant-table-content > table {
+  border-radius: 0 !important;
+}
+
+.parameter-table-panel .ant-table-thead > tr > th {
+  border-radius: 0 !important;
+}
+
+.parameter-table-panel .ant-table-content > table {
+  table-layout: fixed;
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.parameter-table-panel .ant-table-thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #e8e8d8;
+}
+
 .parameter-table-panel .ant-table-thead > tr > th,
 .parameter-table-panel .ant-table-tbody > tr > td {
-  padding: 2px 6px;
+  padding: 0.5px 6px;
+  font-size: 14px;
+  line-height: 18px;
   overflow: hidden;
+}
+
+.parameter-table-panel .ant-table-cell {
+  padding-block: 0.5px !important;
 }
 
 .parameter-table-panel .ant-table-thead > tr > th.parameter-table-resizable-th {
@@ -280,12 +323,14 @@
 }
 
 .parameter-table-panel .ant-table-thead > tr > th.parameter-table-resizable-th .ant-table-column-title {
-  padding-right: 8px;
+  padding-right: 5px;
 }
 
 .parameter-table-panel .ant-table-tbody > tr > td .ant-input {
-  padding: 0 6px;
-  height: 22px;
+  padding: 0.5px 4px;
+  height: 18px;
+  font-size: 14px;
+  line-height: 18px;
 }
 
 .parameter-table-panel .parameter-value-field {
@@ -299,14 +344,14 @@
 }
 
 .parameter-table-panel .parameter-value-field .ant-btn {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   padding: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .parameter-table-panel .parameter-value-field .ant-btn .anticon {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .parameter-table-panel .parameter-table-resize-handle {
@@ -322,39 +367,6 @@
 
 .parameter-table-panel .parameter-table-resize-handle:hover {
   background: rgba(22, 119, 255, 0.15);
-}
-
-.parameter-table-panel .ant-table-wrapper,
-.parameter-table-panel .ant-table,
-.parameter-table-panel .ant-table-container {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.parameter-table-panel .ant-table-header {
-  flex-shrink: 0;
-}
-
-.parameter-table-panel .ant-table-body {
-  flex: 1;
-  min-height: var(--parameter-table-body-height, 0px);
-  max-height: var(--parameter-table-body-height, none);
-  overflow: auto !important;
-}
-
-/* Keep header/body tables the same width — do not override Ant Design scroll.x sizing. */
-.parameter-table-panel .ant-table-header table,
-.parameter-table-panel .ant-table-body table {
-  table-layout: fixed;
-  width: var(--parameter-table-width) !important;
-  min-width: var(--parameter-table-width) !important;
-}
-
-/* Vertical scroll gutter: reserve scrollbar width on the header row. */
-.parameter-table-panel .ant-table-header {
-  overflow: hidden !important;
 }
 
 .plot-panel {
@@ -713,10 +725,10 @@
 .parameter-name-link {
   display: block;
   width: 100%;
-  margin: -1px -4px;
-  padding: 1px 4px;
+  margin: 0 -2px;
+  padding: 0 2px;
   border: none;
-  border-radius: 6px;
+  border-radius: 3px;
   background: transparent;
   color: inherit;
   text-align: left;
