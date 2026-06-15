@@ -2,10 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntApp, ConfigProvider, theme } from 'antd';
 import App from './App';
-import { restoreWorkspaceSnapshotIfMatching } from './utils/workspacePersistence';
+import { hydrateWorkspaceOnce } from './utils/workspacePersistence';
 import './index.css';
 
-restoreWorkspaceSnapshotIfMatching();
+hydrateWorkspaceOnce();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

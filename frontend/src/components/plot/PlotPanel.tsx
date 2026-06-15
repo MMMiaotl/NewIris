@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { usePlotStore, DEFAULT_PLOT_LINE_WIDTH } from '../../stores/plotStore';
@@ -10,6 +10,8 @@ import {
   formatPlotAxisTime,
   latestPlotTimeSec,
 } from '../../utils/plotTime';
+
+const PLOT_CONTAINER_INSET = 8;
 
 const PLOT_Y_AXIS = { stroke: '#9a9a9a', grid: { show: true, stroke: '#4a4a4a' } };
 const PLOT_X_AXIS = {
@@ -28,6 +30,7 @@ function seriesOptions(
     stroke: colors[name] ?? '#4fc3f7',
     width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
     spanGaps: true,
+    auto: false,
     points: { show: false },
   }));
 }
@@ -45,63 +48,98 @@ function syncPlot(
   const { min: viewMin, max: viewMax } = computePlotXViewport(elapsedSec, xWindowSec);
   const data = buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData;
 
+  // Lock Y before X — uPlot re-ranges Y from series data when X scale updates.
   u.setData(data, false);
+  applyYScale(u, yMin, yMax);
   u.setScale('x', { min: viewMin, max: viewMax });
-  u.setScale('y', { min: yMin, max: yMax });
+  applyYScale(u, yMin, yMax);
+}
+
+function plotCanvasHeight(containerHeight: number): number {
+  return Math.max(0, containerHeight - PLOT_CONTAINER_INSET);
+}
+
+function fixedYRange(yMin: number, yMax: number): uPlot.Range.MinMax {
+  return [yMin, yMax];
+}
+
+function yScaleOptions(yMin: number, yMax: number): uPlot.Scale {
+  return {
+    auto: false,
+    min: yMin,
+    max: yMax,
+    range: () => fixedYRange(yMin, yMax),
+  };
+}
+
+function applyYScale(u: uPlot, yMin: number, yMax: number): void {
+  u.setScale('y', {
+    min: yMin,
+    max: yMax,
+    range: () => fixedYRange(yMin, yMax),
+  } as { min: number; max: number });
 }
 
 export function PlotPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
+  const chartKeyRef = useRef('');
   const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } =
     usePlotStore();
   const { appMode } = useConnectionStore();
   const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}`;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const opts: uPlot.Options = {
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight - 8,
-      scales: {
-        x: { time: false, auto: false },
-        y: { auto: false },
-      },
-      series: [{}, ...seriesOptions(plotVariables, colors, lineWidths)],
-      axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
-    };
-
-    plotRef.current?.destroy();
-    plotRef.current = new uPlot(
-      opts,
-      buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData,
-      containerRef.current,
-    );
-
-    syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec);
-
+  useLayoutEffect(() => {
     const el = containerRef.current;
-    const onResize = () => {
-      if (el && plotRef.current) {
-        plotRef.current.setSize({
-          width: el.clientWidth,
-          height: el.clientHeight - 8,
-        });
+    if (!el) return;
+
+    const syncSize = () => {
+      const width = el.clientWidth;
+      const height = plotCanvasHeight(el.clientHeight);
+      if (width <= 0 || height <= 0) return;
+
+      if (plotRef.current && chartKeyRef.current === plotChartKey) {
+        plotRef.current.setSize({ width, height });
+        return;
       }
+
+      plotRef.current?.destroy();
+      chartKeyRef.current = plotChartKey;
+
+      const opts: uPlot.Options = {
+        width,
+        height,
+        scales: {
+          x: { time: false, auto: false },
+          y: yScaleOptions(yMin, yMax),
+        },
+        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths)],
+        axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
+      };
+
+      plotRef.current = new uPlot(
+        opts,
+        buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData,
+        el,
+      );
+      syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec);
     };
-    const observer = new ResizeObserver(() => requestAnimationFrame(onResize));
+
+    syncSize();
+    const observer = new ResizeObserver(() => requestAnimationFrame(syncSize));
     observer.observe(el);
     return () => {
       observer.disconnect();
       plotRef.current?.destroy();
       plotRef.current = null;
+      chartKeyRef.current = '';
     };
   }, [plotChartKey]);
 
-  useEffect(() => {
+  /** Apply data + axis scales before paint so Y range does not flash. */
+  useLayoutEffect(() => {
     const u = plotRef.current;
-    if (!u || plotVariables.length === 0) return;
+    if (!u) return;
     syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec);
   }, [seriesData, plotVariables, yMin, yMax, xWindowSec]);
 

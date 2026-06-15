@@ -107,6 +107,11 @@
   border: 1px solid #c0c0c0;
 }
 
+.right-splitter.ant-splitter-vertical > .ant-splitter-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .main-splitter .tree-splitter-panel {
   min-width: 200px;
   flex-shrink: 0;
@@ -355,6 +360,7 @@
 .plot-panel {
   background: #3a3a3a;
   position: relative;
+  min-height: 0;
 }
 
 .plot-panel .panel-header {
@@ -365,7 +371,7 @@
 
 .plot-container {
   flex: 1;
-  min-height: 120px;
+  min-height: 0;
 }
 
 .plot-empty {

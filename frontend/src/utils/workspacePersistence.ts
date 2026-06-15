@@ -97,6 +97,15 @@ export function clearWorkspaceSnapshot(): void {
   }
 }
 
+let workspaceHydrated = false;
+
+/** Restore workspace once per page load (main.tsx + hook share this guard). */
+export function hydrateWorkspaceOnce(): boolean {
+  if (workspaceHydrated) return false;
+  workspaceHydrated = true;
+  return restoreWorkspaceSnapshotIfMatching();
+}
+
 /** Restore selection/plot UI if snapshot matches current connection scope. Returns true if applied. */
 export function restoreWorkspaceSnapshotIfMatching(): boolean {
   const snapshot = readWorkspaceSnapshot();
@@ -115,12 +124,18 @@ export function restoreWorkspaceSnapshotIfMatching(): boolean {
   }
 
   const plot = usePlotStore.getState();
+  const yMin = typeof snapshot.plotMin === 'number' ? snapshot.plotMin : -10;
+  const yMax = typeof snapshot.plotMax === 'number' ? snapshot.plotMax : 10;
+  const xWindowSec =
+    typeof snapshot.plotXWindowSec === 'number'
+      ? snapshot.plotXWindowSec
+      : plot.xWindowSec;
   plot.loadPlotConfig(
     snapshot.plotVariables,
     snapshot.plotColors,
-    snapshot.plotMin,
-    snapshot.plotMax,
-    snapshot.plotXWindowSec,
+    yMin,
+    yMax,
+    xWindowSec,
     snapshot.plotLineWidths,
   );
 

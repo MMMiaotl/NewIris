@@ -17,6 +17,14 @@ import {
 import { useWatchIo } from '../../hooks/useWatchIo';
 import { useReplay } from '../../hooks/useReplay';
 import { useWorkspacePersistence } from '../../hooks/useWorkspacePersistence';
+import {
+  readInitialParameterPanelDefaultSize,
+  readInitialPlotPanelDefaultSize,
+  writePersistedParameterPlotSplitRatio,
+} from '../../utils/layoutPersistence';
+
+const parameterPanelDefaultSize = readInitialParameterPanelDefaultSize();
+const plotPanelDefaultSize = readInitialPlotPanelDefaultSize();
 
 export function AppShell() {
   useWorkspacePersistence();
@@ -95,14 +103,29 @@ export function AppShell() {
                 />
               </Splitter.Panel>
               <Splitter.Panel>
-                <Splitter orientation="vertical" className="right-splitter">
+                <Splitter
+                  orientation="vertical"
+                  className="right-splitter"
+                  onResizeEnd={(sizes) => {
+                    const first = sizes[0];
+                    const second = sizes[1];
+                    if (
+                      typeof first === 'number' &&
+                      typeof second === 'number' &&
+                      first > 0 &&
+                      second > 0
+                    ) {
+                      writePersistedParameterPlotSplitRatio(first / (first + second));
+                    }
+                  }}
+                >
                   {showList && (
-                    <Splitter.Panel defaultSize="45%" min="20%">
+                    <Splitter.Panel defaultSize={parameterPanelDefaultSize} min="20%">
                       <ParameterTable onSetValue={setVariableValue} />
                     </Splitter.Panel>
                   )}
                   {showPlot && (
-                    <Splitter.Panel min="25%">
+                    <Splitter.Panel defaultSize={plotPanelDefaultSize} min="25%">
                       <PlotPanel />
                     </Splitter.Panel>
                   )}

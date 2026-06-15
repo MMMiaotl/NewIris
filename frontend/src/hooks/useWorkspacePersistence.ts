@@ -4,6 +4,7 @@ import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
 import {
   collectWorkspaceSnapshot,
+  hydrateWorkspaceOnce,
   restoreWorkspaceSnapshotIfMatching,
   writeWorkspaceSnapshot,
   workspaceScope,
@@ -12,7 +13,6 @@ import { collectPinnedVariableNames } from '../utils/pinnedVariables';
 
 const SAVE_DEBOUNCE_MS = 400;
 
-let restoreDone = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSavedScope: string | null = null;
 
@@ -36,19 +36,13 @@ function flushWorkspaceSave(): void {
   writeWorkspaceSnapshot(snapshot);
 }
 
-function ensureRestoredOnce(): void {
-  if (restoreDone) return;
-  restoreDone = true;
-  restoreWorkspaceSnapshotIfMatching();
-}
-
 /**
  * Short-term workspace memory: selected parameters + plot config in sessionStorage.
  * Does not persist time-series data (seriesData) — only names and plot UI settings.
  */
 export function useWorkspacePersistence(): void {
   useLayoutEffect(() => {
-    ensureRestoredOnce();
+    hydrateWorkspaceOnce();
   }, []);
 
   useEffect(() => {

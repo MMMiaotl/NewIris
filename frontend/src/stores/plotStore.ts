@@ -30,6 +30,44 @@ export const DEFAULT_PLOT_X_WINDOW_SEC = 600;
 const MIN_PLOT_X_WINDOW_SEC = 30;
 const MAX_PLOT_X_WINDOW_SEC = 3600;
 
+const WORKSPACE_STORAGE_KEY = 'newiris-workspace-v1';
+
+function workspaceScopeFromConfig(config: {
+  transport: string;
+  hostAddress: string;
+  serverPath: string;
+  watchIoName: string;
+}): string {
+  return [config.transport, config.hostAddress, config.serverPath, config.watchIoName].join('|');
+}
+
+/** Read persisted Y range before first render — avoids a frame at hardcoded defaults. */
+function readInitialPlotScales(): { yMin: number; yMax: number; xWindowSec: number } {
+  const defaults = { yMin: -10, yMax: 10, xWindowSec: DEFAULT_PLOT_X_WINDOW_SEC };
+  try {
+    const raw = sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
+    if (!raw) return defaults;
+    const snapshot = JSON.parse(raw) as {
+      scope?: string;
+      plotMin?: number;
+      plotMax?: number;
+      plotXWindowSec?: number;
+    };
+    const scope = workspaceScopeFromConfig(useConnectionStore.getState().config);
+    if (snapshot.scope !== scope) return defaults;
+    return {
+      yMin: typeof snapshot.plotMin === 'number' ? snapshot.plotMin : defaults.yMin,
+      yMax: typeof snapshot.plotMax === 'number' ? snapshot.plotMax : defaults.yMax,
+      xWindowSec:
+        typeof snapshot.plotXWindowSec === 'number' ? snapshot.plotXWindowSec : defaults.xWindowSec,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+const initialPlotScales = readInitialPlotScales();
+
 function clampXWindowSec(seconds: number): number {
   return Math.max(MIN_PLOT_X_WINDOW_SEC, Math.min(MAX_PLOT_X_WINDOW_SEC, seconds));
 }
@@ -98,9 +136,9 @@ export const usePlotStore = create<PlotState>((set, get) => ({
   plotStartedAtMs: {},
   colors: {},
   lineWidths: {},
-  yMin: -10,
-  yMax: 10,
-  xWindowSec: DEFAULT_PLOT_X_WINDOW_SEC,
+  yMin: initialPlotScales.yMin,
+  yMax: initialPlotScales.yMax,
+  xWindowSec: initialPlotScales.xWindowSec,
   seriesData: {},
   plotInitMs: PLOT_INIT_MS,
   maxPoints: maxPointsForStore(),

@@ -137,7 +137,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     const observer = new ResizeObserver(() => requestAnimationFrame(update));
     observer.observe(el);
     return () => observer.disconnect();
-  }, [selectedVariables.length, fixedWidths, containerWidth]);
+  }, [selectedVariables.length, fixedWidths]);
 
   const columns: ColumnsType<WatchIoVariable> = useMemo(() => {
     const fixedColumns = PARAMETER_FIXED_COLUMN_SPECS.map((spec) => {
@@ -227,8 +227,6 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     [tableWidth, tableScrollY],
   );
 
-  const tableReady = containerWidth > 0;
-
   return (
     <div className="panel parameter-table-panel">
       <div className="panel-header">{headerLabel}</div>
@@ -242,30 +240,28 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           } as CSSProperties
         }
       >
-        {tableReady ? (
-          <Table<WatchIoVariable>
-            size="small"
-            tableLayout="fixed"
-            columns={columns}
-            components={{
-              header: { cell: ResizableTableHeaderCell },
-            }}
-            dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
-            pagination={false}
-            scroll={scroll}
-            onRow={(row) => ({
-              className:
-                row.name === focusedVariable ? 'parameter-row-focused' : undefined,
-              onDoubleClick: () => addPlotVariable(row.name),
-            })}
-            locale={{
-              emptyText:
-                selectedVariables.length > 0
-                  ? 'Selected parameters are not loaded yet'
-                  : 'Select parameters in the tree (click circles; up to 100)',
-            }}
-          />
-        ) : null}
+        <Table<WatchIoVariable>
+          size="small"
+          tableLayout="fixed"
+          columns={columns}
+          components={{
+            header: { cell: ResizableTableHeaderCell },
+          }}
+          dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
+          pagination={false}
+          scroll={scroll}
+          onRow={(row) => ({
+            className:
+              row.name === focusedVariable ? 'parameter-row-focused' : undefined,
+            onDoubleClick: () => addPlotVariable(row.name),
+          })}
+          locale={{
+            emptyText:
+              selectedVariables.length > 0
+                ? 'Selected parameters are not loaded yet'
+                : 'Select parameters in the tree (click circles; up to 100)',
+          }}
+        />
       </div>
     </div>
   );
