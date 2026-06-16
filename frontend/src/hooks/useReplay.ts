@@ -3,7 +3,11 @@ import { useSessionStore } from '../stores/sessionStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
 
-export function useReplay() {
+/**
+ * RAF playback loop for recorded sessions.
+ * Mount once at AppShell root — do not call from ReplayControls (would double-advance frames).
+ */
+export function useReplayPlayback() {
   const { replayData, replayPlaying, replaySpeed, setReplayIndex } = useSessionStore();
   const { plotVariables, appendPoint } = usePlotStore();
   const { applyUpdate } = useVariableStore();
@@ -22,7 +26,7 @@ export function useReplay() {
       const data = state.replayData;
       if (!data) return;
 
-      let idx = state.replayIndex;
+      const idx = state.replayIndex;
       const frame = data.frames[idx];
       if (!frame) {
         useSessionStore.getState().setReplayPlaying(false);
@@ -57,23 +61,28 @@ export function useReplay() {
       lastTickRef.current = 0;
     };
   }, [replayData, replayPlaying, replaySpeed, plotVariables, setReplayIndex, applyUpdate, appendPoint]);
+}
 
-  const seekTo = (index: number) => {
-    const data = useSessionStore.getState().replayData;
-    if (!data || index < 0 || index >= data.frames.length) return;
-    setReplayIndex(index);
-    const frame = data.frames[index];
-    applyUpdate(Object.entries(frame.values).map(([name, value]) => ({ name, value })));
-    const firstFrameMs = data.frames[0]?.t ?? Date.now();
-    usePlotStore.getState().setPlotInitMs(firstFrameMs);
-    const plotVars = usePlotStore.getState().plotVariables;
-    for (let i = 0; i <= index; i++) {
-      const f = data.frames[i];
-      for (const [name, value] of Object.entries(f.values)) {
-        if (plotVars.includes(name)) appendPoint(name, value, f.t);
-      }
+/** Scrub replay to a frame index and rebuild plot series up to that point. */
+export function seekReplayFrame(index: number) {
+  const data = useSessionStore.getState().replayData;
+  if (!data || index < 0 || index >= data.frames.length) return;
+
+  const { setReplayIndex } = useSessionStore.getState();
+  const { appendPoint, setPlotInitMs } = usePlotStore.getState();
+  const { applyUpdate } = useVariableStore.getState();
+
+  setReplayIndex(index);
+  const frame = data.frames[index];
+  applyUpdate(Object.entries(frame.values).map(([name, value]) => ({ name, value })));
+
+  const firstFrameMs = data.frames[0]?.t ?? Date.now();
+  setPlotInitMs(firstFrameMs);
+  const plotVars = usePlotStore.getState().plotVariables;
+  for (let i = 0; i <= index; i++) {
+    const f = data.frames[i];
+    for (const [name, value] of Object.entries(f.values)) {
+      if (plotVars.includes(name)) appendPoint(name, value, f.t);
     }
-  };
-
-  return { seekTo, frameCount: replayData?.frames.length ?? 0 };
+  }
 }

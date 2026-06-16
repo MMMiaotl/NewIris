@@ -1,3 +1,7 @@
+/**
+ * Variable tree and parameter table state.
+ * Server I/O stays in useWatchIo — this store only holds normalized UI state.
+ */
 import { create } from 'zustand';
 import type { TreeNode, VariableType, WatchIoVariable } from '../api/types';
 import { getEntryAttributes } from '../utils/parseAttributes';

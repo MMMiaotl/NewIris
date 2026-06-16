@@ -1,3 +1,8 @@
+/**
+ * Live WatchIO connection orchestrator.
+ * Creates the transport client, routes incoming messages to stores, and syncs monitor lists.
+ * Mount once in AppShell — expose connect/disconnect/setVariable callbacks to child components.
+ */
 import { useCallback, useEffect, useRef } from 'react';
 import type { ConnectionTransport, WatchIoEntry, WatchIoMessage } from '../api/types';
 import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
@@ -125,6 +130,7 @@ export function useWatchIo() {
 
   const handleMessage = useCallback(
     (msg: WatchIoMessage) => {
+      // Route server payloads by message type into tree, table, plot, and recording stores.
       const entries = normalizeEntries(msg.entries);
       const transport = useConnectionStore.getState().config.transport;
       const useDotTree = transport === 'watchIoHttp' || transport === 'watchIoWs';

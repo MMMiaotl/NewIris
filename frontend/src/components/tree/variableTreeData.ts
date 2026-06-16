@@ -19,17 +19,3 @@ export function toVariableTreeData(nodes: TreeNode[]): VariableTreeDataNode[] {
 export function collectTopLevelBranchKeys(nodes: TreeNode[]): string[] {
   return nodes.filter((node) => (node.children?.length ?? 0) > 0).map((node) => node.key);
 }
-
-export function collectBranchKeys(nodes: TreeNode[]): string[] {
-  const keys: string[] = [];
-  const walk = (list: TreeNode[]) => {
-    for (const node of list) {
-      if (node.children?.length) {
-        keys.push(node.key);
-        walk(node.children);
-      }
-    }
-  };
-  walk(nodes);
-  return keys;
-}

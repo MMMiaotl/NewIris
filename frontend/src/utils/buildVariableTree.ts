@@ -1,3 +1,7 @@
+/**
+ * Build and merge variable tree nodes for SmcServer (slash paths) and WatchIO (dot paths).
+ * Search filtering attaches varlist hits without replacing the full server tree.
+ */
 import type { ConnectionTransport, TreeNode } from '../api/types';
 
 export function filterVariablesByBranch(
@@ -124,16 +128,6 @@ function mergeTreeNodesByPath(base: TreeNode[], incoming: TreeNode[]): TreeNode[
   return sortTreeNodes(Array.from(map.values()));
 }
 
-/** Ensure ancestor branches exist for search hits (no variable leaves — loaded on expand). */
-export function mergeSearchBranchPathsIntoDotTree(
-  tree: TreeNode[],
-  matchingNames: string[],
-): TreeNode[] {
-  if (!matchingNames.length) return tree;
-  const branchPaths = collectAncestorBranchesForVariables(matchingNames);
-  return branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
-}
-
 /** Prefix set of every branch path leading to a search hit — O(1) lookup while filtering. */
 export function buildMatchPathPrefixSet(matchingNames: readonly string[]): Set<string> {
   const set = new Set<string>();
@@ -195,7 +189,7 @@ export function mergeSearchVariablesIntoDotTree(
   if (!matchingNames.length) return tree;
 
   const branchPaths = collectAncestorBranchesForVariables(matchingNames);
-  let merged = branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
+  const merged = branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
 
   const byParent = groupVariablesByParentBranch(matchingNames.map((name) => ({ name })));
   return attachAllSearchVariablesInTree(merged, byParent, branchVarPrefix);

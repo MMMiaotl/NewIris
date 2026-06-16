@@ -2,19 +2,13 @@
  * HTTP helpers aligned with Web/SmcServerView.js (XMLHttpRequest GET, /request discovery).
  */
 
-import type { ConnectionTransport, DiscoveredService, WatchIoMessage } from './types';
+import type { ConnectionTransport, DiscoveredService } from './types';
 import { watchIoLog } from '../utils/watchIoDebug';
 import { parseSmcJson, smcEntryParam, type SmcJsonEntry } from '../utils/parseSmcJson';
 import { defaultWsUrl } from './watchIoPaths';
 import { fetchRequestServicesViaWebSocket } from './watchIoWsDiscovery';
-import { parseWatchIoResponse } from '../utils/parseWatchIoMessage';
 
 export type SmcRequestEntry = SmcJsonEntry;
-
-/** @deprecated use parseWatchIoResponse */
-export function parseSmcJsonResponse(text: string): WatchIoMessage | null {
-  return parseWatchIoResponse(text);
-}
 
 export function entryParam(entry: SmcRequestEntry, paramName: string): string {
   return smcEntryParam(entry, paramName);

@@ -21,6 +21,7 @@ interface ConnectionState {
   viewMode: ViewMode;
   flatTree: boolean;
   searchQuery: string;
+  /** Right Control panel visibility (legacy name: was a drawer, now Splitter side panel). */
   plotDrawerOpen: boolean;
   /** Right Control panel width in px when open (Splitter controlled size). */
   controlPanelWidth: number;

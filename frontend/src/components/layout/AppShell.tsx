@@ -1,3 +1,7 @@
+/**
+ * Root layout: menu, connection bar, resizable tree/table/plot panels, control side panel.
+ * Hooks mounted here (not in children): useWatchIo, useReplayPlayback, useWorkspacePersistence.
+ */
 import { Splitter } from 'antd';
 import { ConnectionBar } from '../connection/ConnectionBar';
 import { MenuBar } from '../toolbar/MenuBar';
@@ -15,7 +19,7 @@ import {
   useConnectionStore,
 } from '../../stores/connectionStore';
 import { useWatchIo } from '../../hooks/useWatchIo';
-import { useReplay } from '../../hooks/useReplay';
+import { useReplayPlayback } from '../../hooks/useReplay';
 import { useWorkspacePersistence } from '../../hooks/useWorkspacePersistence';
 import {
   readInitialParameterPanelDefaultSize,
@@ -40,7 +44,7 @@ export function AppShell() {
   } = useConnectionStore();
   const { connect, disconnect, applyWatchIoName, setVariableValue, refreshVariable, client } =
     useWatchIo();
-  useReplay();
+  useReplayPlayback();
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';

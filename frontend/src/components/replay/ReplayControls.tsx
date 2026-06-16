@@ -1,12 +1,12 @@
 import { Button, Slider, Space } from 'antd';
 import { PauseCircleOutlined, PlayCircleOutlined, StepBackwardOutlined } from '@ant-design/icons';
 import { useSessionStore } from '../../stores/sessionStore';
-import { useReplay } from '../../hooks/useReplay';
+import { seekReplayFrame } from '../../hooks/useReplay';
 
 export function ReplayControls() {
   const { replayData, replayIndex, replayPlaying, replaySpeed, setReplayPlaying, setReplaySpeed } =
     useSessionStore();
-  const { seekTo, frameCount } = useReplay();
+  const frameCount = replayData?.frames.length ?? 0;
 
   if (!replayData) return null;
 
@@ -20,13 +20,13 @@ export function ReplayControls() {
           icon={replayPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
           onClick={() => setReplayPlaying(!replayPlaying)}
         />
-        <Button icon={<StepBackwardOutlined />} onClick={() => seekTo(0)} />
+        <Button icon={<StepBackwardOutlined />} onClick={() => seekReplayFrame(0)} />
         <Slider
           style={{ width: 240 }}
           min={0}
           max={Math.max(0, frameCount - 1)}
           value={replayIndex}
-          onChange={seekTo}
+          onChange={seekReplayFrame}
           tooltip={{ formatter: () => `${((current?.t ?? 0) / 1000).toFixed(2)}s / ${(duration / 1000).toFixed(2)}s` }}
         />
         <span>Speed</span>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useConnectionStore } from './connectionStore';
 import { useVariableStore } from './variableStore';
 import { trimSeriesPoints } from '../utils/plotTime';
+import { WORKSPACE_STORAGE_KEY } from '../utils/workspacePersistence';
 
 const PLOT_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#e57373', '#ba68c8', '#4db6ac', '#ffd54f', '#90a4ae'];
 
@@ -29,8 +30,6 @@ function clampLineWidth(width: number): number {
 export const DEFAULT_PLOT_X_WINDOW_SEC = 600;
 const MIN_PLOT_X_WINDOW_SEC = 30;
 const MAX_PLOT_X_WINDOW_SEC = 3600;
-
-const WORKSPACE_STORAGE_KEY = 'newiris-workspace-v1';
 
 function workspaceScopeFromConfig(config: {
   transport: string;

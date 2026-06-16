@@ -37,16 +37,15 @@ export function MenuBar() {
     setSearchQuery,
     setSettingsDrawerOpen,
   } = useConnectionStore();
-  const { recording, startRecording, stopRecording, loadReplay, clearReplay, addRecentSession } =
+  const { recording, startRecording, stopRecording, loadReplay, clearReplay } =
     useSessionStore();
   const { plotVariables, colors, lineWidths, yMin, yMax, xWindowSec } = usePlotStore();
   const { registeredNames, clear: clearVars } = useVariableStore();
 
   const openSession = () =>
-    openFilePicker('.json', (text, name) => {
+    openFilePicker('.json', (text) => {
       const session = parseSession(text);
       applySession(session);
-      addRecentSession(name);
     });
 
   const openRecording = () =>
@@ -79,12 +78,12 @@ export function MenuBar() {
     {
       key: 'save',
       label: 'Save Session',
-      onClick: () => saveSession(false),
+      onClick: () => saveSession(),
     },
     {
       key: 'save-as',
       label: 'Save Session As…',
-      onClick: () => saveSession(true),
+      onClick: () => saveSession(),
     },
     { type: 'divider' },
     {
@@ -169,12 +168,10 @@ export function MenuBar() {
     viewMode,
   });
 
-  const saveSession = (asNew: boolean) => {
+  const saveSession = () => {
     const content = serializeSession(buildSession());
     const name = `${config.watchIoName}.session.json`;
-    if (asNew) downloadJson(name, content);
-    else downloadJson(name, content);
-    addRecentSession(name);
+    downloadJson(name, content);
   };
 
   const toggleRecord = () => {
@@ -213,7 +210,7 @@ export function MenuBar() {
           <Button type="text">View</Button>
         </Dropdown>
         <Button type="text" icon={<FolderOpenOutlined />} onClick={openSession} />
-        <Button type="text" icon={<SaveOutlined />} onClick={() => saveSession(false)} />
+        <Button type="text" icon={<SaveOutlined />} onClick={() => saveSession()} />
         <Tooltip title={recording ? 'Stop recording' : 'Start recording'}>
           <Button
             type={recording ? 'primary' : 'text'}

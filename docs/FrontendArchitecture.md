@@ -40,9 +40,9 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `stores/connectionStore.ts` | Transport config, discovered services, UI mode (live/offline/replay), layout |
 | `stores/variableStore.ts` | Tree nodes, branch variables, selection, registration flags |
 | `stores/plotStore.ts` | Plot series, colors, Y range (max 8 series) |
-| `stores/sessionStore.ts` | Recording frames, replay state, recent sessions in localStorage |
+| `stores/sessionStore.ts` | Recording frames, replay state |
 | `hooks/useWatchIo.ts` | **Single orchestrator** for connect/disconnect, message routing, write/register |
-| `hooks/useReplay.ts` | Replay playback loop; feeds variableStore + plotStore |
+| `hooks/useReplay.ts` | `useReplayPlayback` (RAF loop) + `seekReplayFrame` for scrubbing |
 | `utils/parseWatchIoMessage.ts` | Normalize `WatchIoMessage` entries |
 | `utils/parseSmcJson.ts` | SmcServer JSON response parsing |
 | `utils/buildVariableTree.ts` | Merge vartree/varleaves into Ant Design tree data |
@@ -51,7 +51,7 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `constants/transport.ts` | `ConnectionTransport` labels and env default |
 | `components/layout/AppShell.tsx` | Root layout; wires hooks to panels |
 
-Components are grouped by feature under `components/{connection,tree,table,plot,replay,settings,toolbar,layout}/`. Prefer adding UI there rather than bloating `AppShell`.
+Components are grouped by feature under `components/{connection,tree,table,plot,control,replay,settings,debug,toolbar,layout}/`. Prefer adding UI there rather than bloating `AppShell`.
 
 ## Data flow (live mode)
 
@@ -77,7 +77,7 @@ Components are grouped by feature under `components/{connection,tree,table,plot,
 | `plotStore` | Series data, plot variable list, Y axis | Connection status |
 | `sessionStore` | Recording/replay buffers, replay transport controls | Live client lifecycle |
 
-Cross-store reads in hooks are OK (`useWatchIo`, `useReplay`). Avoid circular imports between stores.
+Cross-store reads in hooks are OK (`useWatchIo`, `useReplayPlayback`). Avoid circular imports between stores.
 
 ## Transports — naming and trees
 
@@ -94,12 +94,12 @@ Do not reuse SmcServer URL builders for WatchIO clients or vice versa.
 |------|---------------------------|----------|
 | Live | `live` | `useWatchIo` connects when user clicks Connect |
 | Offline | `offline` | No network; UI still usable for session files |
-| Replay | `replay` | `useReplay` drives updates from `sessionStore.replayData` |
+| Replay | `replay` | `useReplayPlayback` drives updates from `sessionStore.replayData` |
 
 ## Session and file formats
 
 - **Session file** (`.niris` session export): `SessionFile` in `api/types.ts` — transport, registered vars, plot config.
-- **Recording file**: `RecordingFile` — time series of variable snapshots; replay via `sessionStore` + `useReplay`.
+- **Recording file**: `RecordingFile` — time series of variable snapshots; replay via `sessionStore` + `useReplayPlayback`.
 
 Parsers live in `utils/recordingFormat.ts`. Keep version field `version: 1` when extending.
 
@@ -130,9 +130,9 @@ Parsers live in `utils/recordingFormat.ts`. Keep version field `version: 1` when
 
 ### New plot behavior
 
-1. `plotStore` for data; `PlotPanel` / `PlotControlDrawer` for UI.
+1. `plotStore` for data; `PlotPanel` / `ControlPanel` for UI.
 2. Ensure `useWatchIo` still calls `appendPoint` for registered plot variables in live mode.
-3. Update `useReplay` if replay should mirror the behavior.
+3. Update `useReplayPlayback` / `seekReplayFrame` if replay should mirror the behavior.
 
 ## Verification
 

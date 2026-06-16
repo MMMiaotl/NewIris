@@ -17,6 +17,7 @@ export class SmcServerClient implements WatchIoClient {
   private activeObjectPath: string | null = null;
   private varPrefix = '';
   private pollPaths = new Set<string>();
+  /** Maps dotted variable name → SmcServer POST path for writes/polling. */
   private nameToPostPath = new Map<string, string>();
   private pathVarPrefix = new Map<string, string>();
   private sampleInterval: number;

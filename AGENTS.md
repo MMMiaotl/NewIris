@@ -36,8 +36,8 @@ This file orients AI agents working on **NewIris**: a React SPA that monitors an
 frontend/src/
   api/           WatchIoClient interface + SmcServer / HTTP / STOMP implementations
   stores/        Zustand: connection, variable, plot, session
-  hooks/         useWatchIo (live connection), useReplay
-  components/    UI by feature: connection, tree, table, plot, replay, settings, layout
+  hooks/         useWatchIo (live connection), useReplayPlayback, useWorkspacePersistence
+  components/    UI by feature: connection, tree, table, plot, control, replay, settings, debug, layout, toolbar
   utils/         JSON/message parsing, tree building, .niris format
   constants/     transport enum and env parsing
 ```
@@ -94,6 +94,7 @@ If rules are missing after a fresh clone, recreate them from project docs or ask
 | Variable tree / table | `components/tree/`, `components/table/`, `stores/variableStore.ts`, `utils/buildVariableTree.ts` |
 | Charts | `components/plot/`, `stores/plotStore.ts` |
 | Recording / replay / sessions | `stores/sessionStore.ts`, `hooks/useReplay.ts`, `utils/recordingFormat.ts`, `components/replay/` |
+| Control panel (plot/variable) | `components/control/`, `stores/connectionStore.ts` (`plotDrawerOpen`) |
 | Message handling | `hooks/useWatchIo.ts`, `utils/parseWatchIoMessage.ts`, client in `api/` |
 
 See [docs/FrontendArchitecture.md](docs/FrontendArchitecture.md) for data-flow diagrams and store boundaries.
