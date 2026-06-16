@@ -3,6 +3,7 @@ import {
   getScaleConversion,
   getUnitLabel,
   type FormatStyleId,
+  type LegacyVariableDisplayOverride,
   type VariableDisplayOverride,
 } from '../constants/displayFormats';
 
@@ -10,21 +11,21 @@ export function createDefaultDisplayOverride(): VariableDisplayOverride {
   return {
     useCustomName: false,
     customName: '',
-    style: DEFAULT_FORMAT_STYLE,
+    format: DEFAULT_FORMAT_STYLE,
     unit: undefined,
     scaleConversion: undefined,
   };
 }
 
 export function mergeDisplayOverride(
-  partial?: Partial<VariableDisplayOverride> | null,
+  partial?: LegacyVariableDisplayOverride | null,
 ): VariableDisplayOverride {
   const defaults = createDefaultDisplayOverride();
   if (!partial) return defaults;
   return {
     useCustomName: partial.useCustomName ?? defaults.useCustomName,
     customName: partial.customName ?? defaults.customName,
-    style: partial.style ?? defaults.style,
+    format: partial.format ?? partial.style ?? defaults.format,
     unit: partial.unit,
     scaleConversion: partial.scaleConversion,
   };
@@ -34,7 +35,7 @@ export function hasActiveDisplayOverride(override: VariableDisplayOverride): boo
   const defaults = createDefaultDisplayOverride();
   return (
     override.useCustomName ||
-    override.style !== defaults.style ||
+    override.format !== defaults.format ||
     Boolean(override.unit) ||
     Boolean(override.scaleConversion)
   );
@@ -123,7 +124,7 @@ export function formatDisplayValue(
   if (num === null) return rawValue;
 
   const converted = applyScaleConversion(num, merged.scaleConversion);
-  const formatted = applyFormatStyle(converted, merged.style);
+  const formatted = applyFormatStyle(converted, merged.format);
   return appendUnitSuffix(formatted, merged.unit);
 }
 
@@ -149,10 +150,10 @@ export function parseDisplayValueForWrite(
   if (num === null) return null;
 
   const raw = inverseScaleConversion(num, merged.scaleConversion);
-  if (merged.style === 'standard') return String(raw);
+  if (merged.format === 'standard') return String(raw);
 
-  if (merged.style.startsWith('decimals:')) {
-    const decimals = Number(merged.style.split(':')[1]);
+  if (merged.format.startsWith('decimals:')) {
+    const decimals = Number(merged.format.split(':')[1]);
     return raw.toFixed(decimals);
   }
 
@@ -176,15 +177,15 @@ export function getEffectiveScaleLabel(
   return serverScale || '—';
 }
 
-/** Summary line for Control panel Style fieldset. */
+/** Summary line for Control panel Format fieldset. */
 export function summarizeDisplayOverride(
-  override?: Partial<VariableDisplayOverride> | null,
+  override?: LegacyVariableDisplayOverride | null,
 ): string {
   const merged = mergeDisplayOverride(override);
   const parts: string[] = [];
-  const styleLabel =
-    merged.style === 'standard' ? 'standard' : merged.style.replace(':', ' ');
-  parts.push(styleLabel);
+  const formatLabel =
+    merged.format === 'standard' ? 'standard' : merged.format.replace(':', ' ');
+  parts.push(formatLabel);
   if (merged.scaleConversion) parts.push(merged.scaleConversion);
   if (merged.unit) {
     const unitLabel = getUnitLabel(merged.unit);

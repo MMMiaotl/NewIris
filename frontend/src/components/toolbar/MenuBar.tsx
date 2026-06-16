@@ -127,8 +127,8 @@ export function MenuBar() {
 
   const showMenu: MenuProps['items'] = [
     {
-      key: 'style-scale',
-      label: 'Change Style / Scale…',
+      key: 'format-setting',
+      label: 'Format setting…',
       onClick: () => openStyleModal(useVariableStore.getState().focusedVariable),
     },
   ];

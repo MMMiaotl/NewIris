@@ -710,7 +710,7 @@
   gap: 8px;
 }
 
-.control-fieldset--style,
+.control-fieldset--format,
 .control-fieldset--list {
   flex: 1;
   min-width: 0;
@@ -784,7 +784,7 @@
   word-break: break-word;
 }
 
-/* Change Style / Scale modal */
+/* Format setting modal */
 .style-scale-modal-body {
   display: flex;
   flex-direction: column;

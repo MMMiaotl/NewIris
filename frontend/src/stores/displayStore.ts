@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { VariableDisplayOverride } from '../constants/displayFormats';
-import { createDefaultDisplayOverride } from '../utils/formatVariableValue';
+import { createDefaultDisplayOverride, mergeDisplayOverride } from '../utils/formatVariableValue';
 
 export type { VariableDisplayOverride };
 
@@ -22,7 +22,7 @@ export const useDisplayStore = create<DisplayState>((set, get) => ({
   overrides: {},
   modalOpen: false,
   modalFocusVariable: null,
-  getOverride: (name) => get().overrides[name] ?? createDefaultDisplayOverride(),
+  getOverride: (name) => mergeDisplayOverride(get().overrides[name]),
   setOverride: (name, partial) => {
     const current = get().getOverride(name);
     set({
@@ -48,7 +48,13 @@ export const useDisplayStore = create<DisplayState>((set, get) => ({
   openModal: (focusVariable) =>
     set({ modalOpen: true, modalFocusVariable: focusVariable ?? null }),
   closeModal: () => set({ modalOpen: false, modalFocusVariable: null }),
-  loadOverrides: (overrides) => set({ overrides: { ...overrides } }),
+  loadOverrides: (overrides) => {
+    const normalized: Record<string, VariableDisplayOverride> = {};
+    for (const [name, raw] of Object.entries(overrides)) {
+      normalized[name] = mergeDisplayOverride(raw);
+    }
+    set({ overrides: normalized });
+  },
   clearAll: () => set({ overrides: {}, modalOpen: false, modalFocusVariable: null }),
 }));
 

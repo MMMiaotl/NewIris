@@ -163,7 +163,7 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
 
         <div className="style-scale-columns">
           <fieldset className="style-scale-fieldset style-scale-fieldset--column">
-            <legend>Style</legend>
+            <legend>Format</legend>
             <List
               size="small"
               bordered
@@ -172,11 +172,11 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
               renderItem={(item) => (
                 <List.Item
                   className={
-                    activeOverride?.style === item.id
+                    activeOverride?.format === item.id
                       ? 'style-scale-option-item is-selected'
                       : 'style-scale-option-item'
                   }
-                  onClick={() => patchActive({ style: item.id as FormatStyleId })}
+                  onClick={() => patchActive({ format: item.id as FormatStyleId })}
                 >
                   {item.label}
                 </List.Item>
@@ -250,7 +250,7 @@ export function ChangeStyleScaleModal({
 
   return (
     <Modal
-      title="Change Style / Scale"
+      title="Format setting"
       open={open}
       onCancel={onClose}
       width={860}

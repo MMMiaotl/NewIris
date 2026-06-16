@@ -21,10 +21,15 @@ export type FormatStyleId =
 export interface VariableDisplayOverride {
   useCustomName: boolean;
   customName: string;
-  style: FormatStyleId;
+  format: FormatStyleId;
   unit?: string;
   scaleConversion?: string;
 }
+
+/** @deprecated Legacy persisted field — read via mergeDisplayOverride. */
+export type LegacyVariableDisplayOverride = Partial<VariableDisplayOverride> & {
+  style?: FormatStyleId;
+};
 
 export interface FormatStyleOption {
   id: FormatStyleId;

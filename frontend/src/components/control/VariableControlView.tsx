@@ -187,8 +187,8 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
       </fieldset>
 
       <div className="control-side-row">
-        <fieldset className="control-fieldset control-fieldset--style">
-          <legend>Style</legend>
+        <fieldset className="control-fieldset control-fieldset--format">
+          <legend>Format</legend>
           <label className="control-field-label control-field-label--readonly">Display</label>
           <Input
             size="small"
@@ -204,7 +204,7 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
             className="control-field control-field-readonly"
           />
           <Button size="small" onClick={() => openStyleModal(variable.name)}>
-            Change Style / Scale…
+            Format setting…
           </Button>
           <Checkbox checked={showAlias} onChange={(e) => setShowAlias(e.target.checked)}>
             Show Name/Alias
