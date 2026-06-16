@@ -22,6 +22,8 @@ import {
   buildFixedParameterColumn,
   createDefaultFixedWidths,
   fixedCellStyle,
+  PARAMETER_CELL_LINE_HEIGHT,
+  PARAMETER_CELL_PADDING,
   MIN_DESCRIPTION_WIDTH,
   PARAMETER_FIXED_COLUMN_SPECS,
   readPersistedParameterColumnWidths,
@@ -31,6 +33,15 @@ import {
 } from './parameterTableLayout';
 
 const COLUMN_WIDTH_SAVE_MS = 300;
+
+const PARAMETER_TABLE_STYLES = {
+  header: {
+    cell: { padding: PARAMETER_CELL_PADDING, lineHeight: `${PARAMETER_CELL_LINE_HEIGHT}px` },
+  },
+  body: {
+    cell: { padding: PARAMETER_CELL_PADDING, lineHeight: `${PARAMETER_CELL_LINE_HEIGHT}px` },
+  },
+} as const;
 
 interface ParameterTableProps {
   onSetValue: (name: string, value: string) => void;
@@ -303,29 +314,31 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           {tableReady ? (
             <Table<WatchIoVariable>
               size="small"
+              className="parameter-table"
               tableLayout="fixed"
+              styles={PARAMETER_TABLE_STYLES}
               columns={columns}
-              components={{
-                header: { cell: ResizableTableHeaderCell },
-              }}
-              dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
-              pagination={false}
-              scroll={scroll}
-              onRow={(row) => ({
-                className:
-                  row.name === focusedVariable ? 'parameter-row-focused' : undefined,
-                onDoubleClick: () => addPlotVariable(row.name),
-                onContextMenu: (event) => {
-                  event.preventDefault();
-                  setFocusedVariable(row.name);
-                  openStyleModal(row.name);
-                },
-              })}
-              locale={{
-                emptyText:
-                  selectedVariables.length > 0
-                    ? 'Selected parameters are not loaded yet'
-                    : 'Select parameters in the tree (click circles; up to 100)',
+                components={{
+                  header: { cell: ResizableTableHeaderCell },
+                }}
+                dataSource={tableRows.map((v) => ({ ...v, key: v.name }))}
+                pagination={false}
+                scroll={scroll}
+                onRow={(row) => ({
+                  className:
+                    row.name === focusedVariable ? 'parameter-row-focused' : undefined,
+                  onDoubleClick: () => addPlotVariable(row.name),
+                  onContextMenu: (event) => {
+                    event.preventDefault();
+                    setFocusedVariable(row.name);
+                    openStyleModal(row.name);
+                  },
+                })}
+                locale={{
+                  emptyText:
+                    selectedVariables.length > 0
+                      ? 'Selected parameters are not loaded yet'
+                      : 'Select parameters in the tree (click circles; up to 100)',
               }}
             />
           ) : null}

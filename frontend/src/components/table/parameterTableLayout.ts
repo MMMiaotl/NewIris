@@ -23,6 +23,27 @@ export const PARAMETER_FIXED_COLUMN_SPECS: readonly ParameterFixedColumnSpec[] =
 
 export const MIN_DESCRIPTION_WIDTH = 80;
 
+/** Vertical padding inside parameter table cells (inline style beats antd CSS-in-js). */
+export const PARAMETER_CELL_PADDING_BLOCK = 4;
+export const PARAMETER_CELL_PADDING_INLINE = 6;
+export const PARAMETER_CELL_LINE_HEIGHT = 18;
+
+export const PARAMETER_CELL_PADDING = `${PARAMETER_CELL_PADDING_BLOCK}px ${PARAMETER_CELL_PADDING_INLINE}px`;
+
+export function parameterCellStyle(width?: number): CSSProperties {
+  const base: CSSProperties = {
+    padding: PARAMETER_CELL_PADDING,
+    lineHeight: `${PARAMETER_CELL_LINE_HEIGHT}px`,
+  };
+  if (width === undefined) return base;
+  return {
+    ...base,
+    width,
+    minWidth: width,
+    maxWidth: width,
+  };
+}
+
 /** Show horizontal scroll before strict overflow so the bar appears earlier. */
 export const HORIZONTAL_SCROLL_BUFFER = 128;
 
@@ -70,11 +91,7 @@ export function writePersistedParameterColumnWidths(widths: ParameterFixedWidths
 }
 
 export function fixedCellStyle(width: number): CSSProperties {
-  return {
-    width,
-    minWidth: width,
-    maxWidth: width,
-  };
+  return parameterCellStyle(width);
 }
 
 export function sumFixedWidths(widths: ParameterFixedWidths): number {
@@ -91,6 +108,7 @@ export function resizableHeaderCellProps(
     minWidth,
     onResize,
     className: 'parameter-table-resizable-th',
+    style: parameterCellStyle(width),
   };
 }
 
