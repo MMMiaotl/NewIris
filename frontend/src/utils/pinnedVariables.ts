@@ -37,6 +37,22 @@ export function pinnedNamesMissingOnBranch(
   });
 }
 
+/** Stop varleaves retry once a branch fetch completed — live values come via monitor update. */
+export function clearSessionCacheForPinnedOnBranch(
+  branch: string,
+  transport: ConnectionTransport,
+): void {
+  const pinned = new Set(collectPinnedVariableNames());
+  if (!pinned.size) return;
+  useVariableStore.setState((state) => ({
+    variables: state.variables.map((v) => {
+      if (!v.sessionCacheOnly || !pinned.has(v.name)) return v;
+      if (branchPathForVariableName(v.name, transport) !== branch) return v;
+      return { ...v, sessionCacheOnly: false };
+    }),
+  }));
+}
+
 export function collectPinnedVariableValues(): Record<string, string> {
   const pinned = new Set(collectPinnedVariableNames());
   const values: Record<string, string> = {};
