@@ -1,5 +1,5 @@
-import { Button, Checkbox, Input, Space } from 'antd';
-import { useMemo, useState } from 'react';
+import { Button, Checkbox, Input, Select, Space } from 'antd';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import {
   createPlaceholderVariable,
@@ -9,7 +9,6 @@ import { useDisplayStore } from '../../stores/displayStore';
 import { isVariableDataType } from '../../api/types';
 import {
   formatDisplayValue,
-  getDisplayLabel,
   parseDisplayValueForWrite,
   summarizeDisplayOverride,
 } from '../../utils/formatVariableValue';
@@ -31,6 +30,7 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
     variables,
     focusedVariable,
     selectedVariables,
+    setFocusedVariable,
     removeSelectedVariable,
     moveSelectedVariable,
     insertSelectedVariable,
@@ -43,12 +43,32 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
   );
   const openStyleModal = useDisplayStore((s) => s.openModal);
 
+  const parameterOptions = useMemo(
+    () => selectedVariables.map((name) => ({ value: name, label: name })),
+    [selectedVariables],
+  );
+
+  useLayoutEffect(() => {
+    if (!selectedVariables.length) return;
+    if (!focusedVariable || !selectedVariables.includes(focusedVariable)) {
+      setFocusedVariable(selectedVariables[0]!);
+    }
+  }, [selectedVariables, focusedVariable, setFocusedVariable]);
+
   const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
 
   const variable = useMemo(() => {
     if (!focusedVariable) return null;
     return variableMap.get(focusedVariable) ?? createPlaceholderVariable(focusedVariable);
   }, [focusedVariable, variableMap]);
+
+  if (!selectedVariables.length) {
+    return (
+      <div className="control-empty">
+        Select parameters in the tree to add them to the table first.
+      </div>
+    );
+  }
 
   if (!focusedVariable || !variable) {
     return (
@@ -62,7 +82,6 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
   const readOnly = appMode === 'replay' || isPlaceholder;
   const numeric = isVariableDataType(variable.dataType) && variable.dataType !== 'string';
   const displayLabel = showAlias && variable.alias ? variable.alias : variable.description;
-  const panelTitle = getDisplayLabel(variable.name, displayOverride);
   const formattedValue = formatDisplayValue(variable.value, displayOverride);
   const inList = selectedVariables.includes(variable.name);
   const listIndex = selectedVariables.indexOf(variable.name);
@@ -88,12 +107,18 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
       <fieldset className="control-fieldset control-fieldset--variable">
         <legend>Variable</legend>
         <label className="control-field-label control-field-label--readonly">Name</label>
-        <Input
+        <Select
           size="small"
-          value={panelTitle}
-          readOnly
-          className="control-field control-field-readonly"
-          title={variable.name}
+          showSearch
+          value={variable.name}
+          onChange={(name) => {
+            setFocusedVariable(name);
+            setValueDraft(null);
+          }}
+          options={parameterOptions}
+          optionFilterProp="label"
+          className="control-field control-variable-select"
+          popupMatchSelectWidth={false}
         />
         <label className="control-field-label control-field-label--readonly">Description</label>
         <Input

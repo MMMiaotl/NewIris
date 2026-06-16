@@ -617,6 +617,10 @@
   margin-bottom: 6px;
 }
 
+.control-variable-select {
+  width: 100%;
+}
+
 .control-field-label {
   display: block;
   margin-bottom: 4px;
