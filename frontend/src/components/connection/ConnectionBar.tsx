@@ -91,7 +91,7 @@ export function ConnectionBar({
             />
           </Tooltip>
         </Space.Compact>
-        {!isStomp && !isShm && (
+        {!isStomp && (
           <>
             <Typography.Text type="secondary">Server</Typography.Text>
             <Select
@@ -103,17 +103,21 @@ export function ConnectionBar({
             <Button loading={requestStatus === 'loading'} onClick={() => void runDiscovery()}>
               request
             </Button>
-            <Typography.Text type="secondary">Service</Typography.Text>
-            <Select
-              style={{ minWidth: 260 }}
-              placeholder={servicePlaceholder}
-              value={selectedServiceName ?? undefined}
-              onChange={selectService}
-              options={discoveredServices.map((s) => ({
-                label: `${s.name} → ${s.uri}${s.category ? ` [${s.category}]` : ''}`,
-                value: s.name,
-              }))}
-            />
+            {isSmcServerTransport(config.transport) && (
+              <>
+                <Typography.Text type="secondary">Service</Typography.Text>
+                <Select
+                  style={{ minWidth: 260 }}
+                  placeholder={servicePlaceholder}
+                  value={selectedServiceName ?? undefined}
+                  onChange={selectService}
+                  options={discoveredServices.map((s) => ({
+                    label: `${s.name} → ${s.uri}${s.category ? ` [${s.category}]` : ''}`,
+                    value: s.name,
+                  }))}
+                />
+              </>
+            )}
           </>
         )}
         <Typography.Text type="secondary">WatchIO</Typography.Text>
@@ -128,7 +132,7 @@ export function ConnectionBar({
         )}
         {isShm && (
           <Typography.Text type="secondary">
-            Windows WatchIoCom.ocx — Edge IE mode; values from local shared memory
+            WatchIoCom.ocx (Edge IE mode) — values from local shm; request optional for /watchio tree
           </Typography.Text>
         )}
         {isWatchIo && !isStomp && !isShm && requestStatus === 'ok' && !watchIoFromRequest && (

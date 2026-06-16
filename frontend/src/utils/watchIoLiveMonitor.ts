@@ -1,5 +1,6 @@
 import type { ConnectionTransport } from '../api/types';
 import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
+import { isSharedMemoryTransport } from '../constants/transport';
 import { branchPathForVariableName } from './buildVariableTree';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
@@ -24,8 +25,9 @@ export function monitorVariableKey(v: MonitorVariable): string {
   return `${v.name}:${v.mode ?? 'set'}:${v.dataType ?? ''}`;
 }
 
-/** True when varleaves populated this row — safe to pass type= to monitor add. */
-export function isReadyForMonitor(name: string): boolean {
+/** True when safe to call monitor add — COM shm reads by full variable name without varleaves. */
+export function isReadyForMonitor(name: string, transport: ConnectionTransport): boolean {
+  if (isSharedMemoryTransport(transport)) return true;
   return isPinnedVariableLiveLoaded(name);
 }
 
@@ -43,10 +45,11 @@ export function syncWatchIoMonitorDiff(
   client: WatchIoClient,
   serverMonitored: Map<string, MonitorVariable>,
   desired: MonitorVariable[],
+  transport: ConnectionTransport,
 ): boolean {
   const desiredMap = new Map<string, MonitorVariable>();
   for (const v of desired) {
-    if (!isReadyForMonitor(v.name)) continue;
+    if (!isReadyForMonitor(v.name, transport)) continue;
     desiredMap.set(v.name, v);
   }
 
@@ -100,29 +103,29 @@ export function runPinnedLivePipeline(
 ): 'loading-metadata' | 'synced' | 'idle' {
   if (!client) return 'idle';
 
-  const missing = missingPinnedVariableNames();
-  if (missing.length > 0) {
-    const branches = new Set<string>();
-    for (const name of missing) {
-      const branch = branchPathForVariableName(name, transport);
-      if (branch) branches.add(branch);
+  if (!isSharedMemoryTransport(transport)) {
+    const missing = missingPinnedVariableNames();
+    if (missing.length > 0) {
+      const branches = new Set<string>();
+      for (const name of missing) {
+        const branch = branchPathForVariableName(name, transport);
+        if (branch) branches.add(branch);
+      }
+      for (const branch of branches) {
+        if (state.pendingBranches.has(branch)) continue;
+        state.pendingBranches.add(branch);
+        client.fetchVarLeaves(branch, true, true);
+      }
+      return 'loading-metadata';
     }
-    for (const branch of branches) {
-      if (state.pendingBranches.has(branch)) continue;
-      state.pendingBranches.add(branch);
-      client.fetchVarLeaves(branch, true, true);
-    }
-    return 'loading-metadata';
+    state.pendingBranches.clear();
+    if (!pinnedMetadataReady()) return 'idle';
   }
-
-  state.pendingBranches.clear();
-
-  if (!pinnedMetadataReady()) return 'idle';
 
   const desired = buildDesiredMonitorVariables();
   if (!desired.length) return 'idle';
 
-  const changed = syncWatchIoMonitorDiff(client, state.serverMonitored, desired);
+  const changed = syncWatchIoMonitorDiff(client, state.serverMonitored, desired, transport);
   if (changed) {
     client.requestUpdate();
     refreshPinnedMetadataInBackground(client, transport);

@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import {
   bindWatchIoComControl,
+  bindWatchIoComFromElement,
   WATCHIO_COM_CLSID,
-  type WatchIoComControl,
 } from '../../api/watchIoComActiveX';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { isSharedMemoryTransport } from '../../constants/transport';
+
+const WATCHIO_COM_OBJECT_ID = 'watchIoCom';
 
 /**
  * Hidden ActiveX object host — only rendered for Shared Memory transport on Windows.
@@ -13,29 +15,48 @@ import { isSharedMemoryTransport } from '../../constants/transport';
  */
 export function WatchIoComHost() {
   const transport = useConnectionStore((s) => s.config.transport);
-  const ref = useRef<HTMLObjectElement>(null);
+  const objectRef = useRef<HTMLObjectElement>(null);
 
   useEffect(() => {
     if (!isSharedMemoryTransport(transport)) {
       bindWatchIoComControl(null);
       return;
     }
-    const el = ref.current as unknown as WatchIoComControl | null;
-    if (el?.SetShMemName) bindWatchIoComControl(el);
-    return () => bindWatchIoComControl(null);
+
+    const tryBind = () =>
+      bindWatchIoComFromElement(objectRef.current) ||
+      bindWatchIoComFromElement(document.getElementById(WATCHIO_COM_OBJECT_ID));
+
+    if (tryBind()) return () => bindWatchIoComControl(null);
+
+    const el = objectRef.current;
+    const onReady = () => {
+      tryBind();
+    };
+    el?.addEventListener('load', onReady);
+
+    const retryId = window.setInterval(() => {
+      if (tryBind()) window.clearInterval(retryId);
+    }, 100);
+
+    return () => {
+      window.clearInterval(retryId);
+      el?.removeEventListener('load', onReady);
+      bindWatchIoComControl(null);
+    };
   }, [transport]);
 
   if (!isSharedMemoryTransport(transport)) return null;
 
   return (
     <object
-      ref={ref}
-      id="watchIoCom"
+      ref={objectRef}
+      id={WATCHIO_COM_OBJECT_ID}
       className="watchio-com-host"
       classID={`clsid:${WATCHIO_COM_CLSID}`}
       aria-hidden
-      width={0}
-      height={0}
+      width={1}
+      height={1}
     />
   );
 }

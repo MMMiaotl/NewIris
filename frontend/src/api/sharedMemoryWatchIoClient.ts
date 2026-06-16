@@ -9,7 +9,7 @@ import { HttpWatchIoClient } from './httpWatchIoClient';
 import {
   applyWatchIoShMemName,
   defaultComListFormat,
-  resolveWatchIoComControl,
+  waitForWatchIoComControl,
   type WatchIoComControl,
 } from './watchIoComActiveX';
 import { watchIoLog } from '../utils/watchIoDebug';
@@ -61,14 +61,9 @@ export class SharedMemoryWatchIoClient implements WatchIoClient {
   }
 
   async connect(): Promise<void> {
-    const com = resolveWatchIoComControl();
-    if (!com) {
-      throw new Error(
-        'WatchIoCom ActiveX unavailable — register WatchIoCom.ocx and open Iris Next in Edge IE mode',
-      );
-    }
-    this.com = com;
     this.emitStatus('connecting', `Shared memory ${this.watchIoName}`);
+    const com = await waitForWatchIoComControl();
+    this.com = com;
     this.shMemName = applyWatchIoShMemName(com, this.watchIoName);
     watchIoLog('com', `SetShMemName ${this.shMemName}`);
 
@@ -118,9 +113,13 @@ export class SharedMemoryWatchIoClient implements WatchIoClient {
     if (!this.com || !this.connected) return;
     if (this.list.has(name)) return;
 
-    const format = defaultComListFormat(dataType ?? 'double');
+    const format = defaultComListFormat(dataType);
     const listMode = mode === 'value' ? 1 : 0;
     const index = this.com.AddList(name, listMode, format);
+    if (index < 0) {
+      watchIoLog('com', `AddList failed for ${name}`, { index, listMode, format });
+      return;
+    }
     this.list.set(name, { name, index, format });
     watchIoLog('com', `AddList ${name}`, { index, listMode, format });
     this.com.SampleList();
@@ -129,6 +128,14 @@ export class SharedMemoryWatchIoClient implements WatchIoClient {
   }
 
   removeVariable(name: string): void {
+    const entry = this.list.get(name);
+    if (entry && this.com?.DelList) {
+      try {
+        this.com.DelList(entry.index);
+      } catch {
+        /* optional */
+      }
+    }
     this.list.delete(name);
   }
 

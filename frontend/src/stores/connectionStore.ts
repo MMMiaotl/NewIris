@@ -106,7 +106,8 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       return { config: next };
     }),
   setTransport: (transport) => {
-    const gatewayDefault = transport === 'watchIoHttp' || transport === 'watchIoWs';
+    const gatewayDefault =
+      transport === 'watchIoHttp' || transport === 'watchIoWs' || transport === 'sharedMemory';
     const fallback = createDefaultWatchIoService();
     set({
       config: {
