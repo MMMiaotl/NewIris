@@ -869,3 +869,36 @@
   background: rgba(24, 144, 255, 0.12);
   font-weight: 600;
 }
+
+/* Connection settings modal */
+.connection-settings-modal .ant-modal-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.connection-settings-modal-body .connection-settings-field {
+  margin-bottom: 8px;
+}
+
+.connection-settings-modal-body .ant-form-item-label {
+  padding-bottom: 2px;
+}
+
+.connection-settings-modal-body .ant-form-item-label > label {
+  font-size: 12px;
+  height: auto;
+}
+
+.connection-settings-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.connection-settings-debug-link {
+  padding-inline: 0;
+  height: auto;
+  font-size: 12px;
+}

@@ -36,7 +36,7 @@ export function MenuBar() {
     setViewMode,
     setFlatTree,
     setSearchQuery,
-    setSettingsDrawerOpen,
+    setConnectionModalOpen,
   } = useConnectionStore();
   const { recording, startRecording, stopRecording, loadReplay, clearReplay } =
     useSessionStore();
@@ -129,7 +129,7 @@ export function MenuBar() {
     {
       key: 'connection',
       label: 'Connection',
-      onClick: () => setSettingsDrawerOpen(true),
+      onClick: () => setConnectionModalOpen(true),
     },
     {
       key: 'format-setting',

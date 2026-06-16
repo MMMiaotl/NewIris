@@ -7,7 +7,7 @@ interface WatchIoNameFieldProps {
   onApply: (name: string) => void | Promise<boolean | void>;
   placeholder?: string;
   connected?: boolean;
-  /** Fixed input width; omit for full-width (e.g. Settings drawer). */
+  /** Fixed input width; omit for full-width (e.g. Connection modal). */
   inputWidth?: number;
 }
 

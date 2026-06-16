@@ -9,7 +9,7 @@ import { VariableTree } from '../tree/VariableTree';
 import { ParameterTable } from '../table/ParameterTable';
 import { PlotPanel } from '../plot/PlotPanel';
 import { ControlPanel } from '../control/ControlPanel';
-import { SettingsDrawer } from '../settings/SettingsDrawer';
+import { ConnectionSettingsModal } from '../settings/ConnectionSettingsModal';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ChangeStyleScaleModal } from '../display/ChangeStyleScaleModal';
 import { ReplayControls } from '../replay/ReplayControls';
@@ -43,6 +43,8 @@ export function AppShell() {
     setPlotDrawerOpen,
     controlPanelWidth,
     setControlPanelWidth,
+    connectionModalOpen,
+    setConnectionModalOpen,
   } = useConnectionStore();
   const { connect, disconnect, applyWatchIoName, setVariableValue, refreshVariable, client } =
     useWatchIo();
@@ -173,7 +175,10 @@ export function AppShell() {
         <span className={`footer-status ${statusClass}`}>{modeLabel}</span>
       </footer>
 
-      <SettingsDrawer onApplyWatchIoName={applyWatchIoName} />
+      <ConnectionSettingsModal
+        open={connectionModalOpen}
+        onClose={() => setConnectionModalOpen(false)}
+      />
       <WatchIoMessageLogDrawer />
       <ChangeStyleScaleModal
         open={styleModalOpen}

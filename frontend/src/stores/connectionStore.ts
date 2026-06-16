@@ -25,7 +25,7 @@ interface ConnectionState {
   plotDrawerOpen: boolean;
   /** Right Control panel width in px when open (Splitter controlled size). */
   controlPanelWidth: number;
-  settingsDrawerOpen: boolean;
+  connectionModalOpen: boolean;
   watchIoLogDrawerOpen: boolean;
   setConfig: (partial: Partial<ConnectionConfig>) => void;
   setDiscoveredServices: (services: DiscoveredService[]) => void;
@@ -41,7 +41,7 @@ interface ConnectionState {
   setSearchQuery: (q: string) => void;
   setPlotDrawerOpen: (open: boolean) => void;
   setControlPanelWidth: (width: number) => void;
-  setSettingsDrawerOpen: (open: boolean) => void;
+  setConnectionModalOpen: (open: boolean) => void;
   setWatchIoLogDrawerOpen: (open: boolean) => void;
 }
 
@@ -76,7 +76,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   searchQuery: '',
   plotDrawerOpen: false,
   controlPanelWidth: DEFAULT_CONTROL_PANEL_WIDTH,
-  settingsDrawerOpen: false,
+  connectionModalOpen: false,
   watchIoLogDrawerOpen: false,
   setConfig: (partial) =>
     set((s) => {
@@ -115,7 +115,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   setPlotDrawerOpen: (plotDrawerOpen) => set({ plotDrawerOpen }),
   setControlPanelWidth: (controlPanelWidth) =>
     set({ controlPanelWidth: Math.max(MIN_CONTROL_PANEL_WIDTH, Math.round(controlPanelWidth)) }),
-  setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
+  setConnectionModalOpen: (connectionModalOpen) => set({ connectionModalOpen }),
   setWatchIoLogDrawerOpen: (watchIoLogDrawerOpen) => set({ watchIoLogDrawerOpen }),
 }));
 
