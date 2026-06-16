@@ -179,34 +179,53 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   );
 
   const prevSearchQueryRef = useRef(searchQuery);
+  const prevMatchKeyRef = useRef(`${searchMatchCase}|${searchMatchWholeWord}`);
   const pendingSearchExpandRef = useRef(false);
+  const prevVarlistReadyRef = useRef(false);
 
+  /** Auto-expand top level only when the filter or varlist index changes — not on every tree rebuild. */
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
       prevSearchQueryRef.current = '';
+      prevMatchKeyRef.current = `${searchMatchCase}|${searchMatchWholeWord}`;
       pendingSearchExpandRef.current = false;
+      prevVarlistReadyRef.current = false;
       return;
     }
 
-    const queryChanged = prevSearchQueryRef.current !== searchQuery;
-    if (queryChanged) {
+    const matchKey = `${searchMatchCase}|${searchMatchWholeWord}`;
+    const searchChanged =
+      prevSearchQueryRef.current !== searchQuery || prevMatchKeyRef.current !== matchKey;
+
+    if (searchChanged) {
       prevSearchQueryRef.current = searchQuery;
+      prevMatchKeyRef.current = matchKey;
       pendingSearchExpandRef.current = true;
-      setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+      if (displayNodes.length > 0) {
+        setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+      }
       return;
     }
 
     if (pendingSearchExpandRef.current && displayNodes.length > 0) {
       pendingSearchExpandRef.current = false;
       setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+      return;
     }
-  }, [searchQuery, displayNodes]);
 
-  useEffect(() => {
-    if (!searchQuery.trim()) return;
-    setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
-  }, [searchMatchCase, searchMatchWholeWord, searchQuery, displayNodes]);
+    const varlistReady = Boolean(searchVarlistIndex?.length);
+    if (varlistReady && !prevVarlistReadyRef.current) {
+      prevVarlistReadyRef.current = true;
+      setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+    }
+  }, [
+    searchQuery,
+    searchMatchCase,
+    searchMatchWholeWord,
+    searchVarlistIndex,
+    displayNodes,
+  ]);
 
   useEffect(() => {
     if (searchQuery) return;
