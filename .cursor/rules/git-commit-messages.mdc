@@ -1,5 +1,5 @@
 ---
-description: AI 生成 git commit message 时保持简短，先总结后 bullet
+description: AI 生成 git commit message 时保持简短，首行 Add/Fix 一句总结
 alwaysApply: true
 ---
 
@@ -7,29 +7,37 @@ alwaysApply: true
 
 当用户要求生成、建议或撰写 commit message 时（含 chat 中的草稿、协助 `git commit` 时）：
 
-## 结构
+## 首行（必须）
 
-1. **首段 1–2 句**：说明「为什么」改，尽量短；能一句说清就不要两句。
-2. **需要补充时**：首段后空一行，用 **bullet** 简述关键改动（每条一行，动词开头，不展开细节）。
+- **只用一句简短英文总结**，作为 commit 的 subject（首行）；能一句说清就不要两句。
+- 动词开头，祈使语气，**不加句号**。
+- 优先用固定句式：
+  - **Add …** — 新功能、新文件、新能力（例：`Add workspace persistence for selected parameters`）
+  - **Fix …** — 修 bug、回归、错误行为（例：`Fix pinned parameters not updating after page refresh`）
+  - 其他常见：**Update …**、**Remove …**、**Refactor …**、**Improve …**（仅在 Add/Fix 不准确时使用）
+- 首行尽量 **≤ 72 字符**；不要堆文件名，不要写 changelog 式长句。
 
-## 要求
+## 正文（可选）
 
-- 不要写长段落，不要堆文件列表当正文。
-- bullet 只在改动点多、首段无法涵盖时使用；通常 2–5 条即可。
-- 写入仓库的 commit message 正文使用 **English**（与 `language-conventions` 一致）；在 chat 里向用户解释可用中文。
+- 仅当首行无法涵盖多个独立改动点时，首行后**空一行**，用 **bullet** 补充（每条一行，动词开头）。
+- 通常 0–3 条即可；多数 commit **只有首行、无 bullet**。
+- 写入仓库的 commit message 使用 **English**；在 chat 里向用户解释可用中文。
 
 ## 示例
 
 ```text
-Tighten parameter table layout and make description column fill remaining width.
-
-- Add resizable fixed columns for name/value/scale
-- Auto-expand description to panel edge
-- Show full variable path in name column
+Fix pinned parameter values stopping live updates after refresh.
 ```
 
 ```text
-Fix WatchIO WebSocket connection bar showing redundant gateway fields.
+Add case-insensitive tree filter with first-level expand only.
+```
+
+```text
+Improve filter performance by separating varlist index from variables store.
+
+- Store search hits in searchVarlistIndex instead of mergeVarList
+- Skip monitor list resync on varleaves retry
 ```
 
 ## 避免
@@ -38,4 +46,8 @@ Fix WatchIO WebSocket connection bar showing redundant gateway fields.
 ❌ This commit updates ParameterTable.tsx to add ResizableTableHeaderCell,
 implements column width state, changes CSS in App.css, modifies MenuBar...
 （过长、像 changelog）
+
+❌ Fixed the bug.（过泛，未说明修了什么）
+
+❌ 修复刷新后参数不更新。（仓库 commit 正文不要用中文）
 ```
