@@ -151,3 +151,18 @@ export async function fetchRequestServices(
 
   return mapped;
 }
+
+/** Pick the default service row after GET /request — SmcServer1 preferred for smcServer transport. */
+export function pickDiscoveredService(
+  services: DiscoveredService[],
+  transport: ConnectionTransport,
+): DiscoveredService | undefined {
+  if (transport === 'smcServer') {
+    return (
+      services.find((s) => s.name === 'SmcServer1') ??
+      services.find((s) => s.uri.toLowerCase().includes('smcserver1')) ??
+      services[0]
+    );
+  }
+  return services.find((s) => s.uri.toLowerCase().includes('/watchio')) ?? services[0];
+}

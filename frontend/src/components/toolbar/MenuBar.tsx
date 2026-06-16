@@ -8,6 +8,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import { defaultServerPath } from '../../constants/transport';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { usePlotStore } from '../../stores/plotStore';
@@ -144,7 +145,7 @@ export function MenuBar() {
       watchIoName: session.watchIoName,
       httpUrl: session.httpUrl ?? '',
       wsUrl: session.wsUrl ?? '',
-      serverPath: session.serverPath ?? '/SmcServer1',
+      serverPath: session.serverPath ?? defaultServerPath(session.transport ?? 'smcServer'),
       sampleInterval: session.sampleInterval,
     });
     setFlatTree(session.flatTree);

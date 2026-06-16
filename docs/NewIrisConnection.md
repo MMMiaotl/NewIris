@@ -1,12 +1,15 @@
 # NewIris 连接方式（当前可用方案）
 
-本文档记录 **NewIris 前端已验证可用** 的连接路径。连接栏 **Transport** 支持三种模式：
+本文档记录 **Iris Next** 前端已验证可用的连接路径。连接栏 **Connection type** 支持四种模式：
 
-| Transport | 发现方式 | API 路径 | 变量树形式 | 典型场景 |
-|-----------|----------|----------|------------|----------|
-| **smcServer** | `GET /request` → SmcServer1 | `/SmcServer1/...` | 斜杠对象树（`Control/Control.Filter...`） | 与 SmcServerView 相同；读 SmcControl1、Kqx1 |
-| **watchIoWs** | STOMP `ws://8083` `/request` → `/watchio` | STOMP `destination=/watchio` | 点分路径（`C.Filter...`） | WatchIoWebServer 仅 WS 注册时 **已验证** |
-| **watchIoHttp** | `GET /request`（需 `http=1`） | `GET /watchio/{name}:...` | 点分路径 | WatchIoWebServer 同时注册 HTTP 时 |
+| Transport | UI 名称 | 发现方式 | API 路径 | 变量树形式 | 典型场景 |
+|-----------|---------|----------|----------|------------|----------|
+| **smcServer** | SmcServer API | `GET /request` → SmcServer1 | `/SmcServer1/...` | 斜杠对象树 | 与 SmcServerView 相同 |
+| **sharedMemory** | Shared Memory | 默认 `/watchio`（STOMP WS） | STOMP `destination=/watchio` | 点分路径 | 本机 WatchIO 段（WatchIoWebServer 本地共享内存） |
+| **watchIoWs** | WatchIO WebSocket | STOMP `ws://8083` `/request` | STOMP `/watchio` | 点分路径 | 远端或通用 WS 部署 |
+| **watchIoHttp** | WatchIO HTTP | `GET /request`（需 `http=1`） | `GET /watchio/{name}:...` | 点分路径 | WatchIoWebServer 同时注册 HTTP 时 |
+
+`sharedMemory` 与 `watchIoWs` 使用同一 STOMP 客户端；区别在于 UI 语义与本机默认发现路径。
 
 **SmcServer** 与 **WatchIO** 是两条独立桥接，不要混用 URL 与命名规则。WS 协议细节与完整故障排查见 **[WatchIoWebSocket.md](WatchIoWebSocket.md)**。
 

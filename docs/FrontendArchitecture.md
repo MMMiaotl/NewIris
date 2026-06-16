@@ -13,9 +13,10 @@ Browser (:5173)
   │
   ├─ useWatchIo() ── createWatchIoClient(config)
   │       │
-  │       ├─ smcServer      → SmcServerClient     → GET /SmcServerN/...
-  │       ├─ watchIoHttp    → HttpWatchIoClient    → GET /watchio/...
-  │       └─ watchIoWs      → StompWatchIoClient   → STOMP ws://:8083
+  │       ├─ smcServer      → SmcServerClient     → GET /SmcServerN/...  (slash tree)
+  │       ├─ sharedMemory   → StompWatchIoClient  → STOMP ws://:8083     (local WatchIO shm)
+  │       ├─ watchIoHttp    → HttpWatchIoClient    → GET /watchio/...     (dot tree)
+  │       └─ watchIoWs      → StompWatchIoClient   → STOMP ws://:8083     (dot tree)
   │
   ├─ Zustand stores ← WatchIoMessage handlers in useWatchIo
   │
@@ -37,7 +38,7 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `api/types.ts` | Shared types: `WatchIoMessage`, `ConnectionConfig`, `SessionFile`, etc. |
 | `api/watchIoPaths.ts`, `watchIoServerJson.ts`, `watchIoWsDiscovery.ts` | URL builders and discovery |
 | `api/stompFrame.ts` | STOMP frame encode/decode |
-| `stores/connectionStore.ts` | Transport config, discovered services, UI mode (live/offline/replay), layout |
+| `stores/connectionStore.ts` | Transport config, discovery (`runDiscovery`), connect status, layout |
 | `stores/variableStore.ts` | Tree nodes, branch variables, selection, registration flags |
 | `stores/plotStore.ts` | Plot series, colors, Y range (max 8 series) |
 | `stores/sessionStore.ts` | Recording frames, replay state |
@@ -53,14 +54,15 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `utils/watchIoDebug.ts` | Optional console + message log helpers |
 | `utils/recordingFormat.ts` | `.niris` file read/write |
 | `utils/parseAttributes.ts` | Variable metadata from params |
-| `constants/transport.ts` | `ConnectionTransport` labels and env default |
+| `constants/transport.ts` | Transport labels, `defaultServerPath`, env default |
+| `utils/workspaceScope.ts` | Connection instance key for workspace/plot persistence |
 | `components/layout/AppShell.tsx` | Root layout; wires hooks to panels |
 
 Components are grouped by feature under `components/{connection,tree,table,plot,control,replay,settings,debug,toolbar,layout}/`. Prefer adding UI there rather than bloating `AppShell`.
 
 ## Data flow (live mode)
 
-1. User clicks **Request** → `smcHttp` fetches `/request` → `connectionStore.discoveredServices`.
+1. User clicks **Request** → `connectionStore.runDiscovery()` → `/request` → `discoveredServices`.
 2. User selects service → `connectionStore.config.serverPath` (e.g. `/SmcServer1`).
 3. **Connect** → `useWatchIo.connect()` → factory creates client → `client.connect()`.
 4. Client emits `WatchIoMessage` → `useWatchIo.handleMessage`:
@@ -169,6 +171,11 @@ node scripts/verify-smc-api.mjs    # needs :8082 + SmcServer
 ```
 
 Pure parsing logic (`parseSmcJson`, `parseWatchIoMessage`, `stompFrame`) can be tested offline via existing scripts or future unit tests.
+
+## Code style (repo convention)
+
+- **Source**: minimal — smallest correct implementation; shared logic in `api/`, `stores/`, `hooks/`, `utils/` (see `.cursor/rules/code-style.mdc`).
+- **Comments / docs**: thorough on non-obvious protocol, store boundaries, and failure modes — this file and [NewIrisConnection.md](NewIrisConnection.md) are the onboarding path.
 
 ## Related docs
 

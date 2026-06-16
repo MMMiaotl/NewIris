@@ -32,16 +32,14 @@ import {
 } from '../utils/pinnedVariables';
 import {
   clearPinnedBranchPending,
+  createPinnedLivePipelineState,
   runPinnedLivePipeline,
   type PinnedLivePipelineState,
 } from '../utils/watchIoLiveMonitor';
 import { useWatchIoMessageLogStore } from '../stores/watchIoMessageLogStore';
 
-function createPipelineState(): PinnedLivePipelineState {
-  return {
-    serverMonitored: new Map(),
-    pendingBranches: new Set(),
-  };
+function currentTransport(): ConnectionTransport {
+  return useConnectionStore.getState().config.transport;
 }
 
 export function useWatchIo() {
@@ -49,7 +47,7 @@ export function useWatchIo() {
   const sessionRef = useRef(0);
   const refetchedBranchesRef = useRef(new Set<string>());
   const pendingBranchFetchesRef = useRef(new Set<string>());
-  const pinnedPipelineRef = useRef<PinnedLivePipelineState>(createPipelineState());
+  const pinnedPipelineRef = useRef<PinnedLivePipelineState>(createPinnedLivePipelineState());
   const [monitorEpoch, setMonitorEpoch] = useState(0);
   const smcPinnedPollRegisteredRef = useRef(false);
   const userDisconnectedWatchIoWsRef = useRef(false);
@@ -70,13 +68,12 @@ export function useWatchIo() {
   const { recording, appendRecordingFrame } = useSessionStore();
 
   const runLivePipeline = useCallback(() => {
-    const transport = useConnectionStore.getState().config.transport;
-    if (!isWatchIoTransport(transport)) return;
+    if (!isWatchIoTransport(currentTransport())) return;
     const client = clientRef.current;
     const result = runPinnedLivePipeline(
       client,
       pinnedPipelineRef.current,
-      transport,
+      currentTransport(),
     );
     if (result === 'synced') {
       setMonitorEpoch((n) => n + 1);
@@ -96,8 +93,7 @@ export function useWatchIo() {
     const client = clientRef.current;
     if (!client) return false;
 
-    const transport = useConnectionStore.getState().config.transport;
-    if (transport !== 'smcServer') return true;
+    if (currentTransport() !== 'smcServer') return true;
 
     const pinnedNames = collectPinnedVariableNames();
     if (!pinnedNames.length) return true;
@@ -111,12 +107,12 @@ export function useWatchIo() {
 
     const needsServerLoad = missingPinnedVariableNames();
     for (const name of needsServerLoad) {
-      const branch = branchPathForVariableName(name, transport);
+      const branch = branchPathForVariableName(name, 'smcServer');
       if (!branch) continue;
       if (pendingBranchFetchesRef.current.has(branch)) continue;
       if (
         refetchedBranchesRef.current.has(branch) &&
-        !pinnedNamesMissingOnBranch(branch, transport, pinnedNames)
+        !pinnedNamesMissingOnBranch(branch, 'smcServer', pinnedNames)
       ) {
         continue;
       }
@@ -133,8 +129,8 @@ export function useWatchIo() {
   const handleMessage = useCallback(
     (msg: WatchIoMessage) => {
       const entries = normalizeEntries(msg.entries);
-      const transport = useConnectionStore.getState().config.transport;
-      const useDotTree = isWatchIoTransport(transport);
+      const t = currentTransport();
+      const useDotTree = isWatchIoTransport(t);
 
       if (msg.type === 'vartree' || msg.type === 'varleaves' || msg.type === 'varlist' || msg.type === 'varinfo') {
         useConnectionStore.getState().setStatus('connected');
@@ -226,7 +222,7 @@ export function useWatchIo() {
             if (entries.length > 0) {
               refetchedBranchesRef.current.add(branch);
               const pinnedNames = collectPinnedVariableNames();
-              if (pinnedNamesMissingOnBranch(branch, transport, pinnedNames)) {
+              if (pinnedNamesMissingOnBranch(branch, t, pinnedNames)) {
                 refetchedBranchesRef.current.delete(branch);
               }
             } else {
@@ -299,12 +295,12 @@ export function useWatchIo() {
   const disconnect = useCallback((userInitiated = false) => {
     refetchedBranchesRef.current.clear();
     pendingBranchFetchesRef.current.clear();
-    pinnedPipelineRef.current = createPipelineState();
+    pinnedPipelineRef.current = createPinnedLivePipelineState();
     smcPinnedPollRegisteredRef.current = false;
     clientRef.current?.disconnect();
     clientRef.current = null;
     useWatchIoMessageLogStore.getState().clear();
-    if (userInitiated && isStompWatchIoTransport(useConnectionStore.getState().config.transport)) {
+    if (userInitiated && isStompWatchIoTransport(currentTransport())) {
       userDisconnectedWatchIoWsRef.current = true;
     }
     setStatus('disconnected');
@@ -318,7 +314,7 @@ export function useWatchIo() {
     const session = ++sessionRef.current;
     refetchedBranchesRef.current.clear();
     pendingBranchFetchesRef.current.clear();
-    pinnedPipelineRef.current = createPipelineState();
+    pinnedPipelineRef.current = createPinnedLivePipelineState();
     smcPinnedPollRegisteredRef.current = false;
     clientRef.current?.disconnect();
     clientRef.current = null;
@@ -399,8 +395,8 @@ export function useWatchIo() {
   const refreshBranch = useCallback(() => {
     const client = clientRef.current;
     if (!client) return;
-    const transport = useConnectionStore.getState().config.transport;
-    if (isWatchIoTransport(transport) && missingPinnedVariableNames().length > 0) return;
+    const t = currentTransport();
+    if (isWatchIoTransport(t) && missingPinnedVariableNames().length > 0) return;
     if (selectedBranch) client.fetchVarLeaves(selectedBranch);
     else client.fetchVarTree();
   }, [selectedBranch]);
@@ -408,8 +404,7 @@ export function useWatchIo() {
   const registerVariable = useCallback(
     (name: string) => {
       useVariableStore.getState().setRegistered(name, true);
-      const transport = useConnectionStore.getState().config.transport;
-      if (isWatchIoTransport(transport)) {
+      if (isWatchIoTransport(currentTransport())) {
         runLivePipeline();
       } else {
         clientRef.current?.addVariable(name, 'set');
@@ -420,13 +415,8 @@ export function useWatchIo() {
 
   const unregisterVariable = useCallback((name: string) => {
     useVariableStore.getState().setRegistered(name, false);
-    const transport = useConnectionStore.getState().config.transport;
-    if (isWatchIoTransport(transport)) {
-      pinnedPipelineRef.current.serverMonitored.delete(name);
-      clientRef.current?.removeVariable(name);
-    } else {
-      clientRef.current?.removeVariable(name);
-    }
+    pinnedPipelineRef.current.serverMonitored.delete(name);
+    clientRef.current?.removeVariable(name);
   }, []);
 
   const setVariableValue = useCallback((name: string, value: string) => {
@@ -438,16 +428,16 @@ export function useWatchIo() {
     (name: string) => {
       const client = clientRef.current;
       if (!client) return;
-      const transport = useConnectionStore.getState().config.transport;
-      if (isWatchIoTransport(transport)) {
-        const branch = branchPathForVariableName(name, transport);
+      const t = currentTransport();
+      if (isWatchIoTransport(t)) {
+        const branch = branchPathForVariableName(name, t);
         if (branch) {
           pinnedPipelineRef.current.pendingBranches.delete(branch);
           client.fetchVarLeaves(branch, true, true);
         }
         queueMicrotask(() => runLivePipelineRef.current());
       } else {
-        const branch = branchPathForVariableName(name, transport);
+        const branch = branchPathForVariableName(name, t);
         if (branch) client.fetchVarLeaves(branch);
         client.addVariable(name);
         client.requestUpdate();

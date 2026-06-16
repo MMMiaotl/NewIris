@@ -18,6 +18,15 @@ export function parseTransportEnv(value: string | undefined): ConnectionTranspor
   return 'watchIoWs';
 }
 
+export function isSmcServerTransport(transport: ConnectionTransport): boolean {
+  return transport === 'smcServer';
+}
+
+/** Default gateway path when switching transport or restoring sessions without serverPath. */
+export function defaultServerPath(transport: ConnectionTransport): string {
+  return isSmcServerTransport(transport) ? '/SmcServer1' : '/watchio';
+}
+
 export const defaultWatchIoNames: Record<ConnectionTransport, string> = {
   smcServer: 'SmcControl1',
   sharedMemory: 'SmcControl1',

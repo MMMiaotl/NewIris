@@ -2,26 +2,9 @@ import { useEffect } from 'react';
 import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import { PlugConnectedIcon, PlugDisconnectedIcon } from './PlugIcons';
 import { WatchIoNameField } from './WatchIoNameField';
-import {
-  createDefaultWatchIoService,
-  fetchRequestServices,
-  isWatchIoTransport,
-  isStompWatchIoTransport,
-} from '../../api/smcHttp';
-import { defaultWsUrl } from '../../api/watchIoPaths';
-import type { ConnectionTransport } from '../../api/types';
-import { defaultWatchIoNames, transportOptions } from '../../constants/transport';
+import { createDefaultWatchIoService, isWatchIoTransport, isStompWatchIoTransport } from '../../api/smcHttp';
+import { isSmcServerTransport, transportOptions } from '../../constants/transport';
 import { predefinedHosts, useConnectionStore } from '../../stores/connectionStore';
-import { watchIoLog } from '../../utils/watchIoDebug';
-
-function applyWatchIoDefaults(
-  setDiscoveredServices: (services: ReturnType<typeof createDefaultWatchIoService>[]) => void,
-  selectService: (name: string) => void,
-) {
-  const fallback = createDefaultWatchIoService();
-  setDiscoveredServices([fallback]);
-  selectService(fallback.name);
-}
 
 interface ConnectionBarProps {
   onConnect: () => void | Promise<boolean | void>;
@@ -29,7 +12,6 @@ interface ConnectionBarProps {
   onApplyWatchIoName: (name: string) => Promise<boolean>;
 }
 
-/** request → select service → Connect (SmcServer or WatchIoWebServer). */
 export function ConnectionBar({
   onConnect,
   onDisconnect,
@@ -42,15 +24,16 @@ export function ConnectionBar({
     requestStatus,
     requestError,
     setConfig,
-    setDiscoveredServices,
+    setTransport,
+    resetWatchIoDiscovery,
+    runDiscovery,
     selectService,
-    setRequestStatus,
     status,
     appMode,
   } = useConnectionStore();
 
   const isWatchIo = isWatchIoTransport(config.transport);
-  const isWatchIoWs = isStompWatchIoTransport(config.transport);
+  const isStomp = isStompWatchIoTransport(config.transport);
   const defaultWatchIo = createDefaultWatchIoService();
   const watchIoFromRequest = discoveredServices.some(
     (s) =>
@@ -58,77 +41,22 @@ export function ConnectionBar({
   );
 
   useEffect(() => {
-    if (!isWatchIoWs || selectedServiceName) return;
-    applyWatchIoDefaults(setDiscoveredServices, selectService);
-    setRequestStatus('ok');
-  }, [isWatchIoWs, selectedServiceName, setDiscoveredServices, selectService, setRequestStatus]);
-
-  const onTransportChange = (transport: ConnectionTransport) => {
-    setConfig({
-      transport,
-      serverPath: transport === 'smcServer' ? '/SmcServer1' : '/watchio',
-      watchIoName: defaultWatchIoNames[transport],
-    });
-    setRequestStatus('idle');
-    if (isWatchIoTransport(transport)) {
-      applyWatchIoDefaults(setDiscoveredServices, selectService);
-      setRequestStatus('ok');
-    } else {
-      setDiscoveredServices([]);
-    }
-  };
-
-  const doRequest = async () => {
-    setRequestStatus('loading');
-    try {
-      const services = await fetchRequestServices(
-        config.httpUrl,
-        config.transport,
-        config.wsUrl || defaultWsUrl(config.hostAddress),
-      );
-      setDiscoveredServices(services);
-      setRequestStatus('ok');
-      watchIoLog('discover', `/request (${config.transport})`, {
-        count: services.length,
-        services,
-      });
-
-      const pick =
-        config.transport === 'smcServer'
-          ? (services.find((s) => s.name === 'SmcServer1') ??
-            services.find((s) => s.uri.toLowerCase().includes('smcserver1')) ??
-            services[0])
-          : (services.find((s) => s.uri.toLowerCase().includes('/watchio')) ?? services[0]);
-      if (pick) selectService(pick.name);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Request failed';
-      setRequestStatus('error', msg);
-      if (isWatchIo) {
-        applyWatchIoDefaults(setDiscoveredServices, selectService);
-      } else {
-        setDiscoveredServices([]);
-      }
-    }
-  };
-
-  const serviceOptions = discoveredServices.map((s) => ({
-    label: `${s.name} → ${s.uri}${s.category ? ` [${s.category}]` : ''}`,
-    value: s.name,
-  }));
+    if (!isStomp || selectedServiceName) return;
+    resetWatchIoDiscovery();
+  }, [isStomp, selectedServiceName, resetWatchIoDiscovery]);
 
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
   const connectDisabled =
     appMode !== 'live' ||
     isConnecting ||
-    (config.transport === 'smcServer' && !selectedServiceName);
+    (isSmcServerTransport(config.transport) && !selectedServiceName);
 
-  const servicePlaceholder =
-    isWatchIo
-      ? 'Default /watchio — Connect directly'
-      : requestStatus === 'idle' && !selectedServiceName
-        ? 'Click request first'
-        : 'Select SmcServer';
+  const servicePlaceholder = isWatchIo
+    ? 'Default /watchio — Connect directly'
+    : requestStatus === 'idle' && !selectedServiceName
+      ? 'Click request first'
+      : 'Select SmcServer';
 
   return (
     <div className="connection-bar">
@@ -138,7 +66,7 @@ export function ConnectionBar({
           <Select
             style={{ width: 200 }}
             value={config.transport}
-            onChange={onTransportChange}
+            onChange={setTransport}
             options={transportOptions}
           />
           <Tooltip
@@ -147,20 +75,14 @@ export function ConnectionBar({
                 ? 'Not available in offline/replay mode'
                 : isConnected
                   ? 'Disconnect'
-                  : config.transport === 'smcServer' && !selectedServiceName
+                  : isSmcServerTransport(config.transport) && !selectedServiceName
                     ? 'Select a service first'
                     : 'Connect'
             }
           >
             <Button
               className={isConnected ? 'connect-btn connect-btn--connected' : 'connect-btn'}
-              icon={
-                isConnected ? (
-                  <PlugConnectedIcon />
-                ) : (
-                  <PlugDisconnectedIcon />
-                )
-              }
+              icon={isConnected ? <PlugConnectedIcon /> : <PlugDisconnectedIcon />}
               loading={isConnecting}
               disabled={connectDisabled && !isConnected}
               onClick={isConnected ? onDisconnect : onConnect}
@@ -168,7 +90,7 @@ export function ConnectionBar({
             />
           </Tooltip>
         </Space.Compact>
-        {!isWatchIoWs && (
+        {!isStomp && (
           <>
             <Typography.Text type="secondary">Server</Typography.Text>
             <Select
@@ -177,7 +99,7 @@ export function ConnectionBar({
               onChange={(hostAddress) => setConfig({ hostAddress })}
               options={predefinedHosts.map((h) => ({ label: h, value: h }))}
             />
-            <Button loading={requestStatus === 'loading'} onClick={() => void doRequest()}>
+            <Button loading={requestStatus === 'loading'} onClick={() => void runDiscovery()}>
               request
             </Button>
             <Typography.Text type="secondary">Service</Typography.Text>
@@ -186,7 +108,10 @@ export function ConnectionBar({
               placeholder={servicePlaceholder}
               value={selectedServiceName ?? undefined}
               onChange={selectService}
-              options={serviceOptions}
+              options={discoveredServices.map((s) => ({
+                label: `${s.name} → ${s.uri}${s.category ? ` [${s.category}]` : ''}`,
+                value: s.name,
+              }))}
             />
           </>
         )}
@@ -200,16 +125,18 @@ export function ConnectionBar({
         {requestStatus === 'error' && (
           <Typography.Text type="danger">{requestError}</Typography.Text>
         )}
-        {isWatchIo && !isWatchIoWs && requestStatus === 'ok' && !watchIoFromRequest && (
+        {isWatchIo && !isStomp && requestStatus === 'ok' && !watchIoFromRequest && (
           <Typography.Text type="secondary">
             HTTP /request has no /watchio — using default; need http=1 on WatchIoWebServer
           </Typography.Text>
         )}
-        {requestStatus === 'ok' && !discoveredServices.length && config.transport === 'smcServer' && (
-          <Typography.Text type="warning">
-            No SmcServer in /request — ensure HttpWebServer is running
-          </Typography.Text>
-        )}
+        {requestStatus === 'ok' &&
+          !discoveredServices.length &&
+          isSmcServerTransport(config.transport) && (
+            <Typography.Text type="warning">
+              No SmcServer in /request — ensure HttpWebServer is running
+            </Typography.Text>
+          )}
       </Space>
     </div>
   );

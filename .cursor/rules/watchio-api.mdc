@@ -18,11 +18,12 @@ All backends implement `WatchIoClient` in `watchIoClient.ts`. Factory: `createWa
 // 4. Proxy entries in vite.config.ts (if HTTP)
 ```
 
-## Three transports (do not mix URL rules)
+## Four transports (do not mix URL rules)
 
 | Transport | Client | Base path | Tree naming |
 |-----------|--------|-----------|-------------|
 | `smcServer` | `SmcServerClient` | `/SmcServer1`, `/SmcServer2` | Slash paths (`Control/...`) |
+| `sharedMemory` | `StompWatchIoClient` | STOMP dest `/watchio` | Dot paths |
 | `watchIoHttp` | `HttpWatchIoClient` | `/watchio` | Dot paths (`C.Filter...`) |
 | `watchIoWs` | `StompWatchIoClient` | STOMP dest `/watchio` | Dot paths |
 

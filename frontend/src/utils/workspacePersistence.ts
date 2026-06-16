@@ -1,4 +1,5 @@
-import type { ConnectionConfig, ViewMode, VariableDisplayOverride, VariableType } from '../api/types';
+import type { ViewMode, VariableDisplayOverride, VariableType } from '../api/types';
+import { workspaceScope } from './workspaceScope';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useDisplayStore } from '../stores/displayStore';
 import { usePlotStore } from '../stores/plotStore';
@@ -34,9 +35,7 @@ export interface WorkspaceSnapshot {
   displayOverrides?: Record<string, VariableDisplayOverride>;
 }
 
-export function workspaceScope(config: ConnectionConfig): string {
-  return [config.transport, config.hostAddress, config.serverPath, config.watchIoName].join('|');
-}
+export { workspaceScope } from './workspaceScope';
 
 export function collectPinnedVariableMetadata(): WorkspaceSnapshot['pinnedMetadata'] {
   const pinned = new Set(collectPinnedVariableNames());

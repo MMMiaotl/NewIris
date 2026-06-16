@@ -85,6 +85,10 @@ export interface PinnedLivePipelineState {
   pendingBranches: Set<string>;
 }
 
+export function createPinnedLivePipelineState(): PinnedLivePipelineState {
+  return { serverMonitored: new Map(), pendingBranches: new Set() };
+}
+
 /**
  * Single pinned-live orchestrator: branch varleaves → incremental monitor add → requestUpdate.
  * Uses varleaves (not varinfo) — SmcControl1 STOMP often does not reply to varinfo.

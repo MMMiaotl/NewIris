@@ -1,3 +1,6 @@
+/**
+ * Transport-agnostic WatchIO client contract. Implementations: SmcServerClient, HttpWatchIoClient, StompWatchIoClient.
+ */
 import type { VariableType, WatchIoMessage } from './types';
 
 export type MessageHandler = (msg: WatchIoMessage) => void;

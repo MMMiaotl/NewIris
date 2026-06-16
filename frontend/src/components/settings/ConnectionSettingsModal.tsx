@@ -10,7 +10,7 @@ interface ConnectionSettingsModalProps {
 }
 
 export function ConnectionSettingsModal({ open, onClose }: ConnectionSettingsModalProps) {
-  const { config, setWatchIoLogDrawerOpen, setConfig } = useConnectionStore();
+  const { config, setWatchIoLogDrawerOpen, setConfig, setTransport } = useConnectionStore();
   const isWatchIo = isWatchIoTransport(config.transport);
   const showWsUrl = isStompWatchIoTransport(config.transport);
 
@@ -37,12 +37,7 @@ export function ConnectionSettingsModal({ open, onClose }: ConnectionSettingsMod
               <Form.Item label="Connection type" className="connection-settings-field">
                 <Select
                   value={config.transport}
-                  onChange={(transport: ConnectionTransport) =>
-                    setConfig({
-                      transport,
-                      serverPath: transport === 'smcServer' ? '/SmcServer1' : '/watchio',
-                    })
-                  }
+                  onChange={(transport: ConnectionTransport) => setTransport(transport)}
                   options={transportOptions}
                 />
               </Form.Item>

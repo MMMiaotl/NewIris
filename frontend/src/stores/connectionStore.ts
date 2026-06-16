@@ -1,13 +1,28 @@
+/**
+ * Connection UI state: transport config, /request discovery, connect status, layout prefs.
+ * Server I/O and message routing live in useWatchIo — not here.
+ */
 import { create } from 'zustand';
-import { createDefaultWatchIoService, isWatchIoTransport } from '../api/smcHttp';
+import {
+  createDefaultWatchIoService,
+  fetchRequestServices,
+  isWatchIoTransport,
+  pickDiscoveredService,
+} from '../api/smcHttp';
 import { defaultWsUrl } from '../api/watchIoPaths';
-import { parseTransportEnv } from '../constants/transport';
+import type { ConnectionTransport } from '../api/types';
+import {
+  defaultServerPath,
+  defaultWatchIoNames,
+  parseTransportEnv,
+} from '../constants/transport';
 import type {
   AppMode,
   ConnectionConfig,
   DiscoveredService,
   ViewMode,
 } from '../api/types';
+import { watchIoLog } from '../utils/watchIoDebug';
 
 interface ConnectionState {
   config: ConnectionConfig;
@@ -21,13 +36,14 @@ interface ConnectionState {
   viewMode: ViewMode;
   flatTree: boolean;
   searchQuery: string;
-  /** Right Control panel visibility (legacy name: was a drawer, now Splitter side panel). */
   plotDrawerOpen: boolean;
-  /** Right Control panel width in px when open (Splitter controlled size). */
   controlPanelWidth: number;
   connectionModalOpen: boolean;
   watchIoLogDrawerOpen: boolean;
   setConfig: (partial: Partial<ConnectionConfig>) => void;
+  setTransport: (transport: ConnectionTransport) => void;
+  resetWatchIoDiscovery: () => void;
+  runDiscovery: () => Promise<void>;
   setDiscoveredServices: (services: DiscoveredService[]) => void;
   selectService: (name: string) => void;
   setRequestStatus: (
@@ -45,12 +61,12 @@ interface ConnectionState {
   setWatchIoLogDrawerOpen: (open: boolean) => void;
 }
 
-const defaultHosts = ['localhost:8082', '127.0.0.1:8082'];
-
 export const DEFAULT_CONTROL_PANEL_WIDTH = 400;
 export const MIN_CONTROL_PANEL_WIDTH = 280;
 export const DEFAULT_TREE_PANEL_WIDTH = 240;
 export const MIN_TREE_PANEL_WIDTH = 200;
+
+export const predefinedHosts = ['localhost:8082', '127.0.0.1:8082'];
 
 const initialTransport = parseTransportEnv(import.meta.env.VITE_TRANSPORT);
 
@@ -63,7 +79,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       defaultWsUrl(import.meta.env.VITE_HOST_ADDRESS ?? 'localhost:8082'),
     hostAddress: import.meta.env.VITE_HOST_ADDRESS ?? 'localhost:8082',
     watchIoName: import.meta.env.VITE_WATCHIO_NAME ?? 'SmcControl1',
-    serverPath: initialTransport === 'smcServer' ? '/SmcServer1' : '/watchio',
+    serverPath: defaultServerPath(initialTransport),
     sampleInterval: 500,
   },
   discoveredServices: [],
@@ -84,14 +100,59 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       if (partial.hostAddress && !partial.wsUrl) {
         next.wsUrl = defaultWsUrl(next.hostAddress);
       }
-      if (partial.transport === 'smcServer' && partial.transport !== s.config.transport) {
-        if (!partial.serverPath) next.serverPath = '/SmcServer1';
-      }
-      if (partial.transport && isWatchIoTransport(partial.transport)) {
-        if (!partial.serverPath) next.serverPath = '/watchio';
+      if (partial.transport && partial.transport !== s.config.transport && !partial.serverPath) {
+        next.serverPath = defaultServerPath(partial.transport);
       }
       return { config: next };
     }),
+  setTransport: (transport) => {
+    const watchIo = isWatchIoTransport(transport);
+    const fallback = createDefaultWatchIoService();
+    set({
+      config: {
+        ...get().config,
+        transport,
+        serverPath: defaultServerPath(transport),
+        watchIoName: defaultWatchIoNames[transport],
+      },
+      requestStatus: watchIo ? 'ok' : 'idle',
+      requestError: undefined,
+      discoveredServices: watchIo ? [fallback] : [],
+      selectedServiceName: watchIo ? fallback.name : null,
+    });
+  },
+  resetWatchIoDiscovery: () => {
+    const fallback = createDefaultWatchIoService();
+    set({
+      discoveredServices: [fallback],
+      selectedServiceName: fallback.name,
+      config: { ...get().config, serverPath: fallback.uri },
+      requestStatus: 'ok',
+    });
+  },
+  runDiscovery: async () => {
+    const { config } = get();
+    set({ requestStatus: 'loading', requestError: undefined });
+    try {
+      const services = await fetchRequestServices(
+        config.httpUrl,
+        config.transport,
+        config.wsUrl || defaultWsUrl(config.hostAddress),
+      );
+      set({ discoveredServices: services, requestStatus: 'ok' });
+      watchIoLog('discover', `/request (${config.transport})`, {
+        count: services.length,
+        services,
+      });
+      const pick = pickDiscoveredService(services, config.transport);
+      if (pick) get().selectService(pick.name);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Request failed';
+      set({ requestStatus: 'error', requestError: msg });
+      if (isWatchIoTransport(config.transport)) get().resetWatchIoDiscovery();
+      else set({ discoveredServices: [], selectedServiceName: null });
+    }
+  },
   setDiscoveredServices: (discoveredServices) => set({ discoveredServices }),
   selectService: (name) => {
     let service = get().discoveredServices.find((s) => s.name === name);
@@ -118,5 +179,3 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   setConnectionModalOpen: (connectionModalOpen) => set({ connectionModalOpen }),
   setWatchIoLogDrawerOpen: (watchIoLogDrawerOpen) => set({ watchIoLogDrawerOpen }),
 }));
-
-export const predefinedHosts = defaultHosts;

@@ -1,3 +1,6 @@
+/**
+ * Single factory for transport clients. All live I/O goes through useWatchIo → createWatchIoClient.
+ */
 import { HttpWatchIoClient } from './httpWatchIoClient';
 import { SmcServerClient } from './smcServerClient';
 import { StompWatchIoClient } from './stompWatchIoClient';
@@ -23,7 +26,6 @@ export function createWatchIoClient(config: ConnectionConfig): WatchIoClient {
         config.sampleInterval,
       );
     case 'smcServer':
-    default:
       return new SmcServerClient(config.httpUrl, config.serverPath, config.sampleInterval);
   }
 }

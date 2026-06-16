@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useConnectionStore } from './connectionStore';
 import { useVariableStore } from './variableStore';
 import { trimSeriesPoints, type PlotPoint } from '../utils/plotTime';
+import { workspaceScope } from '../utils/workspaceScope';
 import { WORKSPACE_STORAGE_KEY } from '../utils/workspacePersistence';
 
 const PLOT_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#e57373', '#ba68c8', '#4db6ac', '#ffd54f', '#90a4ae'];
@@ -31,15 +32,6 @@ export const DEFAULT_PLOT_X_WINDOW_SEC = 600;
 const MIN_PLOT_X_WINDOW_SEC = 30;
 const MAX_PLOT_X_WINDOW_SEC = 3600;
 
-function workspaceScopeFromConfig(config: {
-  transport: string;
-  hostAddress: string;
-  serverPath: string;
-  watchIoName: string;
-}): string {
-  return [config.transport, config.hostAddress, config.serverPath, config.watchIoName].join('|');
-}
-
 /** Read persisted Y range before first render — avoids a frame at hardcoded defaults. */
 function readInitialPlotScales(): { yMin: number; yMax: number; xWindowSec: number } {
   const defaults = { yMin: -10, yMax: 10, xWindowSec: DEFAULT_PLOT_X_WINDOW_SEC };
@@ -52,7 +44,7 @@ function readInitialPlotScales(): { yMin: number; yMax: number; xWindowSec: numb
       plotMax?: number;
       plotXWindowSec?: number;
     };
-    const scope = workspaceScopeFromConfig(useConnectionStore.getState().config);
+    const scope = workspaceScope(useConnectionStore.getState().config);
     if (snapshot.scope !== scope) return defaults;
     return {
       yMin: typeof snapshot.plotMin === 'number' ? snapshot.plotMin : defaults.yMin,
