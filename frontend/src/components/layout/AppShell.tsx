@@ -72,7 +72,7 @@ export function AppShell() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-top">
-          <div className="app-title">NewIris</div>
+          <div className="app-title">Iris Next</div>
           <span className="app-subtitle">WatchIO Monitor</span>
         </div>
         <MenuBar />
