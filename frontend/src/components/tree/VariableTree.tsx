@@ -19,7 +19,7 @@ import {
 } from '../../utils/buildVariableTree';
 import { VariableTreeNodeTitle } from './VariableTreeNodeTitle';
 import {
-  collectBranchKeys,
+  collectTopLevelBranchKeys,
   toVariableTreeData,
   type VariableTreeDataNode,
 } from './variableTreeData';
@@ -40,6 +40,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const watchIoName = useConnectionStore((s) => s.config.watchIoName);
 
   const treeNodes = useVariableStore((s) => s.treeNodes);
+  const searchVarlistIndex = useVariableStore((s) => s.searchVarlistIndex);
   const variables = useVariableStore((s) => s.variables);
   const branchVarPrefix = useVariableStore((s) => s.branchVarPrefix);
   const selectedBranch = useVariableStore((s) => s.selectedBranch);
@@ -54,6 +55,19 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
 
   const selectedSet = useMemo(() => new Set(selectedVariables), [selectedVariables]);
 
+  const searchQueryTrimmed = searchQuery.trim();
+  const isFiltering = searchQueryTrimmed.length > 0;
+
+  const matchingNames = useMemo(() => {
+    if (!isFiltering) return [];
+    return collectMatchingVariableNames(
+      searchVarlistIndex ? [] : variables,
+      selectedVariables,
+      searchQueryTrimmed,
+      searchVarlistIndex ?? undefined,
+    );
+  }, [isFiltering, searchVarlistIndex, variables, selectedVariables, searchQueryTrimmed]);
+
   const displayNodes = useMemo(() => {
     let nodes = flatTree
       ? flattenTree(treeNodes)
@@ -61,15 +75,12 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
         ? treeNodes
         : wrapWithWatchIoRoot(watchIoName, treeNodes);
 
-    const q = searchQuery.trim();
-    if (!q) return nodes;
-
-    const matchingNames = collectMatchingVariableNames(variables, selectedVariables, q);
+    if (!isFiltering) return nodes;
 
     if (flatTree) {
       return matchingNames.length
         ? buildFlatVariableSearchNodes(matchingNames)
-        : filterFlatTreeByVariableSearch(nodes, q);
+        : filterFlatTreeByVariableSearch(nodes, searchQueryTrimmed);
     }
 
     if (matchingNames.length) {
@@ -89,14 +100,14 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       }
     }
 
-    return filterTreeByVariableSearch(nodes, q);
+    return filterTreeByVariableSearch(nodes, searchQueryTrimmed, matchingNames);
   }, [
     treeNodes,
-    variables,
-    selectedVariables,
+    matchingNames,
     branchVarPrefix,
     flatTree,
-    searchQuery,
+    isFiltering,
+    searchQueryTrimmed,
     watchIoName,
     useDotTreeRoot,
   ]);
@@ -120,9 +131,28 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     useDotTreeRoot ? [] : [watchIoName],
   );
 
+  const prevSearchQueryRef = useRef(searchQuery);
+  const pendingSearchExpandRef = useRef(false);
+
   useEffect(() => {
-    if (searchQuery) {
-      setExpandedKeys(collectBranchKeys(displayNodes));
+    const q = searchQuery.trim();
+    if (!q) {
+      prevSearchQueryRef.current = '';
+      pendingSearchExpandRef.current = false;
+      return;
+    }
+
+    const queryChanged = prevSearchQueryRef.current !== searchQuery;
+    if (queryChanged) {
+      prevSearchQueryRef.current = searchQuery;
+      pendingSearchExpandRef.current = true;
+      setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+      return;
+    }
+
+    if (pendingSearchExpandRef.current && displayNodes.length > 0) {
+      pendingSearchExpandRef.current = false;
+      setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
     }
   }, [searchQuery, displayNodes]);
 

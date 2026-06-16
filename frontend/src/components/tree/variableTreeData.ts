@@ -15,6 +15,11 @@ export function toVariableTreeData(nodes: TreeNode[]): VariableTreeDataNode[] {
   }));
 }
 
+/** Expand keys for the roots of a filtered tree — first level only, not full depth. */
+export function collectTopLevelBranchKeys(nodes: TreeNode[]): string[] {
+  return nodes.filter((node) => (node.children?.length ?? 0) > 0).map((node) => node.key);
+}
+
 export function collectBranchKeys(nodes: TreeNode[]): string[] {
   const keys: string[] = [];
   const walk = (list: TreeNode[]) => {

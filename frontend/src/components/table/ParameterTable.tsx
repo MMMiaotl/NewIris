@@ -8,7 +8,6 @@ import {
   MAX_SELECTED_PARAMETERS,
   useVariableStore,
 } from '../../stores/variableStore';
-import { variableNameMatchesSearch } from '../../utils/buildVariableTree';
 import { usePlotStore } from '../../stores/plotStore';
 import { ParameterValueCell } from './ParameterValueCell';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
@@ -35,7 +34,7 @@ function createInitialFixedWidths(): ParameterFixedWidths {
 }
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
-  const { searchQuery, appMode } = useConnectionStore();
+  const { appMode } = useConnectionStore();
   const {
     variables,
     selectedVariables,
@@ -96,11 +95,9 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
   const tableRows = useMemo(() => {
     if (!selectedVariables.length) return [];
-    const q = searchQuery?.toLowerCase();
     return selectedVariables
-      .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name))
-      .filter((v) => !q || variableNameMatchesSearch(v.name, q));
-  }, [selectedVariables, variableMap, searchQuery]);
+      .map((name) => variableMap.get(name) ?? createPlaceholderVariable(name));
+  }, [selectedVariables, variableMap]);
 
   const showTypeColumn = useMemo(
     () => tableRows.some((row) => Boolean(row.varKind?.trim())),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { ConnectionTransport, WatchIoMessage } from '../api/types';
+import type { ConnectionTransport, WatchIoEntry, WatchIoMessage } from '../api/types';
 import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
 import { isWatchIoTransport } from '../api/smcHttp';
 import { createWatchIoClient } from '../api/watchIoClientFactory';
@@ -44,6 +44,7 @@ export function useWatchIo() {
     setTreeNodes,
     mergeVarLeaves,
     mergeVarList,
+    setSearchVarlistIndex,
     applyUpdate,
     selectedBranch,
     setBranchVarPrefix,
@@ -118,6 +119,9 @@ export function useWatchIo() {
 
   const refreshPinnedVariablesRef = useRef(refreshPinnedVariables);
   refreshPinnedVariablesRef.current = refreshPinnedVariables;
+
+  /** Full varlist from server; filtered client-side (backend matchfilter is case-sensitive). */
+  const varlistSearchCacheRef = useRef<WatchIoEntry[] | null>(null);
 
   const handleMessage = useCallback(
     (msg: WatchIoMessage) => {
@@ -227,9 +231,14 @@ export function useWatchIo() {
           }
           break;
         }
-        case 'varlist':
-          mergeVarList(entries);
+        case 'varlist': {
+          const list = normalizeEntries(msg.entries);
+          const q = useConnectionStore.getState().searchQuery.trim();
+          if (!q) break;
+          varlistSearchCacheRef.current = list;
+          setSearchVarlistIndex(list.map((e) => e.name));
           break;
+        }
         case 'update': {
           let updateEntries = normalizeEntries(msg.entries);
           if (!updateEntries.length && msg.name && msg.value !== undefined) {
@@ -257,6 +266,7 @@ export function useWatchIo() {
       setTreeNodes,
       mergeVarLeaves,
       mergeVarList,
+      setSearchVarlistIndex,
       applyUpdate,
       recording,
       appendRecordingFrame,
@@ -453,13 +463,19 @@ export function useWatchIo() {
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;
     const q = searchQuery.trim();
-    if (!q || !isWatchIoTransport(config.transport)) return;
+    if (!q || !isWatchIoTransport(config.transport)) {
+      varlistSearchCacheRef.current = null;
+      setSearchVarlistIndex(null);
+      return;
+    }
+
+    if (varlistSearchCacheRef.current) return;
 
     const id = window.setTimeout(() => {
-      clientRef.current?.fetchVarList(q);
+      clientRef.current?.fetchVarList();
     }, 300);
     return () => window.clearTimeout(id);
-  }, [searchQuery, appMode, status, config.transport]);
+  }, [searchQuery, appMode, status, config.transport, setSearchVarlistIndex]);
 
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;

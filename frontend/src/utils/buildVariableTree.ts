@@ -59,17 +59,33 @@ export function variableNodeMatchesSearch(node: TreeNode, query: string): boolea
   return variableNameMatchesSearch(node.fullPath, query);
 }
 
+export function branchNodeMatchesSearch(node: TreeNode, query: string): boolean {
+  if (node.nodeKind === 'variable') return false;
+  const q = query.trim().toLowerCase();
+  if (!q) return false;
+  return (
+    node.fullPath.toLowerCase().includes(q) || node.title.toLowerCase().includes(q)
+  );
+}
+
 /** All loaded + selected variables whose full name matches the query. */
 export function collectMatchingVariableNames(
   variables: { name: string }[],
   selectedNames: string[],
   query: string,
+  varlistIndex?: string[],
 ): string[] {
   const q = query.trim();
   if (!q) return [];
   const out = new Set<string>();
-  for (const v of variables) {
-    if (variableNameMatchesSearch(v.name, q)) out.add(v.name);
+  if (varlistIndex?.length) {
+    for (const name of varlistIndex) {
+      if (variableNameMatchesSearch(name, q)) out.add(name);
+    }
+  } else {
+    for (const v of variables) {
+      if (variableNameMatchesSearch(v.name, q)) out.add(v.name);
+    }
   }
   for (const name of selectedNames) {
     if (variableNameMatchesSearch(name, q)) out.add(name);
@@ -108,6 +124,16 @@ function mergeTreeNodesByPath(base: TreeNode[], incoming: TreeNode[]): TreeNode[
   return sortTreeNodes(Array.from(map.values()));
 }
 
+/** Ensure ancestor branches exist for search hits (no variable leaves — loaded on expand). */
+export function mergeSearchBranchPathsIntoDotTree(
+  tree: TreeNode[],
+  matchingNames: string[],
+): TreeNode[] {
+  if (!matchingNames.length) return tree;
+  const branchPaths = collectAncestorBranchesForVariables(matchingNames);
+  return branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
+}
+
 /** Ensure ancestor branches + matching variable leaves exist (dot-path tree). */
 export function mergeSearchVariablesIntoDotTree(
   tree: TreeNode[],
@@ -141,10 +167,24 @@ function sortTreeChildren(a: TreeNode, b: TreeNode): number {
   return a.title.localeCompare(b.title);
 }
 
-/** Keep ancestor branches only when a matching variable (deepest leaf) exists below. */
-export function filterTreeByVariableSearch(nodes: TreeNode[], query: string): TreeNode[] {
-  const q = query.trim().toLowerCase();
+function branchLeadsToMatchingVariable(
+  branchPath: string,
+  matchingNames: readonly string[],
+): boolean {
+  const prefix = `${branchPath}.`;
+  return matchingNames.some((name) => name === branchPath || name.startsWith(prefix));
+}
+
+/** Keep branches when name/path matches or a matching variable exists below. */
+export function filterTreeByVariableSearch(
+  nodes: TreeNode[],
+  query: string,
+  matchingNames?: string[],
+): TreeNode[] {
+  const q = query.trim();
   if (!q) return nodes;
+
+  const hasMatchIndex = Boolean(matchingNames?.length);
 
   const walk = (list: TreeNode[]): TreeNode[] => {
     const result: TreeNode[] = [];
@@ -155,14 +195,44 @@ export function filterTreeByVariableSearch(nodes: TreeNode[], query: string): Tr
       }
 
       const branchChildren = (node.children ?? []).filter((c) => c.nodeKind !== 'variable');
+      const scopedBranchChildren = hasMatchIndex
+        ? branchChildren.filter(
+            (c) =>
+              branchLeadsToMatchingVariable(c.fullPath, matchingNames!) ||
+              branchNodeMatchesSearch(c, q),
+          )
+        : branchChildren;
       const variableChildren = (node.children ?? []).filter((c) => c.nodeKind === 'variable');
-      const filteredBranches = walk(branchChildren);
+      const filteredBranches = walk(scopedBranchChildren);
       const matchingVariables = variableChildren.filter((v) => variableNodeMatchesSearch(v, q));
+      const branchSelfMatches = branchNodeMatchesSearch(node, q);
+      const onMatchPath = hasMatchIndex
+        ? branchLeadsToMatchingVariable(node.fullPath, matchingNames!)
+        : false;
 
-      if (filteredBranches.length || matchingVariables.length) {
+      if (
+        filteredBranches.length ||
+        matchingVariables.length ||
+        branchSelfMatches ||
+        onMatchPath
+      ) {
+        let children: TreeNode[];
+        if (filteredBranches.length || matchingVariables.length) {
+          children = [...filteredBranches, ...matchingVariables].sort(sortTreeChildren);
+        } else if (branchSelfMatches) {
+          children = scopedBranchChildren.length
+            ? [...scopedBranchChildren].sort(sortTreeChildren)
+            : [];
+        } else if (onMatchPath) {
+          children = filteredBranches.length
+            ? filteredBranches
+            : scopedBranchChildren.sort(sortTreeChildren);
+        } else {
+          children = [];
+        }
         result.push({
           ...node,
-          children: [...filteredBranches, ...matchingVariables].sort(sortTreeChildren),
+          children: children.length ? children : undefined,
         });
       }
     }
@@ -173,7 +243,7 @@ export function filterTreeByVariableSearch(nodes: TreeNode[], query: string): Tr
 }
 
 export function filterFlatTreeByVariableSearch(nodes: TreeNode[], query: string): TreeNode[] {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return nodes;
   return nodes.filter((n) => n.nodeKind === 'variable' && variableNodeMatchesSearch(n, q));
 }
@@ -410,7 +480,7 @@ export function mergeDotBranchIntoTree(
         changed = true;
         const merged = new Map<string, TreeNode>();
         for (const c of node.children ?? []) {
-          if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
+          merged.set(c.fullPath, c);
         }
         for (const c of childNodes) {
           const prev = merged.get(c.fullPath);
@@ -465,7 +535,7 @@ export function mergeSmcBranchIntoTree(
         changed = true;
         const merged = new Map<string, TreeNode>();
         for (const c of node.children ?? []) {
-          if (c.nodeKind !== 'variable') merged.set(c.fullPath, c);
+          merged.set(c.fullPath, c);
         }
         for (const c of childNodes) merged.set(c.fullPath, c);
         return {

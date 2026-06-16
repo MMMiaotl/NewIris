@@ -7,7 +7,9 @@ import {
   filterVariablesByBranch,
   groupVariablesByParentBranch,
   stripVariableLeavesInBranchScope,
+  variableNameMatchesSearch,
 } from '../utils/buildVariableTree';
+import { useConnectionStore } from './connectionStore';
 
 function normalizeDataType(raw?: string): VariableType {
   const t = raw?.trim().toLowerCase();
@@ -68,6 +70,8 @@ interface VariableState {
   selectedVariables: string[];
   /** Variable shown in the Control drawer (View tab). */
   focusedVariable: string | null;
+  /** Full varlist names for active tree filter (not merged into variables). */
+  searchVarlistIndex: string[] | null;
   setTreeNodes: (nodes: TreeNode[]) => void;
   setSelectedBranch: (branch: string | null) => void;
   setBranchVarPrefix: (prefix: string | null) => void;
@@ -96,6 +100,7 @@ interface VariableState {
   applyUpdate: (entries: WatchIoEntry[]) => void;
   setRegistered: (name: string, registered: boolean) => void;
   updateLocalValue: (name: string, value: string) => void;
+  setSearchVarlistIndex: (names: string[] | null) => void;
   clear: () => void;
 }
 
@@ -107,6 +112,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   branchVarPrefix: null,
   selectedVariables: [],
   focusedVariable: null,
+  searchVarlistIndex: null,
   setTreeNodes: (treeNodes) => set({ treeNodes }),
   setSelectedBranch: (selectedBranch) => set({ selectedBranch }),
   setBranchVarPrefix: (branchVarPrefix) => set({ branchVarPrefix }),
@@ -191,6 +197,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       registeredNames: new Set(),
       selectedBranch: null,
       branchVarPrefix: null,
+      searchVarlistIndex: null,
     });
   },
   mergeVarLeaves: (entries, branchOverride, varPrefixOverride) => {
@@ -228,7 +235,11 @@ export const useVariableStore = create<VariableState>((set, get) => ({
   attachBranchVariables: (branch) => {
     if (!branch) return;
     const { treeNodes, variables, branchVarPrefix } = get();
-    const branchVars = filterVariablesByBranch(variables, branch, branchVarPrefix);
+    let branchVars = filterVariablesByBranch(variables, branch, branchVarPrefix);
+    const searchQuery = useConnectionStore.getState().searchQuery.trim();
+    if (searchQuery) {
+      branchVars = branchVars.filter((v) => variableNameMatchesSearch(v.name, searchQuery));
+    }
     const byParent = groupVariablesByParentBranch(branchVars);
     let nextTree = stripVariableLeavesInBranchScope(treeNodes, branch);
     for (const [parentBranch, vars] of byParent) {
@@ -284,6 +295,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       variables: get().variables.map((v) => (v.name === name ? { ...v, value } : v)),
     });
   },
+  setSearchVarlistIndex: (searchVarlistIndex) => set({ searchVarlistIndex }),
   clear: () =>
     set({
       treeNodes: [],
@@ -293,5 +305,6 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       branchVarPrefix: null,
       selectedVariables: [],
       focusedVariable: null,
+      searchVarlistIndex: null,
     }),
 }));
