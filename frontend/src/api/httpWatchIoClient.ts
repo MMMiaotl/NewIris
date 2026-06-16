@@ -1,12 +1,12 @@
 /** WatchIoWebServer HTTP client — GET/POST on /watchio/{name}:option paths. */
 
 import type { VariableType, WatchIoMessage } from './types';
-import type { MessageHandler, MonitorVariable, StatusHandler, WatchIoClient } from './watchIoClient';
+import type { MessageHandler, StatusHandler, WatchIoClient } from './watchIoClient';
 import { smcHttpGet } from './smcHttp';
 import { normalizeEntries, parseWatchIoResponse } from '../utils/parseWatchIoMessage';
 import { watchIoLog, watchIoLogMessage } from '../utils/watchIoDebug';
 import { buildWatchIoBase, buildWatchIoInstanceUrl } from './watchIoPaths';
-import { WATCHIO_VARLEAVES_ATTRS, watchIoAttributesParam, watchIoEntry, watchIoMonitorAttributes } from './watchIoServerJson';
+import { WATCHIO_VARLEAVES_ATTRS, watchIoAttributesParam, watchIoMonitorAttributes } from './watchIoServerJson';
 
 export class HttpWatchIoClient implements WatchIoClient {
   private messageHandlers = new Set<MessageHandler>();
@@ -95,25 +95,6 @@ export class HttpWatchIoClient implements WatchIoClient {
     );
   }
 
-  setMonitorList(variables: MonitorVariable[]): void {
-    if (!variables.length) {
-      this.registered.clear();
-      void this.postJson({ type: 'clear' }).catch(() => undefined);
-      this.stopPolling();
-      return;
-    }
-    this.registered = new Set(variables.map((v) => v.name));
-    const entries = variables.map((v) =>
-      watchIoEntry(v.name, watchIoMonitorAttributes(v.dataType, v.mode ?? 'set')),
-    );
-    void this.postJson({ type: 'list', entries })
-      .then(() => {
-        watchIoLog('http', 'monitor list', { count: variables.length });
-        this.startPolling();
-      })
-      .catch((err) => watchIoLog('http', 'monitor list failed', err));
-  }
-
   addVariable(name: string, mode: 'value' | 'set' = 'set', dataType?: VariableType): void {
     this.registered.add(name);
     const attrs = watchIoMonitorAttributes(dataType, mode);
@@ -122,32 +103,6 @@ export class HttpWatchIoClient implements WatchIoClient {
       .then(({ text }) => this.handleResponse(text))
       .catch((err) => watchIoLog('http', `add ${name} failed`, err));
     this.startPolling();
-  }
-
-  fetchVarInfo(name: string): void {
-    void this.loadVarInfo(name);
-  }
-
-  private async loadVarInfo(name: string): Promise<void> {
-    const url = buildWatchIoInstanceUrl(
-      this.base,
-      this.watchIoName,
-      'varinfo',
-      name,
-      WATCHIO_VARLEAVES_ATTRS,
-    );
-    try {
-      const { text } = await smcHttpGet(url, 12_000);
-      const msg = parseWatchIoResponse(text);
-      if (!msg) return;
-      const entries = normalizeEntries(msg.entries).map((e) => ({
-        ...e,
-        name: e.name.includes('.') ? e.name : name,
-      }));
-      this.emit({ type: 'varinfo', entries });
-    } catch (err) {
-      watchIoLog('http', `varinfo ${name} failed`, err);
-    }
   }
 
   removeVariable(name: string): void {

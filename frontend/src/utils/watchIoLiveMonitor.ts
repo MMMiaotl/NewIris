@@ -3,7 +3,7 @@ import type { MonitorVariable, WatchIoClient } from '../api/watchIoClient';
 import { branchPathForVariableName } from './buildVariableTree';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
-import { collectPinnedVariableNames, missingPinnedVariableNames } from './pinnedVariables';
+import { collectPinnedVariableNames, missingPinnedVariableNames, isPinnedVariableLiveLoaded } from './pinnedVariables';
 
 /** Build the desired WatchIO monitor set (selected + plot + toolbar registered). */
 export function buildDesiredMonitorVariables(): MonitorVariable[] {
@@ -24,10 +24,9 @@ export function monitorVariableKey(v: MonitorVariable): string {
   return `${v.name}:${v.mode ?? 'set'}:${v.dataType ?? ''}`;
 }
 
-/** True when varleaves/varinfo populated this row — safe to pass type= to monitor add. */
+/** True when varleaves populated this row — safe to pass type= to monitor add. */
 export function isReadyForMonitor(name: string): boolean {
-  const v = useVariableStore.getState().variables.find((x) => x.name === name);
-  return v?.serverMetadataLoaded === true;
+  return isPinnedVariableLiveLoaded(name);
 }
 
 export function pinnedMetadataReady(): boolean {

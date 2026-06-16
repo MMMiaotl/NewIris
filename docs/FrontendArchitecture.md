@@ -41,11 +41,16 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `stores/variableStore.ts` | Tree nodes, branch variables, selection, registration flags |
 | `stores/plotStore.ts` | Plot series, colors, Y range (max 8 series) |
 | `stores/sessionStore.ts` | Recording frames, replay state |
-| `hooks/useWatchIo.ts` | **Single orchestrator** for connect/disconnect, message routing, write/register |
+| `hooks/useWatchIo.ts` | **Single orchestrator** for connect/disconnect, message routing, pinned live pipeline |
 | `hooks/useReplay.ts` | `useReplayPlayback` (RAF loop) + `seekReplayFrame` for scrubbing |
+| `hooks/useWorkspacePersistence.ts` | Debounced sessionStorage save for workspace |
 | `utils/parseWatchIoMessage.ts` | Normalize `WatchIoMessage` entries |
 | `utils/parseSmcJson.ts` | SmcServer JSON response parsing |
 | `utils/buildVariableTree.ts` | Merge vartree/varleaves into Ant Design tree data |
+| `utils/pinnedVariables.ts` | Pinned name collection, live-loaded checks |
+| `utils/watchIoLiveMonitor.ts` | `runPinnedLivePipeline`, monitor add/delete diff |
+| `utils/workspacePersistence.ts` | sessionStorage workspace (selection, values, metadata) |
+| `utils/watchIoDebug.ts` | Optional console + message log helpers |
 | `utils/recordingFormat.ts` | `.niris` file read/write |
 | `utils/parseAttributes.ts` | Variable metadata from params |
 | `constants/transport.ts` | `ConnectionTransport` labels and env default |
@@ -60,11 +65,12 @@ Components are grouped by feature under `components/{connection,tree,table,plot,
 3. **Connect** → `useWatchIo.connect()` → factory creates client → `client.connect()`.
 4. Client emits `WatchIoMessage` → `useWatchIo.handleMessage`:
    - `vartree` / module objects → `buildSmcModuleTree` or `buildDotBranchTree` → `variableStore.setTreeNodes` / merge
-   - `varleaves` → `variableStore.mergeVarLeaves`
-   - `varlist` → `variableStore.mergeVarList`
-   - updates → `variableStore.applyUpdate`, optional `plotStore.appendPoint`, `sessionStore.appendRecordingFrame`
-5. User edits table → `setVariableValue` → client `setVariable` + local optimistic update.
-6. User registers variable for polling → `registerVariable` → client `addVariable`.
+   - `varleaves` → `variableStore.mergeVarLeaves`; may trigger `runPinnedLivePipeline` → `add`/`delete` monitor diff
+   - `varlist` → `variableStore.setSearchVarlistIndex` (search/flat-tree filter only)
+   - `update` → `variableStore.applyUpdate`, `plotStore.sampleLivePlotVariables`, optional `sessionStore.appendRecordingFrame`
+5. On connect / pinned change: `runPinnedLivePipeline` loads metadata via `varleaves` (or workspace cache), then `syncWatchIoMonitorDiff` (add/delete only — never `type:list` on WebSocket).
+6. User edits table → `setVariableValue` → client `setVariable` + local optimistic update.
+7. User registers variable for polling → `registerVariable` → client `addVariable`.
 
 **Rule:** Components should not instantiate API clients directly. Go through `useWatchIo` or extend it.
 

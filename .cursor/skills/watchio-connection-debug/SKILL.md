@@ -101,7 +101,7 @@ node scripts/probe-watchio-ws.mjs
 | watchIoWs fails, HTTP works | `:8083` down or STOMP misconfigured | [WatchIoWebSocket.md](../../docs/WatchIoWebSocket.md) |
 | Write fails, read works | `nameToPostPath` / POST path wrong | `smcServerClient.ts`, variable full name vs branch prefix |
 | Replay works, live does not | `appMode === 'offline'` or client disconnected | `connectionStore.appMode`, footer status |
-| **Parameters frozen after refresh** | Monitor list spam or `add`+`list` mix | See § Live parameter values below; message log should show `update` not only `list` |
+| **Parameters frozen after refresh** | Monitor `list` spam or metadata queue stuck | Message log: need `varleaves` + `add` + `update`; never repeated `list` |
 | CAS / `C.Cas.*` not visible | CAS not registered to gateway | See CAS section in NewIrisConnection.md — not in SmcServer1 tree |
 
 ## Live parameter values (pinned / workspace restore)
@@ -110,22 +110,22 @@ node scripts/probe-watchio-ws.mjs
 
 | Rule | Why |
 |------|-----|
-| WatchIO: register via **`setMonitorList` only** | `addVariable` + `list` resets server monitor |
-| **Dedupe** `setMonitorList` (`watchIoMonitorListKey`) | Repeated `list` stops `update` stream |
-| Never `setMonitorList` in `varleaves` / retry loops | Same regression |
-| `sessionCacheOnly` on workspace cache rows | Distinguish cache from live; `isPinnedVariableLiveLoaded` = `!sessionCacheOnly` |
+| WatchIO: monitor via **`add`/`delete` diff only** (`syncWatchIoMonitorDiff`) | `type:list` resets server update stream |
+| Pinned metadata via **branch `varleaves`** (priority queue on STOMP) | `varinfo` often gets no response on SmcControl STOMP |
+| Workspace caches **`pinnedMetadata`** (`dataType`, description) | Instant monitor add on refresh; varleaves refreshes in background |
+| `isPinnedVariableLiveLoaded` = `serverMetadataLoaded === true` | Distinguishes cache rows from server-ready rows |
 | Filter varlist → `searchVarlistIndex`, not `variables` | Avoid store churn |
 
 **Verify after changes:**
 
 1. Select param → table ticks live.
-2. Hard refresh → brief cache → live resumes.
-3. Message log: steady **`update`** messages.
+2. Hard refresh → brief cache → live resumes (description present).
+3. Message log: `send varleaves` / `send add` / steady **`recv update`**.
 
 | Area | File |
 |------|------|
-| Monitor sync | `frontend/src/hooks/useWatchIo.ts` → `syncWatchIoMonitorList` |
-| Dedupe helpers | `frontend/src/utils/watchIoLiveMonitor.ts` |
+| Pipeline | `frontend/src/utils/watchIoLiveMonitor.ts` → `runPinnedLivePipeline`, `syncWatchIoMonitorDiff` |
+| Hook wiring | `frontend/src/hooks/useWatchIo.ts` |
 | Pinned / cache | `frontend/src/utils/pinnedVariables.ts` |
 | Workspace seed | `frontend/src/utils/workspacePersistence.ts`, `variableStore.seedPinnedVariableCache` |
 

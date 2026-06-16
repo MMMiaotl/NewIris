@@ -38,7 +38,7 @@ frontend/src/
   stores/        Zustand: connection, variable, plot, session
   hooks/         useWatchIo (live connection), useReplayPlayback, useWorkspacePersistence
   components/    UI by feature: connection, tree, table, plot, control, replay, settings, debug, layout, toolbar
-  utils/         JSON/message parsing, tree building, .niris format
+  utils/         JSON/message parsing, tree building, workspace + live monitor, .niris format
   constants/     transport enum and env parsing
 ```
 
@@ -82,7 +82,7 @@ node scripts/test-stomp-parse.mjs     # STOMP frame parsing (offline)
 | `frontend-react.mdc` | React / Ant Design / component patterns |
 | `watchio-api.mdc` | `frontend/src/api/**` — transports and clients |
 | `watchio-state.mdc` | Stores, hooks, live vs replay data flow |
-| `watchio-live-monitor.mdc` | Pinned params, workspace restore, `setMonitorList` — avoid frozen values |
+| `watchio-live-monitor.mdc` | Pinned params, workspace restore, add/delete monitor diff — avoid frozen values |
 
 If rules are missing after a fresh clone, recreate them from project docs or ask the user to copy from another machine.
 
@@ -96,7 +96,7 @@ If rules are missing after a fresh clone, recreate them from project docs or ask
 | Charts | `components/plot/`, `stores/plotStore.ts` |
 | Recording / replay / sessions | `stores/sessionStore.ts`, `hooks/useReplay.ts`, `utils/recordingFormat.ts`, `components/replay/` |
 | Control panel (plot/variable) | `components/control/`, `stores/connectionStore.ts` (`plotDrawerOpen`) |
-| Message handling | `hooks/useWatchIo.ts`, `utils/parseWatchIoMessage.ts`, client in `api/` |
+| Message handling / live monitor | `hooks/useWatchIo.ts`, `utils/watchIoLiveMonitor.ts`, `utils/pinnedVariables.ts`, `utils/workspacePersistence.ts`, client in `api/` |
 
 See [docs/FrontendArchitecture.md](docs/FrontendArchitecture.md) for data-flow diagrams and store boundaries.
 

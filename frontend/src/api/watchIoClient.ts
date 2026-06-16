@@ -20,12 +20,8 @@ export interface WatchIoClient {
   fetchVarTree(branch?: string): void;
   fetchVarLeaves(branch: string, withMeta?: boolean, priority?: boolean): void;
   fetchVarList(filter?: string): void;
-  /** Replace server monitor list — HTTP poll registration; prefer add/delete on WebSocket. */
-  setMonitorList(variables: MonitorVariable[]): void;
   addVariable(name: string, mode?: 'value' | 'set', dataType?: VariableType): void;
   removeVariable(name: string): void;
-  /** Per-variable metadata (type, description, value) — used for pinned workspace restore. */
-  fetchVarInfo(name: string): void;
   setVariable(name: string, value: string): void;
   requestUpdate(): void;
 }

@@ -10,10 +10,6 @@ export function collectPinnedVariableNames(): string[] {
   return [...new Set([...selectedVariables, ...plotVars])];
 }
 
-export function isPinnedVariableLoaded(name: string): boolean {
-  return useVariableStore.getState().variables.some((v) => v.name === name);
-}
-
 /** True after server varleaves — not sessionStorage cache or a stray value-only update. */
 export function isPinnedVariableLiveLoaded(name: string): boolean {
   const v = useVariableStore.getState().variables.find((x) => x.name === name);

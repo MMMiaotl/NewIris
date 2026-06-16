@@ -1,6 +1,6 @@
 ---
-description: WatchIO live parameter updates — monitor list, workspace restore, no regression
-globs: frontend/src/hooks/useWatchIo.ts,frontend/src/utils/pinnedVariables.ts,frontend/src/utils/watchIoLiveMonitor.ts,frontend/src/utils/pinnedLivePipeline.ts,frontend/src/stores/variableStore.ts,frontend/src/utils/workspacePersistence.ts,frontend/src/hooks/useWorkspacePersistence.ts,frontend/src/stores/plotStore.ts
+description: WatchIO live parameter updates — monitor diff, workspace restore, no regression
+globs: frontend/src/hooks/useWatchIo.ts,frontend/src/utils/pinnedVariables.ts,frontend/src/utils/watchIoLiveMonitor.ts,frontend/src/stores/variableStore.ts,frontend/src/utils/workspacePersistence.ts,frontend/src/hooks/useWorkspacePersistence.ts,frontend/src/stores/plotStore.ts
 alwaysApply: false
 ---
 
@@ -10,28 +10,28 @@ Applies when editing pinned parameters, workspace restore, `useWatchIo`, or vari
 
 ## Symptom to protect against
 
-After **page refresh**: Parameters / Plot show **frozen** values; **description empty** (no varleaves/varinfo metadata).
+After **page refresh**: Parameters / Plot show **frozen** values; **description empty** (no varleaves metadata).
 
 ## Architecture (do not regress)
 
 | Layer | Responsibility |
 |-------|----------------|
 | `runPinnedLivePipeline` | **Only** orchestrator for pinned live recovery |
-| `fetchVarInfo` | Per-variable metadata for workspace-restored pins (not branch varleaves) |
+| `fetchVarLeaves` (branch, priority) | Pinned metadata — **not** `varinfo` (STOMP often ignores it) |
 | `syncWatchIoMonitorDiff` | **add/delete only** — never `type:list` on WebSocket (resets update stream) |
-| `serverMetadataLoaded` | Set only by `buildWatchIoVariable` (varinfo/varleaves) — not `applyUpdate` |
+| `serverMetadataLoaded` | Set by `buildWatchIoVariable` (varleaves) or workspace `pinnedMetadata` cache |
 
 ## WatchIO transport (`watchIoHttp` / `watchIoWs`)
 
-- **Metadata**: `varinfo` per missing pinned name (serialized in STOMP metadata queue).
-- **Monitor**: `addVariable(name, mode, dataType)` / `removeVariable` via diff — **no** `setMonitorList` except HTTP poll client.
-- **Do not** call `add` + `list` together.
+- **Metadata**: priority `varleaves` per missing pinned branch; workspace may cache `dataType`/`description` for instant monitor add.
+- **Monitor**: `addVariable(name, mode, dataType)` / `removeVariable` via diff only.
+- **Do not** call `add` + `list` together; do not reintroduce `setMonitorList`.
 - **`requestUpdate` interval** starts only after `serverMonitored` is non-empty.
 - **Do not** add parallel effects that sync monitor or fetch pinned metadata outside the pipeline.
 
 ## Workspace restore
 
-- `seedPinnedVariableCache` → `sessionCacheOnly: true`, `serverMetadataLoaded: false`.
+- `seedPinnedVariableCache` → values: `sessionCacheOnly: true`; metadata cache → `serverMetadataLoaded: true` when `dataType` known.
 - `isPinnedVariableLiveLoaded` = `serverMetadataLoaded === true`.
 - `applyUpdate` must not clear `sessionCacheOnly` until metadata loaded.
 
@@ -44,4 +44,4 @@ After **page refresh**: Parameters / Plot show **frozen** values; **description 
 
 1. Select param → values tick live.
 2. Hard refresh ×10 → description present, values keep ticking.
-3. No repeated `list` in WS log during steady state.
+3. Message log: `send varleaves` → `recv varleaves` → `send add` → steady `recv update`; no repeated `list`.

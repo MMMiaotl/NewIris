@@ -1,7 +1,6 @@
 /**
  * Live WatchIO connection orchestrator.
- * Creates the transport client, routes incoming messages to stores, and syncs monitor lists.
- * Mount once in AppShell — expose connect/disconnect/setVariable callbacks to child components.
+ * Creates the transport client, routes incoming messages to stores, and syncs monitor via add/delete diff.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConnectionTransport, WatchIoEntry, WatchIoMessage } from '../api/types';
@@ -35,7 +34,7 @@ import {
   clearPinnedBranchPending,
   runPinnedLivePipeline,
   type PinnedLivePipelineState,
-} from '../utils/pinnedLivePipeline';
+} from '../utils/watchIoLiveMonitor';
 import { useWatchIoMessageLogStore } from '../stores/watchIoMessageLogStore';
 
 function createPipelineState(): PinnedLivePipelineState {
@@ -61,7 +60,6 @@ export function useWatchIo() {
   const {
     setTreeNodes,
     mergeVarLeaves,
-    mergeVarList,
     setSearchVarlistIndex,
     applyUpdate,
     applyServerVariableEntries,
@@ -289,7 +287,6 @@ export function useWatchIo() {
     [
       setTreeNodes,
       mergeVarLeaves,
-      mergeVarList,
       setSearchVarlistIndex,
       applyUpdate,
       applyServerVariableEntries,

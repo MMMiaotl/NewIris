@@ -1,7 +1,7 @@
 /** WatchIoWebServer WebSocket/STOMP client — ws://host:8083 destination=/watchio */
 
 import type { VariableType, WatchIoMessage } from './types';
-import type { MessageHandler, MonitorVariable, StatusHandler, WatchIoClient } from './watchIoClient';
+import type { MessageHandler, StatusHandler, WatchIoClient } from './watchIoClient';
 import {
   decodeWebSocketData,
   formatStompFrame,
@@ -14,7 +14,7 @@ import { watchIoLog, watchIoLogMessage, watchIoLogSendBody, watchIoLogVerbose } 
 /** Retry root vartree when segment is not dataok yet or response is empty. */
 const VARTREE_RETRY_MS = 150;
 const VARTREE_MAX_RETRIES = 15;
-/** Release metadata queue if server never replies (e.g. unsupported varinfo). */
+/** Release metadata queue if server never replies to varleaves. */
 const METADATA_REQUEST_TIMEOUT_MS = 3000;
 
 export class StompWatchIoClient implements WatchIoClient {
@@ -32,10 +32,7 @@ export class StompWatchIoClient implements WatchIoClient {
   private vartreeRetryCount = 0;
   private rootVarTreeLoaded = false;
   private lastVarLeavesBranch: string | null = null;
-  private metadataQueue: Array<
-    | { kind: 'varleaves'; branch: string; withMeta: boolean }
-    | { kind: 'varinfo'; name: string }
-  > = [];
+  private metadataQueue: Array<{ kind: 'varleaves'; branch: string; withMeta: boolean }> = [];
   private metadataInFlight: (typeof this.metadataQueue)[number] | null = null;
   private metadataTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
   private monitoredNames = new Set<string>();
@@ -105,13 +102,13 @@ export class StompWatchIoClient implements WatchIoClient {
             watchIoLog('ws', 'empty root vartree — segment may not be dataok yet, retrying');
             this.scheduleVarTreeRetry();
           }
-        } else if (msg.type === 'varleaves' || msg.type === 'varinfo') {
+        } else if (msg.type === 'varleaves') {
           const inflight = this.metadataInFlight;
           const branch =
             inflight?.kind === 'varleaves'
               ? inflight.branch
               : this.lastVarLeavesBranch;
-          if (msg.type === 'varleaves' && branch) {
+          if (branch) {
             this.lastVarLeavesBranch = branch;
             const existingParams = msg.params
               ? Array.isArray(msg.params)
@@ -127,7 +124,7 @@ export class StompWatchIoClient implements WatchIoClient {
             }
             msg = { ...msg, params };
           }
-          if (this.metadataInFlight) {
+          if (this.metadataInFlight?.kind === 'varleaves') {
             this.completeMetadataRequest('response');
           }
         } else if (
@@ -291,35 +288,17 @@ export class StompWatchIoClient implements WatchIoClient {
     this.pumpMetadataQueue();
   }
 
-  fetchVarInfo(name: string): void {
-    if (this.metadataInFlight?.kind === 'varinfo' && this.metadataInFlight.name === name) {
-      return;
-    }
-    if (this.metadataQueue.some((req) => req.kind === 'varinfo' && req.name === name)) {
-      return;
-    }
-    this.metadataQueue.push({ kind: 'varinfo', name });
-    this.pumpMetadataQueue();
-  }
-
-  /** Serialize metadata requests — one in flight avoids branch/name mis-association. */
+  /** Serialize varleaves requests — one in flight avoids branch mis-association. */
   private pumpMetadataQueue(): void {
     if (this.metadataInFlight || this.metadataQueue.length === 0) return;
     const req = this.metadataQueue.shift()!;
     this.metadataInFlight = req;
     this.scheduleMetadataTimeout();
-    if (req.kind === 'varleaves') {
-      this.lastVarLeavesBranch = req.branch;
-      const attrs = req.withMeta ? WATCHIO_VARLEAVES_ATTRS : 'fullname=1';
-      this.sendJson({
-        type: 'varleaves',
-        entries: [watchIoEntry(req.branch, attrs)],
-      });
-      return;
-    }
+    this.lastVarLeavesBranch = req.branch;
+    const attrs = req.withMeta ? WATCHIO_VARLEAVES_ATTRS : 'fullname=1';
     this.sendJson({
-      type: 'varinfo',
-      entries: [watchIoEntry(req.name, WATCHIO_VARLEAVES_ATTRS)],
+      type: 'varleaves',
+      entries: [watchIoEntry(req.branch, attrs)],
     });
   }
 
@@ -346,24 +325,6 @@ export class StompWatchIoClient implements WatchIoClient {
     this.clearMetadataTimeout();
     this.metadataInFlight = null;
     queueMicrotask(() => this.pumpMetadataQueue());
-  }
-
-  setMonitorList(variables: MonitorVariable[]): void {
-    const next = new Set(variables.map((v) => v.name));
-    if (variables.length === 0) {
-      if (this.monitoredNames.size === 0) return;
-      this.monitoredNames.clear();
-      this.sendJson({ type: 'clear' });
-      watchIoLog('ws', 'monitor clear');
-      return;
-    }
-
-    const entries = variables.map((v) =>
-      watchIoEntry(v.name, watchIoMonitorAttributes(v.dataType, v.mode ?? 'set')),
-    );
-    this.monitoredNames = next;
-    this.sendJson({ type: 'list', entries });
-    watchIoLog('ws', 'monitor list', { count: variables.length, sample: variables.slice(0, 5).map((v) => v.name) });
   }
 
   fetchVarList(filter = ''): void {

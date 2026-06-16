@@ -108,7 +108,6 @@ interface VariableState {
     varPrefixOverride?: string | null,
   ) => void;
   attachBranchVariables: (branch: string) => void;
-  mergeVarList: (entries: WatchIoEntry[]) => void;
   /** Merge varinfo / single-variable metadata into the store. */
   applyServerVariableEntries: (entries: WatchIoEntry[]) => void;
   applyUpdate: (entries: WatchIoEntry[]) => void;
@@ -262,18 +261,6 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       nextTree = attachVariablesToBranch(nextTree, parentBranch, vars, branchVarPrefix);
     }
     set({ treeNodes: nextTree });
-  },
-  mergeVarList: (entries) => {
-    const list = normalizeEntries(entries);
-    const map = new Map(get().variables.map((v) => [v.name, v]));
-    for (const entry of list) {
-      const prev = map.get(entry.name);
-      map.set(
-        entry.name,
-        buildWatchIoVariable(entry.name, entry, prev, get().registeredNames.has(entry.name)),
-      );
-    }
-    set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
   },
   applyServerVariableEntries: (entries) => {
     const list = normalizeEntries(entries);
