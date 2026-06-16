@@ -125,10 +125,15 @@ export function MenuBar() {
     },
   ];
 
-  const showMenu: MenuProps['items'] = [
+  const settingsMenu: MenuProps['items'] = [
+    {
+      key: 'connection',
+      label: 'Connection',
+      onClick: () => setSettingsDrawerOpen(true),
+    },
     {
       key: 'format-setting',
-      label: 'Format setting…',
+      label: 'Format',
       onClick: () => openStyleModal(useVariableStore.getState().focusedVariable),
     },
   ];
@@ -212,11 +217,10 @@ export function MenuBar() {
         <Dropdown menu={{ items: fileMenu }} trigger={['click']}>
           <Button type="text">File</Button>
         </Dropdown>
-        <Button type="text" icon={<SettingOutlined />} onClick={() => setSettingsDrawerOpen(true)}>
-          Settings
-        </Button>
-        <Dropdown menu={{ items: showMenu }} trigger={['click']}>
-          <Button type="text">Show</Button>
+        <Dropdown menu={{ items: settingsMenu }} trigger={['click']}>
+          <Button type="text" icon={<SettingOutlined />}>
+            Settings
+          </Button>
         </Dropdown>
         <Dropdown menu={{ items: viewMenu }} trigger={['click']}>
           <Button type="text">View</Button>

@@ -21,7 +21,7 @@ export function SettingsDrawer({ onApplyWatchIoName }: SettingsDrawerProps) {
 
   return (
     <Drawer
-      title="Settings"
+      title="Connection"
       open={settingsDrawerOpen}
       onClose={() => setSettingsDrawerOpen(false)}
       size={400}
