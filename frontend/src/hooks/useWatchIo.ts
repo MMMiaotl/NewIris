@@ -132,10 +132,6 @@ export function useWatchIo() {
       const t = currentTransport();
       const useDotTree = isWatchIoTransport(t);
 
-      if (msg.type === 'vartree' || msg.type === 'varleaves' || msg.type === 'varlist' || msg.type === 'varinfo') {
-        useConnectionStore.getState().setStatus('connected');
-      }
-
       switch (msg.type) {
         case 'vartree': {
           const branches = extractBranchNames(msg);
@@ -347,8 +343,11 @@ export function useWatchIo() {
         runLivePipeline();
       }
       return useConnectionStore.getState().status === 'connected';
-    } catch {
-      if (session === sessionRef.current) setStatus('error', 'Connection failed');
+    } catch (err) {
+      if (session === sessionRef.current) {
+        const detail = err instanceof Error ? err.message : 'Connection failed';
+        setStatus('disconnected', detail);
+      }
       return false;
     } finally {
       suppressAutoConnectRef.current = false;
@@ -356,18 +355,22 @@ export function useWatchIo() {
   }, [appMode, handleMessage, setStatus, setBranchVarPrefix, refreshSmcPinnedVariables, runLivePipeline]);
 
   const applyWatchIoName = useCallback(
-    async (watchIoName: string): Promise<boolean> => {
+    async (watchIoName: string): Promise<boolean | 'saved'> => {
       const state = useConnectionStore.getState();
       const prevName = state.config.watchIoName;
-      if (watchIoName === prevName) return true;
+      const isLive = state.status === 'connected' || state.status === 'connecting';
 
-      state.setConfig({ watchIoName });
+      if (watchIoName === prevName && isLive) return true;
 
-      if (state.appMode !== 'live' || !isWatchIoTransport(state.config.transport)) {
-        return true;
+      const wasLiveWatchIo =
+        state.appMode === 'live' && isWatchIoTransport(state.config.transport);
+
+      if (watchIoName !== prevName) {
+        state.setConfig({ watchIoName });
       }
-      if (state.status !== 'connected' && state.status !== 'connecting') {
-        return true;
+
+      if (!wasLiveWatchIo) {
+        return 'saved' as const;
       }
 
       userDisconnectedWatchIoWsRef.current = false;

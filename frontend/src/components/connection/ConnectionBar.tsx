@@ -9,7 +9,7 @@ import { predefinedHosts, useConnectionStore } from '../../stores/connectionStor
 interface ConnectionBarProps {
   onConnect: () => void | Promise<boolean | void>;
   onDisconnect: () => void;
-  onApplyWatchIoName: (name: string) => Promise<boolean>;
+  onApplyWatchIoName: (name: string) => Promise<boolean | 'saved'>;
 }
 
 export function ConnectionBar({

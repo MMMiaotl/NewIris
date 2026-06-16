@@ -14,6 +14,8 @@ import { watchIoLog, watchIoLogMessage, watchIoLogSendBody, watchIoLogVerbose } 
 /** Retry root vartree when segment is not dataok yet or response is empty. */
 const VARTREE_RETRY_MS = 150;
 const VARTREE_MAX_RETRIES = 15;
+/** Fail connect() when segment never becomes ready. */
+const CONNECT_HANDSHAKE_TIMEOUT_MS = 10_000;
 /** Release metadata queue if server never replies to varleaves. */
 const METADATA_REQUEST_TIMEOUT_MS = 3000;
 
@@ -36,6 +38,9 @@ export class StompWatchIoClient implements WatchIoClient {
   private metadataInFlight: (typeof this.metadataQueue)[number] | null = null;
   private metadataTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
   private monitoredNames = new Set<string>();
+  private connectSettle: { resolve: () => void; reject: (err: Error) => void } | null = null;
+  private connectHandshakeTimer: ReturnType<typeof setTimeout> | null = null;
+  private closingAfterHandshakeFailure = false;
 
   constructor(wsUrl: string, serverPath: string, watchIoName: string, _sampleInterval = 500) {
     this.wsUrl = wsUrl.replace(/\/$/, '');
@@ -82,8 +87,9 @@ export class StompWatchIoClient implements WatchIoClient {
 
     for (const frame of frames) {
       if (frame.command === 'ERROR') {
-        watchIoLog('ws', 'STOMP ERROR', frame.body || frame.headers.message);
-        this.emitStatus('error', frame.headers.message ?? frame.body ?? 'STOMP error');
+        const detail = frame.headers.message ?? frame.body ?? 'STOMP error';
+        watchIoLog('ws', 'STOMP ERROR', detail);
+        this.failConnectHandshake(detail);
         continue;
       }
       let msg = parseWatchIoResponse(frame.body.trim());
@@ -98,6 +104,7 @@ export class StompWatchIoClient implements WatchIoClient {
             this.awaitingVartree = false;
             this.clearVarTreeRetry();
             this.rootVarTreeLoaded = true;
+            this.completeConnectHandshake();
           } else if (this.awaitingVartree) {
             watchIoLog('ws', 'empty root vartree — segment may not be dataok yet, retrying');
             this.scheduleVarTreeRetry();
@@ -149,6 +156,9 @@ export class StompWatchIoClient implements WatchIoClient {
   connect(): Promise<void> {
     this.emitStatus('connecting', `WatchIO WS ${this.wsUrl}`);
     return new Promise((resolve, reject) => {
+      this.connectSettle = { resolve, reject };
+      this.armConnectHandshakeTimeout();
+
       const ws = new WebSocket(this.wsUrl);
       ws.binaryType = 'arraybuffer';
       this.ws = ws;
@@ -161,11 +171,9 @@ export class StompWatchIoClient implements WatchIoClient {
         });
         ws.send(frame);
         this.subscribed = true;
-        this.emitStatus('connected');
         queueMicrotask(() => {
           this.flushPendingSend();
           this.beginRootVarTreeLoad();
-          resolve();
         });
       };
 
@@ -176,9 +184,7 @@ export class StompWatchIoClient implements WatchIoClient {
       };
 
       ws.onerror = () => {
-        const detail = 'WebSocket error';
-        this.emitStatus('error', detail);
-        reject(new Error(detail));
+        this.failConnectHandshake('WebSocket error');
       };
 
       ws.onclose = () => {
@@ -187,12 +193,21 @@ export class StompWatchIoClient implements WatchIoClient {
         if (this.ws === ws) {
           this.ws = null;
         }
+        if (this.connectSettle) {
+          this.failConnectHandshake('WebSocket closed', false);
+          return;
+        }
+        if (this.closingAfterHandshakeFailure) {
+          this.closingAfterHandshakeFailure = false;
+          return;
+        }
         this.emitStatus('disconnected');
       };
     });
   }
 
   disconnect(): void {
+    this.clearConnectHandshake();
     this.clearVarTreeRetry();
     this.clearMetadataTimeout();
     this.awaitingVartree = false;
@@ -261,6 +276,9 @@ export class StompWatchIoClient implements WatchIoClient {
       if (this.vartreeRetryCount >= VARTREE_MAX_RETRIES) {
         watchIoLog('ws', 'vartree gave up after retries');
         this.awaitingVartree = false;
+        this.failConnectHandshake(
+          `WatchIO instance "${this.watchIoName}" not available — check the name and backend`,
+        );
         return;
       }
       if (this.awaitingVartree) {
@@ -379,5 +397,55 @@ export class StompWatchIoClient implements WatchIoClient {
     } catch (err) {
       watchIoLog('ws', 'SEND failed', err);
     }
+  }
+
+  private armConnectHandshakeTimeout(): void {
+    this.clearConnectHandshakeTimer();
+    this.connectHandshakeTimer = setTimeout(() => {
+      this.connectHandshakeTimer = null;
+      this.failConnectHandshake(
+        `WatchIO instance "${this.watchIoName}" did not respond — check the name and backend`,
+      );
+    }, CONNECT_HANDSHAKE_TIMEOUT_MS);
+  }
+
+  private clearConnectHandshakeTimer(): void {
+    if (this.connectHandshakeTimer) {
+      clearTimeout(this.connectHandshakeTimer);
+      this.connectHandshakeTimer = null;
+    }
+  }
+
+  private completeConnectHandshake(): void {
+    if (!this.connectSettle) return;
+    const { resolve } = this.connectSettle;
+    this.connectSettle = null;
+    this.clearConnectHandshakeTimer();
+    this.emitStatus('connected', this.watchIoName);
+    resolve();
+  }
+
+  private failConnectHandshake(detail: string, closeWs = true): void {
+    if (!this.connectSettle) return;
+    const { reject } = this.connectSettle;
+    this.connectSettle = null;
+    this.clearConnectHandshakeTimer();
+    this.clearVarTreeRetry();
+    this.awaitingVartree = false;
+    this.closingAfterHandshakeFailure = closeWs;
+    this.emitStatus('disconnected', detail);
+    reject(new Error(detail));
+    if (closeWs) {
+      try {
+        this.ws?.close();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  private clearConnectHandshake(): void {
+    this.clearConnectHandshakeTimer();
+    this.connectSettle = null;
   }
 }
