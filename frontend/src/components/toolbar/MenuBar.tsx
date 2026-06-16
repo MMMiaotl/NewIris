@@ -17,8 +17,6 @@ import { useDisplayStore } from '../../stores/displayStore';
 import {
   createRecording,
   downloadJson,
-  nirisLogToRecording,
-  parseNirisLog,
   parseRecording,
   parseSession,
   serializeRecording,
@@ -29,9 +27,10 @@ import type { SessionFile } from '../../api/types';
 interface MenuBarProps {
   onOpenRegistration?: () => void;
   onOpenExportVariables?: () => void;
+  onOpenImportVariables?: () => void;
 }
 
-export function MenuBar({ onOpenRegistration, onOpenExportVariables }: MenuBarProps) {
+export function MenuBar({ onOpenRegistration, onOpenExportVariables, onOpenImportVariables }: MenuBarProps) {
   const {
     config,
     status,
@@ -66,12 +65,7 @@ export function MenuBar({ onOpenRegistration, onOpenExportVariables }: MenuBarPr
       setAppMode('replay');
     });
 
-  const openNirisLog = () =>
-    openFilePicker('.nirislog', (text) => {
-      const log = parseNirisLog(text);
-      loadReplay(nirisLogToRecording(log));
-      setAppMode('replay');
-    });
+  // nirislog import is now handled by ImportVariablesModal (opened via onOpenImportVariables)
 
   const fileMenu: MenuProps['items'] = [
     {
@@ -97,8 +91,8 @@ export function MenuBar({ onOpenRegistration, onOpenExportVariables }: MenuBarPr
     },
     {
       key: 'open-nirislog',
-      label: 'Import Registration Log (.nirislog)…',
-      onClick: openNirisLog,
+      label: 'Import Variables…',
+      onClick: () => onOpenImportVariables?.(),
     },
     { type: 'divider' },
     {

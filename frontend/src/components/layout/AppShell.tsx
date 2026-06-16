@@ -26,6 +26,7 @@ import { useWorkspacePersistence } from '../../hooks/useWorkspacePersistence';
 import { useRegistration } from '../../hooks/useRegistration';
 import { RegistrationPanel } from '../registration/RegistrationPanel';
 import { ExportVariablesModal } from '../registration/ExportVariablesModal';
+import { ImportVariablesModal } from '../registration/ImportVariablesModal';
 import {
   readInitialParameterPanelDefaultSize,
   readInitialPlotPanelDefaultSize,
@@ -42,6 +43,7 @@ export function AppShell() {
   useRegistration();
   const [registrationPanelOpen, setRegistrationPanelOpen] = useState(false);
   const [exportVarsOpen, setExportVarsOpen] = useState(false);
+  const [importVarsOpen, setImportVarsOpen] = useState(false);
   const {
     viewMode,
     appMode,
@@ -87,6 +89,7 @@ export function AppShell() {
         <MenuBar
           onOpenRegistration={() => setRegistrationPanelOpen(true)}
           onOpenExportVariables={() => setExportVarsOpen(true)}
+          onOpenImportVariables={() => setImportVarsOpen(true)}
         />
         <ConnectionBar
           onConnect={connect}
@@ -199,6 +202,10 @@ export function AppShell() {
       <ExportVariablesModal
         open={exportVarsOpen}
         onClose={() => setExportVarsOpen(false)}
+      />
+      <ImportVariablesModal
+        open={importVarsOpen}
+        onClose={() => setImportVarsOpen(false)}
       />
       <ChangeStyleScaleModal
         open={styleModalOpen}
