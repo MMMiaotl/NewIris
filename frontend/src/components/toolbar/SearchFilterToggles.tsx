@@ -1,14 +1,35 @@
 import type { ReactNode } from 'react';
 import { Tooltip } from 'antd';
 
-interface SearchFilterToggleProps {
+const SEARCH_FILTER_TOGGLES = [
+  {
+    key: 'case',
+    title: 'Match case',
+    icon: <span className="search-filter-icon search-filter-icon--case">Aa</span>,
+  },
+  {
+    key: 'whole',
+    title: 'Match whole word',
+    icon: (
+      <span className="search-filter-icon search-filter-icon--whole">
+        ab
+        <span className="search-filter-icon-whole-bracket" aria-hidden />
+      </span>
+    ),
+  },
+] as const;
+
+function SearchFilterToggle({
+  active,
+  title,
+  onClick,
+  children,
+}: {
   active: boolean;
   title: string;
   onClick: () => void;
   children: ReactNode;
-}
-
-function SearchFilterToggle({ active, title, onClick, children }: SearchFilterToggleProps) {
+}) {
   return (
     <Tooltip title={title}>
       <button
@@ -21,19 +42,6 @@ function SearchFilterToggle({ active, title, onClick, children }: SearchFilterTo
         {children}
       </button>
     </Tooltip>
-  );
-}
-
-function MatchCaseIcon() {
-  return <span className="search-filter-icon search-filter-icon--case">Aa</span>;
-}
-
-function MatchWholeWordIcon() {
-  return (
-    <span className="search-filter-icon search-filter-icon--whole">
-      ab
-      <span className="search-filter-icon-whole-bracket" aria-hidden />
-    </span>
   );
 }
 
@@ -50,22 +58,21 @@ export function SearchFilterToggles({
   onMatchCaseChange,
   onMatchWholeWordChange,
 }: SearchFilterTogglesProps) {
+  const active = { case: matchCase, whole: matchWholeWord };
+  const onToggle = { case: onMatchCaseChange, whole: onMatchWholeWordChange };
+
   return (
     <span className="search-filter-toggles">
-      <SearchFilterToggle
-        active={matchCase}
-        title="Match case"
-        onClick={() => onMatchCaseChange(!matchCase)}
-      >
-        <MatchCaseIcon />
-      </SearchFilterToggle>
-      <SearchFilterToggle
-        active={matchWholeWord}
-        title="Match whole word"
-        onClick={() => onMatchWholeWordChange(!matchWholeWord)}
-      >
-        <MatchWholeWordIcon />
-      </SearchFilterToggle>
+      {SEARCH_FILTER_TOGGLES.map(({ key, title, icon }) => (
+        <SearchFilterToggle
+          key={key}
+          active={active[key]}
+          title={title}
+          onClick={() => onToggle[key](!active[key])}
+        >
+          {icon}
+        </SearchFilterToggle>
+      ))}
     </span>
   );
 }

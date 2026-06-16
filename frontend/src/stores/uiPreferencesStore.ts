@@ -9,6 +9,7 @@ import {
   type PersistedUiPreferences,
   type TreeLabelMode,
 } from '../utils/preferencesPersistence';
+import type { SearchMatchOptions } from '../utils/buildVariableTree';
 
 export type { TreeLabelMode };
 
@@ -77,3 +78,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
     setStartupConnectWatchIo: (v) => setPref('startupConnectWatchIo', v),
   };
 });
+
+export function readSearchMatchOptions(): SearchMatchOptions {
+  const { searchMatchCase, searchMatchWholeWord } = useUiPreferencesStore.getState();
+  return { matchCase: searchMatchCase, matchWholeWord: searchMatchWholeWord };
+}

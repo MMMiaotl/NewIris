@@ -183,7 +183,6 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const pendingSearchExpandRef = useRef(false);
   const prevVarlistReadyRef = useRef(false);
 
-  /** Auto-expand top level only when the filter or varlist index changes — not on every tree rebuild. */
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
@@ -197,26 +196,19 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     const matchKey = `${searchMatchCase}|${searchMatchWholeWord}`;
     const searchChanged =
       prevSearchQueryRef.current !== searchQuery || prevMatchKeyRef.current !== matchKey;
+    const varlistArrived = Boolean(searchVarlistIndex?.length) && !prevVarlistReadyRef.current;
+    const shouldExpand =
+      displayNodes.length > 0 &&
+      (searchChanged || pendingSearchExpandRef.current || varlistArrived);
 
     if (searchChanged) {
       prevSearchQueryRef.current = searchQuery;
       prevMatchKeyRef.current = matchKey;
       pendingSearchExpandRef.current = true;
-      if (displayNodes.length > 0) {
-        setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
-      }
-      return;
     }
-
-    if (pendingSearchExpandRef.current && displayNodes.length > 0) {
+    if (varlistArrived) prevVarlistReadyRef.current = true;
+    if (shouldExpand) {
       pendingSearchExpandRef.current = false;
-      setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
-      return;
-    }
-
-    const varlistReady = Boolean(searchVarlistIndex?.length);
-    if (varlistReady && !prevVarlistReadyRef.current) {
-      prevVarlistReadyRef.current = true;
       setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
     }
   }, [

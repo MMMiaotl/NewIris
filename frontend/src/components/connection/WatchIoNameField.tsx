@@ -58,11 +58,9 @@ export function WatchIoNameField({
         return;
       }
       setDraft(trimmed);
-      if (result === 'saved') {
-        message.success(`Instance "${trimmed}" applied`);
-      } else {
-        message.success(`Connected to "${trimmed}"`);
-      }
+      message.success(
+        result === 'saved' ? `Instance "${trimmed}" applied` : `Connected to "${trimmed}"`,
+      );
     } catch {
       message.error(
         `Could not connect to WatchIO instance "${trimmed}". Check the name and use Connect to retry.`,

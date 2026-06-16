@@ -14,7 +14,7 @@ import {
   variableNameMatchesSearch,
 } from '../utils/buildVariableTree';
 import { useConnectionStore } from './connectionStore';
-import { useUiPreferencesStore } from './uiPreferencesStore';
+import { readSearchMatchOptions } from './uiPreferencesStore';
 
 function normalizeDataType(raw?: string): VariableType {
   const t = raw?.trim().toLowerCase();
@@ -254,12 +254,8 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     let branchVars = filterVariablesByBranch(variables, branch, branchVarPrefix);
     const searchQuery = useConnectionStore.getState().searchQuery.trim();
     if (searchQuery) {
-      const { searchMatchCase, searchMatchWholeWord } = useUiPreferencesStore.getState();
       branchVars = branchVars.filter((v) =>
-        variableNameMatchesSearch(v.name, searchQuery, {
-          matchCase: searchMatchCase,
-          matchWholeWord: searchMatchWholeWord,
-        }),
+        variableNameMatchesSearch(v.name, searchQuery, readSearchMatchOptions()),
       );
     }
     const byParent = groupVariablesByParentBranch(branchVars);

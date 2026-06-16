@@ -175,9 +175,7 @@ export function PlotPanel() {
       const opts: uPlot.Options = {
         width,
         height,
-        cursor: plotSampleMode
-          ? { show: true, drag: { x: true, setScale: true } }
-          : { show: true },
+        cursor: plotSampleMode ? { show: true, drag: { x: true, setScale: true } } : { show: true },
         scales: {
           x: { time: false, auto: false },
           y: yScaleOptions(yMin, yMax),

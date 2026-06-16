@@ -102,7 +102,7 @@ export function variableNodeMatchesSearch(
   options?: SearchMatchOptions,
 ): boolean {
   if (node.nodeKind !== 'variable') return false;
-  return variableNameMatchesSearch(node.fullPath, query, options);
+  return stringMatchesSearch(node.fullPath, query, options);
 }
 
 export function branchNodeMatchesSearch(

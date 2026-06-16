@@ -90,10 +90,6 @@ export function writePersistedParameterColumnWidths(widths: ParameterFixedWidths
   }
 }
 
-export function fixedCellStyle(width: number): CSSProperties {
-  return parameterCellStyle(width);
-}
-
 export function sumFixedWidths(widths: ParameterFixedWidths): number {
   return PARAMETER_FIXED_COLUMN_SPECS.reduce((sum, spec) => sum + widths[spec.key], 0);
 }
@@ -134,7 +130,7 @@ export function buildFixedParameterColumn(
     onCell:
       extras?.onCell ??
       (() => ({
-        style: fixedCellStyle(width),
+        style: parameterCellStyle(width),
       })),
     render: extras?.render,
   };

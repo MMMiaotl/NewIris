@@ -130,8 +130,7 @@ interface PlotState {
   ) => void;
   /** Replace plot series with the current parameter value (after live reload). */
   resyncPlotSeries: (name: string, value?: string, sampleMs?: number) => void;
-  enterPlotSampleMode: () => void;
-  exitPlotSampleMode: () => void;
+  setPlotSampleMode: (enabled: boolean) => void;
   setXViewEndSec: (endSec: number) => void;
 }
 
@@ -255,7 +254,11 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       get().appendPoint(name, resolved, sampleMs);
     }
   },
-  enterPlotSampleMode: () => {
+  setPlotSampleMode: (enabled) => {
+    if (!enabled) {
+      set({ plotSampleMode: false, xViewEndSec: null });
+      return;
+    }
     const state = get();
     if (!state.plotVariables.length) return;
     const elapsed = plotElapsedSec(state);
@@ -264,7 +267,6 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       xViewEndSec: elapsed > 0 ? elapsed : state.xWindowSec,
     });
   },
-  exitPlotSampleMode: () => set({ plotSampleMode: false, xViewEndSec: null }),
   setXViewEndSec: (endSec) => {
     const state = get();
     const elapsed = plotElapsedSec(state);

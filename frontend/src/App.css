@@ -387,12 +387,8 @@
 }
 
 .parameter-table-panel .ant-table-thead > tr > th,
-.parameter-table-panel .ant-table-tbody > tr > td,
-.parameter-table-panel .ant-table-wrapper .ant-table-cell {
-  padding-block: 4px !important;
-  padding-inline: 6px !important;
+.parameter-table-panel .ant-table-tbody > tr > td {
   font-size: 14px;
-  line-height: 18px;
   overflow: hidden;
 }
 
@@ -830,32 +826,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-height: 0;
   transition:
     background-color 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
     transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.parameter-table-panel .ant-table-cell .parameter-name-link {
-  /* Block buttons stretch row height inside padded cells. */
-  min-height: 0;
-}
-
-.parameter-name-link:hover {
+.parameter-table-panel .parameter-name-link:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.parameter-name-link:active {
+.parameter-table-panel .parameter-name-link:active {
   background-color: rgba(0, 0, 0, 0.1);
   transform: scale(0.985);
   transition-duration: 0.08s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .parameter-name-link {
+  .parameter-table-panel .parameter-name-link {
     transition: background-color 0.15s ease;
   }
 
-  .parameter-name-link:active {
+  .parameter-table-panel .parameter-name-link:active {
     transform: none;
   }
 }
