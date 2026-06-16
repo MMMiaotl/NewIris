@@ -82,7 +82,8 @@ node scripts/test-stomp-parse.mjs     # STOMP frame parsing (offline)
 | `frontend-react.mdc` | React / Ant Design / component patterns |
 | `watchio-api.mdc` | `frontend/src/api/**` — transports and clients |
 | `watchio-state.mdc` | Stores, hooks, live vs replay data flow |
-| `watchio-live-monitor.mdc` | Pinned params, workspace restore, add/delete monitor diff — avoid frozen values |
+| `watchio-live-monitor.mdc` | Pinned params, workspace restore, add/delete monitor diff |
+| Skill `watchio-live-monitor` | **Refresh freeze / empty description** — root causes, message log patterns, fix playbook |
 
 If rules are missing after a fresh clone, recreate them from project docs or ask the user to copy from another machine.
 

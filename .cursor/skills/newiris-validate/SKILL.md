@@ -7,7 +7,7 @@ description: Run post-change validation for the NewIris frontend — lint, TypeS
 
 Execute the correct validation commands for **NewIris** after code changes. Never report a check as passed unless it was actually run successfully.
 
-Pair with [feature-builder](../feature-builder/SKILL.md) step 8. For connection failures during validation, switch to [watchio-connection-debug](../watchio-connection-debug/SKILL.md).
+Pair with [feature-builder](../feature-builder/SKILL.md) step 8. For connection failures during validation, switch to [watchio-connection-debug](../watchio-connection-debug/SKILL.md). For **pinned refresh freeze / empty description**, use [watchio-live-monitor](../watchio-live-monitor/SKILL.md).
 
 Project entry: [AGENTS.md](../../AGENTS.md). Architecture: [docs/FrontendArchitecture.md](../../docs/FrontendArchitecture.md).
 
@@ -38,7 +38,7 @@ cd frontend
 | UI-only (`components/**`, CSS) | `npm run lint` | Manual UI checklist |
 | Stores/hooks (no API) | `npm run lint`, `npm run build` | Manual UI if behaviour changed |
 | `utils/parse*.ts`, offline parsers | `npm run build` | `npm run test:stomp` if STOMP-related |
-| Docs only | — | — |
+| `utils/watchIoLiveMonitor.ts`, `pinnedVariables.ts`, `workspacePersistence.ts` | `npm run build` | Manual: pin params → F5 ×10; message log `varleaves` → `add` → `update` |
 
 When unsure, run: `npm run lint` + `npm run build`.
 
@@ -90,6 +90,12 @@ After API or connection changes, verify in browser at **http://localhost:5173**:
 8. If replay/session touched → open `.niris` / session JSON, scrub replay bar
 
 For **watchIoWs**: confirm WS connects (`ws://8083`), vartree arrives after Connect.
+
+For **pinned / workspace restore** (see [watchio-live-monitor](../watchio-live-monitor/SKILL.md)):
+
+1. Pin 1–2 parameters → values tick live.
+2. Hard refresh ×10 → description present, values resume.
+3. Debug drawer message log: `send varleaves` → `recv varleaves` → `send add` → `recv update` (no repeated `list`).
 
 ## Workflow
 

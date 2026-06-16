@@ -134,10 +134,29 @@ Parsers live in `utils/recordingFormat.ts`. Keep version field `version: 1` when
 2. Route server I/O through `useWatchIo` callbacks passed into components (see `AppShell` props pattern).
 3. Update tree builders in `utils/buildVariableTree.ts` if tree shape changes.
 
+### Pinned parameters / refresh live freeze
+
+If **values freeze after F5** or **description is empty**, the pinned live pipeline failed before `add` + `update`.
+
+| Signal | Meaning |
+|--------|---------|
+| Message log: only `status` + `vartree` | No `varleaves`/`add` — metadata not loaded (`serverMetadataLoaded` false) |
+| Empty description column | Same — varleaves never merged into store |
+| Repeated `list` in log | Monitor stream reset — must use add/delete diff only |
+
+**Recovery architecture** (see `utils/watchIoLiveMonitor.ts`):
+
+1. Workspace `pinnedMetadata` cache → immediate monitor add when `dataType` known.
+2. Else priority **branch `varleaves`** (not `varinfo` on STOMP — often no response).
+3. `syncWatchIoMonitorDiff` → `add`/`delete` only; never `type:list` on WebSocket.
+4. STOMP varleaves queue: serialized + 3s timeout.
+
+Local Cursor skill: `.cursor/skills/watchio-live-monitor/SKILL.md` (not in git).
+
 ### New plot behavior
 
 1. `plotStore` for data; `PlotPanel` / `ControlPanel` for UI.
-2. Ensure `useWatchIo` still calls `appendPoint` for registered plot variables in live mode.
+2. Ensure `useWatchIo` still drives plot sampling for registered plot variables in live mode (`sampleLivePlotVariables`).
 3. Update `useReplayPlayback` / `seekReplayFrame` if replay should mirror the behavior.
 
 ## Verification

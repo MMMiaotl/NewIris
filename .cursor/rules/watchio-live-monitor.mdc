@@ -1,47 +1,36 @@
 ---
-description: WatchIO live parameter updates — monitor diff, workspace restore, no regression
-globs: frontend/src/hooks/useWatchIo.ts,frontend/src/utils/pinnedVariables.ts,frontend/src/utils/watchIoLiveMonitor.ts,frontend/src/stores/variableStore.ts,frontend/src/utils/workspacePersistence.ts,frontend/src/hooks/useWorkspacePersistence.ts,frontend/src/stores/plotStore.ts
+description: WatchIO pinned live updates — root causes, guardrails, link to troubleshooting skill
+globs: frontend/src/hooks/useWatchIo.ts,frontend/src/utils/pinnedVariables.ts,frontend/src/utils/watchIoLiveMonitor.ts,frontend/src/stores/variableStore.ts,frontend/src/utils/workspacePersistence.ts,frontend/src/hooks/useWorkspacePersistence.ts,frontend/src/stores/plotStore.ts,frontend/src/api/stompWatchIoClient.ts
 alwaysApply: false
 ---
 
 # WatchIO live parameter updates
 
-Applies when editing pinned parameters, workspace restore, `useWatchIo`, or variable/plot stores.
+**Full playbook:** `.cursor/skills/watchio-live-monitor/SKILL.md` — read before debugging refresh/live freeze.
 
-## Symptom to protect against
+## Failure signature (quick)
 
-After **page refresh**: Parameters / Plot show **frozen** values; **description empty** (no varleaves metadata).
+| Log / UI | Likely cause |
+|----------|----------------|
+| Only `status` + `vartree`, **no** `varleaves`/`add` | Metadata pipeline stuck (was: `varinfo` + no queue timeout) |
+| **Description empty** | `serverMetadataLoaded === false` — varleaves never merged |
+| Repeated `send list` then updates stop | `type:list` reset stream — use add/delete diff only |
+| 1–2s stall then live OK | Awaiting varleaves — use `pinnedMetadata` workspace cache |
 
 ## Architecture (do not regress)
 
 | Layer | Responsibility |
 |-------|----------------|
-| `runPinnedLivePipeline` | **Only** orchestrator for pinned live recovery |
-| `fetchVarLeaves` (branch, priority) | Pinned metadata — **not** `varinfo` (STOMP often ignores it) |
-| `syncWatchIoMonitorDiff` | **add/delete only** — never `type:list` on WebSocket (resets update stream) |
-| `serverMetadataLoaded` | Set by `buildWatchIoVariable` (varleaves) or workspace `pinnedMetadata` cache |
+| `runPinnedLivePipeline` | **Only** orchestrator for pinned recovery |
+| `fetchVarLeaves(branch, true, priority)` | Pinned metadata — **not** `varinfo` on STOMP |
+| `syncWatchIoMonitorDiff` | **add/delete only** — never `type:list` on WebSocket |
+| `serverMetadataLoaded` | From varleaves or workspace `pinnedMetadata` cache |
+| STOMP metadata queue | Serialized varleaves + **3s timeout** |
 
-## WatchIO transport (`watchIoHttp` / `watchIoWs`)
+## Rules
 
-- **Metadata**: priority `varleaves` per missing pinned branch; workspace may cache `dataType`/`description` for instant monitor add.
-- **Monitor**: `addVariable(name, mode, dataType)` / `removeVariable` via diff only.
-- **Do not** call `add` + `list` together; do not reintroduce `setMonitorList`.
-- **`requestUpdate` interval** starts only after `serverMonitored` is non-empty.
-- **Do not** add parallel effects that sync monitor or fetch pinned metadata outside the pipeline.
-
-## Workspace restore
-
-- `seedPinnedVariableCache` → values: `sessionCacheOnly: true`; metadata cache → `serverMetadataLoaded: true` when `dataType` known.
+- One pipeline in `useWatchIo` — no parallel monitor-sync effects.
+- Defer `selectedBranch` varleaves until pinned metadata ready.
 - `isPinnedVariableLiveLoaded` = `serverMetadataLoaded === true`.
-- `applyUpdate` must not clear `sessionCacheOnly` until metadata loaded.
-
-## Plot after restore
-
-- `resyncPlotSeries` on first live `update` or varleaves for plot vars.
-- Plot vars: monitor mode **`value`**; table params: **`set`**.
-
-## After changing this area
-
-1. Select param → values tick live.
-2. Hard refresh ×10 → description present, values keep ticking.
-3. Message log: `send varleaves` → `recv varleaves` → `send add` → steady `recv update`; no repeated `list`.
+- `varlist` → `setSearchVarlistIndex` only (not `mergeVarList`).
+- After changes: F5 ×10, description present, log shows `varleaves` → `add` → `update`.
