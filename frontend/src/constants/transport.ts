@@ -1,7 +1,7 @@
 import type { ConnectionTransport } from '../api/types';
 
 export const transportOptions: { label: string; value: ConnectionTransport }[] = [
-  { label: 'SmcServer API', value: 'smcServer' },
+  { label: 'Shared Memory', value: 'smcServer' },
   { label: 'WatchIO HTTP', value: 'watchIoHttp' },
   { label: 'WatchIO WebSocket', value: 'watchIoWs' },
 ];

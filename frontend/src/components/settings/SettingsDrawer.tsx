@@ -27,7 +27,7 @@ export function SettingsDrawer({ onApplyWatchIoName }: SettingsDrawerProps) {
       size={400}
     >
       <Form layout="vertical">
-        <Form.Item label="Transport">
+        <Form.Item label="Connection type">
           <Select
             value={config.transport}
             onChange={(transport: ConnectionTransport) =>

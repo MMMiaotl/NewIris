@@ -132,7 +132,7 @@ export function ConnectionBar({
   return (
     <div className="connection-bar">
       <Space wrap size="small" align="center">
-        <Typography.Text type="secondary">Transport</Typography.Text>
+        <Typography.Text type="secondary">Connection type</Typography.Text>
         <Space.Compact className="transport-connect-group">
           <Select
             style={{ width: 200 }}
