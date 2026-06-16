@@ -91,7 +91,7 @@ export function ConnectionBar({
             />
           </Tooltip>
         </Space.Compact>
-        {!isStomp && (
+        {!isStomp && !isShm && (
           <>
             <Typography.Text type="secondary">Server</Typography.Text>
             <Select
@@ -132,7 +132,7 @@ export function ConnectionBar({
         )}
         {isShm && (
           <Typography.Text type="secondary">
-            WatchIoCom.ocx (Edge IE mode) — values from local shm; request optional for /watchio tree
+            WatchIoCom.ocx (Edge IE mode) — local shared memory
           </Typography.Text>
         )}
         {isWatchIo && !isStomp && !isShm && requestStatus === 'ok' && !watchIoFromRequest && (
