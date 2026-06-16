@@ -109,6 +109,46 @@ export interface SessionFile {
 export type ViewMode = 'splitter' | 'list' | 'plot';
 export type AppMode = 'live' | 'offline' | 'replay';
 
+// ── Registration (continuous log-to-file) ────────────────────────────────────
+
+/**
+ * One log line written by the registration engine.
+ * JSON-serialisable so the store can accumulate lines before flushing.
+ */
+export interface RegistrationLine {
+  /** Elapsed ms since registration started. */
+  t: number;
+  values: Record<string, string>;
+}
+
+/**
+ * Persistent settings for the registration engine.
+ * Mirrors CIrisRegistrate fields relevant to a web client.
+ */
+export interface RegistrationSettings {
+  /** Base filename without extension (auto-appended: .nirislog). */
+  filename: string;
+  /** Auto-increment a numeric suffix when a file already exists. */
+  autoIncrementNumber: boolean;
+  /** Include timestamp column in output. */
+  includeTimestamp: boolean;
+  /** Only write a line when at least one value changed. */
+  changesOnly: boolean;
+  /** Sampling interval override in ms (0 = use global sampleInterval). */
+  sampleIntervalMs: number;
+}
+
+/** In-memory state exposed by registrationStore. */
+export interface RegistrationState {
+  active: boolean;
+  paused: boolean;
+  lines: RegistrationLine[];
+  startedAt: number;
+  /** Variables chosen for registration (subset of registered/selected). */
+  variables: string[];
+  settings: RegistrationSettings;
+}
+
 /** One row from GET /request — same as SmcServerView applicationList entries. */
 export interface DiscoveredService {
   name: string;

@@ -17,6 +17,8 @@ import { useDisplayStore } from '../../stores/displayStore';
 import {
   createRecording,
   downloadJson,
+  nirisLogToRecording,
+  parseNirisLog,
   parseRecording,
   parseSession,
   serializeRecording,
@@ -24,7 +26,12 @@ import {
 } from '../../utils/recordingFormat';
 import type { SessionFile } from '../../api/types';
 
-export function MenuBar() {
+interface MenuBarProps {
+  onOpenRegistration?: () => void;
+  onOpenExportVariables?: () => void;
+}
+
+export function MenuBar({ onOpenRegistration, onOpenExportVariables }: MenuBarProps) {
   const {
     config,
     status,
@@ -59,6 +66,13 @@ export function MenuBar() {
       setAppMode('replay');
     });
 
+  const openNirisLog = () =>
+    openFilePicker('.nirislog', (text) => {
+      const log = parseNirisLog(text);
+      loadReplay(nirisLogToRecording(log));
+      setAppMode('replay');
+    });
+
   const fileMenu: MenuProps['items'] = [
     {
       key: 'new',
@@ -82,6 +96,17 @@ export function MenuBar() {
       onClick: openRecording,
     },
     {
+      key: 'open-nirislog',
+      label: 'Import Registration Log (.nirislog)…',
+      onClick: openNirisLog,
+    },
+    { type: 'divider' },
+    {
+      key: 'registration',
+      label: 'Registration…',
+      onClick: () => onOpenRegistration?.(),
+    },
+    {
       key: 'save',
       label: 'Save Session',
       onClick: () => saveSession(),
@@ -90,6 +115,12 @@ export function MenuBar() {
       key: 'save-as',
       label: 'Save Session As…',
       onClick: () => saveSession(),
+    },
+    { type: 'divider' },
+    {
+      key: 'export-variables',
+      label: 'Export Variables…',
+      onClick: () => onOpenExportVariables?.(),
     },
     { type: 'divider' },
     {

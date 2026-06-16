@@ -23,18 +23,25 @@ import {
 import { useWatchIo } from '../../hooks/useWatchIo';
 import { useReplayPlayback } from '../../hooks/useReplay';
 import { useWorkspacePersistence } from '../../hooks/useWorkspacePersistence';
+import { useRegistration } from '../../hooks/useRegistration';
+import { RegistrationPanel } from '../registration/RegistrationPanel';
+import { ExportVariablesModal } from '../registration/ExportVariablesModal';
 import {
   readInitialParameterPanelDefaultSize,
   readInitialPlotPanelDefaultSize,
   writePersistedParameterPlotSplitRatio,
 } from '../../utils/layoutPersistence';
 import { useDisplayStore } from '../../stores/displayStore';
+import { useState } from 'react';
 
 const parameterPanelDefaultSize = readInitialParameterPanelDefaultSize();
 const plotPanelDefaultSize = readInitialPlotPanelDefaultSize();
 
 export function AppShell() {
   useWorkspacePersistence();
+  useRegistration();
+  const [registrationPanelOpen, setRegistrationPanelOpen] = useState(false);
+  const [exportVarsOpen, setExportVarsOpen] = useState(false);
   const {
     viewMode,
     appMode,
@@ -77,7 +84,10 @@ export function AppShell() {
           <div className="app-title">Iris Next</div>
           <span className="app-subtitle">WatchIO Monitor</span>
         </div>
-        <MenuBar />
+        <MenuBar
+          onOpenRegistration={() => setRegistrationPanelOpen(true)}
+          onOpenExportVariables={() => setExportVarsOpen(true)}
+        />
         <ConnectionBar
           onConnect={connect}
           onDisconnect={() => disconnect(true)}
@@ -182,6 +192,14 @@ export function AppShell() {
         onClose={() => setConnectionModalOpen(false)}
       />
       <WatchIoMessageLogDrawer />
+      <RegistrationPanel
+        open={registrationPanelOpen}
+        onClose={() => setRegistrationPanelOpen(false)}
+      />
+      <ExportVariablesModal
+        open={exportVarsOpen}
+        onClose={() => setExportVarsOpen(false)}
+      />
       <ChangeStyleScaleModal
         open={styleModalOpen}
         onClose={closeStyleModal}
