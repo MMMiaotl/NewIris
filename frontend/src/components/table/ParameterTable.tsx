@@ -46,6 +46,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const {
     variables,
     selectedVariables,
+    registeredNames,
     focusedVariable,
     setFocusedVariable,
   } = useVariableStore();
@@ -223,14 +224,13 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
     const extraColumns: ColumnType<WatchIoVariable>[] = [];
     if (showRegisColumn) {
-      const regis = useVariableStore.getState().registeredNames;
       extraColumns.push({
         title: 'regis',
         key: 'regis',
         width: 52,
         onHeaderCell: () => ({ style: fixedCellStyle(52) }),
         onCell: () => ({ style: fixedCellStyle(52) }),
-        render: (_: unknown, row: WatchIoVariable) => (regis.has(row.name) ? '●' : ''),
+        render: (_: unknown, row: WatchIoVariable) => (registeredNames.has(row.name) ? '●' : ''),
       });
     }
     if (showSourceColumn) {
@@ -279,6 +279,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     showRegisColumn,
     showSourceColumn,
     showFullNameInTable,
+    registeredNames,
   ]);
 
   const headerLabel =

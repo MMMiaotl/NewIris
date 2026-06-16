@@ -1,7 +1,6 @@
 /** Show Options dialog — legacy Iris ShowOptionsDlg parity (subset for web). */
-import { Checkbox, Divider, Modal, Space, Typography } from 'antd';
+import { Checkbox, Divider, Modal, Radio, Space, Typography } from 'antd';
 import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
-import type { TreeLabelMode } from '../../utils/preferencesPersistence';
 
 interface ShowOptionsModalProps {
   open: boolean;
@@ -9,63 +8,51 @@ interface ShowOptionsModalProps {
 }
 
 export function ShowOptionsModal({ open, onClose }: ShowOptionsModalProps) {
-  const {
-    treeLabelMode,
-    directFilter,
-    showFullNameInTable,
-    showRegisColumn,
-    showSourceColumn,
-    treeSort,
-    setTreeLabelMode,
-    setDirectFilter,
-    setShowFullNameInTable,
-    setShowRegisColumn,
-    setShowSourceColumn,
-    setTreeSort,
-  } = useUiPreferencesStore();
-
-  const treeMode = (mode: TreeLabelMode, label: string) => (
-    <Checkbox
-      checked={treeLabelMode === mode}
-      onChange={() => setTreeLabelMode(mode)}
-    >
-      {label}
-    </Checkbox>
-  );
+  const s = useUiPreferencesStore();
 
   return (
     <Modal title="Show Options" open={open} onCancel={onClose} onOk={onClose} width={420}>
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
         Tree variable labels
       </Typography.Text>
-      <Space direction="vertical" style={{ margin: '8px 0 12px' }}>
-        {treeMode('name', 'Name (A–Z)')}
-        {treeMode('alias', 'Alias')}
-        {treeMode('custom', 'Custom display name')}
-      </Space>
+      <Radio.Group
+        value={s.treeLabelMode}
+        onChange={(e) => s.setTreeLabelMode(e.target.value)}
+        style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '8px 0 12px' }}
+      >
+        <Radio value="name">Name (A–Z)</Radio>
+        <Radio value="alias">Alias</Radio>
+        <Radio value="custom">Custom display name</Radio>
+      </Radio.Group>
 
       <Divider style={{ margin: '8px 0' }} />
 
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
         Filter &amp; list
       </Typography.Text>
-      <Space direction="vertical" style={{ margin: '8px 0 12px' }}>
-        <Checkbox checked={directFilter} onChange={(e) => setDirectFilter(e.target.checked)}>
+      <Space direction="vertical" style={{ margin: '8px 0' }}>
+        <Checkbox checked={s.directFilter} onChange={(e) => s.setDirectFilter(e.target.checked)}>
           Direct filter (prefix match)
         </Checkbox>
-        <Checkbox checked={treeSort} onChange={(e) => setTreeSort(e.target.checked)}>
+        <Checkbox checked={s.treeSort} onChange={(e) => s.setTreeSort(e.target.checked)}>
           Sort tree branches
         </Checkbox>
         <Checkbox
-          checked={showFullNameInTable}
-          onChange={(e) => setShowFullNameInTable(e.target.checked)}
+          checked={s.showFullNameInTable}
+          onChange={(e) => s.setShowFullNameInTable(e.target.checked)}
         >
           Show full name in parameter table
         </Checkbox>
-        <Checkbox checked={showRegisColumn} onChange={(e) => setShowRegisColumn(e.target.checked)}>
+        <Checkbox
+          checked={s.showRegisColumn}
+          onChange={(e) => s.setShowRegisColumn(e.target.checked)}
+        >
           Show registration column
         </Checkbox>
-        <Checkbox checked={showSourceColumn} onChange={(e) => setShowSourceColumn(e.target.checked)}>
+        <Checkbox
+          checked={s.showSourceColumn}
+          onChange={(e) => s.setShowSourceColumn(e.target.checked)}
+        >
           Show source (var kind) column
         </Checkbox>
       </Space>

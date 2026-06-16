@@ -102,18 +102,27 @@ export function PlotPanel() {
 
   const plotYAxis = { stroke: '#9a9a9a', grid: { show: plotGridY, stroke: '#4a4a4a' } };
 
-  /** Zero-line annotation series (invisible point series at y=0). */
-  const zeroLineSeries: uPlot.Series[] = plotZeroLine
-    ? [
-        {
-          stroke: '#888888',
-          width: 1,
-          points: { show: false },
-          paths: () => null,
-          show: true,
-        },
-      ]
-    : [];
+  /** Draw a y=0 reference line via the draw hook — no extra data series needed. */
+  const zeroLineHooks: uPlot.Options['hooks'] = plotZeroLine
+    ? {
+        draw: [
+          (u) => {
+            const y0 = u.valToPos(0, 'y', true);
+            if (y0 === undefined) return;
+            const ctx = u.ctx;
+            ctx.save();
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(u.bbox.left, y0);
+            ctx.lineTo(u.bbox.left + u.bbox.width, y0);
+            ctx.stroke();
+            ctx.restore();
+          },
+        ],
+      }
+    : {};
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -139,8 +148,9 @@ export function PlotPanel() {
           x: { time: false, auto: false },
           y: yScaleOptions(yMin, yMax),
         },
-        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides), ...zeroLineSeries],
+        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides)],
         axes: [plotXAxis, plotYAxis],
+        hooks: zeroLineHooks,
       };
 
       plotRef.current = new uPlot(

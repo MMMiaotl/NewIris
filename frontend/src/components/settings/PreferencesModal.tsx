@@ -1,5 +1,5 @@
 /** Preferences dialog — startup behaviour and session metadata. */
-import { Checkbox, Form, Input, Modal, Space, Typography } from 'antd';
+import { Checkbox, Form, Input, InputNumber, Modal, Space, Typography } from 'antd';
 import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 
 interface PreferencesModalProps {
@@ -32,12 +32,12 @@ export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
           />
         </Form.Item>
         <Form.Item label="Plot name truncate (0 = full name)">
-          <Input
-            type="number"
+          <InputNumber
             min={0}
             max={80}
             value={plotNameTruncate}
-            onChange={(e) => setPlotNameTruncate(Number(e.target.value) || 0)}
+            onChange={(v) => setPlotNameTruncate(v ?? 0)}
+            style={{ width: '100%' }}
           />
         </Form.Item>
         <Form.Item>

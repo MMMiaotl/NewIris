@@ -51,9 +51,10 @@ export function ExportStatisticsModal({ open, onClose }: ExportStatisticsModalPr
     return names;
   }, [replayData, selectedVariables, registeredNames]);
 
-  const filteredVars = opts.regisOnly
-    ? variables.filter((n) => registeredNames.has(n))
-    : variables;
+  const filteredVars = useMemo(
+    () => (opts.regisOnly ? variables.filter((n) => registeredNames.has(n)) : variables),
+    [opts.regisOnly, variables, registeredNames],
+  );
 
   const rows = useMemo(() => {
     if (!frames.length || !filteredVars.length) return [];
