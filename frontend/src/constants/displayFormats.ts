@@ -75,6 +75,18 @@ export const UNIT_OPTIONS: readonly UnitOption[] = [
   { id: 'mbar', label: 'mbar' },
 ] as const;
 
+/** Sentinel for "no unit / no scale conversion" in modal lists. */
+export const DISPLAY_NONE_ID = '';
+
+export const DISPLAY_NONE_OPTION = { id: DISPLAY_NONE_ID, label: '-' } as const;
+
+export type UnitListOption = UnitOption | typeof DISPLAY_NONE_OPTION;
+
+export const UNIT_LIST_OPTIONS: readonly UnitListOption[] = [
+  DISPLAY_NONE_OPTION,
+  ...UNIT_OPTIONS,
+];
+
 export interface ScaleConversionOption {
   id: string;
   label: string;
@@ -114,6 +126,15 @@ export const SCALE_CONVERSION_OPTIONS: readonly ScaleConversionOption[] = [
   { id: 'Pa->bar', label: 'Pa->bar', factor: 1e-5, fromUnit: 'pa', toUnit: 'bar' },
   { id: 'Pa->mbar', label: 'Pa->mbar', factor: 0.01, fromUnit: 'pa', toUnit: 'mbar' },
 ] as const;
+
+export type ScaleListOption =
+  | (ScaleConversionOption & { label: string })
+  | typeof DISPLAY_NONE_OPTION;
+
+export const SCALE_LIST_OPTIONS: readonly ScaleListOption[] = [
+  DISPLAY_NONE_OPTION,
+  ...SCALE_CONVERSION_OPTIONS,
+];
 
 const SCALE_BY_ID = new Map(SCALE_CONVERSION_OPTIONS.map((o) => [o.id, o]));
 const UNIT_BY_ID = new Map(UNIT_OPTIONS.map((o) => [o.id, o]));

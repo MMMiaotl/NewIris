@@ -1,15 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Button, Checkbox, Input, List, Modal, Space } from 'antd';
+import { Button, Checkbox, Input, List, Modal, Select, Space } from 'antd';
 import {
   FORMAT_STYLE_OPTIONS,
-  SCALE_CONVERSION_OPTIONS,
-  UNIT_OPTIONS,
+  SCALE_LIST_OPTIONS,
+  UNIT_LIST_OPTIONS,
   getScaleConversion,
   type FormatStyleId,
 } from '../../constants/displayFormats';
 import { useDisplayStore } from '../../stores/displayStore';
 import { createPlaceholderVariable, useVariableStore } from '../../stores/variableStore';
-import { formatDisplayValue, hasActiveDisplayOverride } from '../../utils/formatVariableValue';
+import { formatDisplayValue } from '../../utils/formatVariableValue';
 
 interface ChangeStyleScaleModalProps {
   open: boolean;
@@ -25,7 +25,6 @@ interface ModalBodyProps {
 function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyProps) {
   const { selectedVariables, focusedVariable, variables } = useVariableStore();
   const { getOverride, setOverride, resetOverride, applyToVariables } = useDisplayStore();
-  const [filter, setFilter] = useState('');
   const preferredInitial =
     initialFocusVariable ??
     (focusedVariable && selectedVariables.includes(focusedVariable) ? focusedVariable : null) ??
@@ -34,15 +33,13 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
   const [activeVariable, setActiveVariable] = useState<string | null>(preferredInitial);
   const [applyToAll, setApplyToAll] = useState(false);
 
-  const variableNames = useMemo(() => {
+  const parameterOptions = useMemo(() => {
     const names = selectedVariables.length ? [...selectedVariables] : [];
     if (initialFocusVariable && !names.includes(initialFocusVariable)) {
       names.unshift(initialFocusVariable);
     }
-    const query = filter.trim().toLowerCase();
-    if (!query) return names;
-    return names.filter((name) => name.toLowerCase().includes(query));
-  }, [selectedVariables, initialFocusVariable, filter]);
+    return names.map((name) => ({ value: name, label: name }));
+  }, [selectedVariables, initialFocusVariable]);
 
   const activeOverride = activeVariable ? getOverride(activeVariable) : null;
 
@@ -72,12 +69,22 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
   );
 
   const handleScaleSelect = (scaleId: string) => {
+    if (!scaleId) {
+      patchActive({ scaleConversion: undefined });
+      return;
+    }
     const scale = getScaleConversion(scaleId);
     patchActive({
       scaleConversion: scaleId,
       unit: scale?.toUnit ?? activeOverride?.unit,
     });
   };
+
+  const isUnitSelected = (unitId: string) =>
+    unitId ? activeOverride?.unit === unitId : !activeOverride?.unit;
+
+  const isScaleSelected = (scaleId: string) =>
+    scaleId ? activeOverride?.scaleConversion === scaleId : !activeOverride?.scaleConversion;
 
   const handleReset = () => {
     if (!activeVariable) return;
@@ -93,50 +100,45 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
       <div className="style-scale-modal-body">
         <fieldset className="style-scale-fieldset style-scale-fieldset--variables">
           <legend>Variables</legend>
-          <Input
-            size="small"
-            placeholder="Filter variables…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            allowClear
-          />
-          <List
-            size="small"
-            bordered
-            className="style-scale-variable-list"
-            locale={{ emptyText: 'No parameters selected — add variables to the table first' }}
-            dataSource={variableNames}
-            renderItem={(name) => {
-              const raw =
-                variableMap.get(name)?.value ?? createPlaceholderVariable(name).value;
-              const display = formatDisplayValue(raw, getOverride(name));
-              return (
-                <List.Item
-                  className={
-                    name === activeVariable
-                      ? 'style-scale-variable-item is-active'
-                      : 'style-scale-variable-item'
-                  }
-                  onClick={() => setActiveVariable(name)}
-                >
-                  <span className="style-scale-variable-name" title={name}>
-                    {name}
-                  </span>
-                  <span className="style-scale-variable-value" title={display || raw || undefined}>
-                    {display || raw || '—'}
-                  </span>
-                  {hasActiveDisplayOverride(getOverride(name)) && (
-                    <span className="style-scale-variable-badge">custom</span>
-                  )}
-                </List.Item>
-              );
-            }}
-          />
-          {selectedVariables.length > 1 && (
-            <Checkbox checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)}>
-              Apply style / unit / scale to all selected
-            </Checkbox>
-          )}
+          <div className="style-scale-variables-row">
+            <Select
+              size="small"
+              showSearch
+              placeholder={
+                parameterOptions.length
+                  ? 'Select a parameter…'
+                  : 'No parameters selected'
+              }
+              value={activeVariable ?? undefined}
+              onChange={setActiveVariable}
+              options={parameterOptions}
+              optionFilterProp="label"
+              disabled={!parameterOptions.length}
+              className="style-scale-variable-select"
+              popupMatchSelectWidth={false}
+            />
+            <Input
+              size="small"
+              value={activeDisplayValue || activeRawValue || '—'}
+              readOnly
+              disabled={!activeVariable}
+              className="style-scale-value-field"
+              title={
+                activeRawValue && activeDisplayValue !== activeRawValue
+                  ? `Raw: ${activeRawValue}`
+                  : undefined
+              }
+            />
+            {selectedVariables.length > 1 && (
+              <Checkbox
+                className="style-scale-apply-all"
+                checked={applyToAll}
+                onChange={(e) => setApplyToAll(e.target.checked)}
+              >
+                Apply to all
+              </Checkbox>
+            )}
+          </div>
         </fieldset>
 
         <fieldset className="style-scale-fieldset style-scale-fieldset--custom-name">
@@ -156,29 +158,6 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
             >
               Custom name
             </Checkbox>
-          </div>
-          <div className="style-scale-custom-name-row">
-            <Input
-              size="small"
-              value={activeVariable ?? ''}
-              readOnly
-              className="style-scale-source-name"
-            />
-            <span className="style-scale-source-label">Source name</span>
-          </div>
-          <div className="style-scale-custom-name-row">
-            <Input
-              size="small"
-              value={activeDisplayValue || activeRawValue || '—'}
-              readOnly
-              className="style-scale-value-field"
-              title={
-                activeRawValue && activeDisplayValue !== activeRawValue
-                  ? `Raw: ${activeRawValue}`
-                  : undefined
-              }
-            />
-            <span className="style-scale-source-label">Value</span>
           </div>
         </fieldset>
 
@@ -211,15 +190,15 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
               size="small"
               bordered
               className="style-scale-option-list"
-              dataSource={[...UNIT_OPTIONS]}
+              dataSource={[...UNIT_LIST_OPTIONS]}
               renderItem={(item) => (
                 <List.Item
                   className={
-                    activeOverride?.unit === item.id
+                    isUnitSelected(item.id)
                       ? 'style-scale-option-item is-selected'
                       : 'style-scale-option-item'
                   }
-                  onClick={() => patchActive({ unit: item.id })}
+                  onClick={() => patchActive({ unit: item.id || undefined })}
                 >
                   {item.label}
                 </List.Item>
@@ -233,11 +212,11 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
               size="small"
               bordered
               className="style-scale-option-list"
-              dataSource={[...SCALE_CONVERSION_OPTIONS]}
+              dataSource={[...SCALE_LIST_OPTIONS]}
               renderItem={(item) => (
                 <List.Item
                   className={
-                    activeOverride?.scaleConversion === item.id
+                    isScaleSelected(item.id)
                       ? 'style-scale-option-item is-selected'
                       : 'style-scale-option-item'
                   }
@@ -250,7 +229,7 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
           </fieldset>
         </div>
       </div>
-      <Space style={{ marginTop: 16 }}>
+      <Space className="style-scale-modal-actions">
         <Button onClick={handleReset} disabled={!activeVariable}>
           Reset
         </Button>

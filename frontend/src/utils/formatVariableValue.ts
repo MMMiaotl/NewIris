@@ -77,8 +77,10 @@ function formatAngle180(value: number, decimals: number): string {
   return angle.toFixed(decimals);
 }
 
+const STANDARD_DECIMALS = 3;
+
 function applyFormatStyle(value: number, style: FormatStyleId): string {
-  if (style === 'standard') return String(value);
+  if (style === 'standard') return value.toFixed(STANDARD_DECIMALS);
 
   if (style.startsWith('decimals:')) {
     const decimals = Number(style.split(':')[1]);

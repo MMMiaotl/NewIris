@@ -784,14 +784,14 @@
 .style-scale-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .style-scale-fieldset {
   border: 1px solid #c8c8b8;
   border-radius: 2px;
   margin: 0;
-  padding: 8px 10px 10px;
+  padding: 6px 8px 8px;
 }
 
 .style-scale-fieldset legend {
@@ -800,77 +800,50 @@
   padding: 0 4px;
 }
 
-.style-scale-fieldset--variables {
+.style-scale-fieldset--variables,
+.style-scale-fieldset--custom-name {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.style-scale-variables-row,
+.style-scale-custom-name-row {
+  display: grid;
   gap: 8px;
-}
-
-.style-scale-variable-list {
-  max-height: 140px;
-  overflow: auto;
-}
-
-.style-scale-variable-item {
-  cursor: pointer;
-  padding: 4px 8px !important;
-  display: flex !important;
   align-items: center;
-  gap: 8px;
 }
 
-.style-scale-variable-value {
-  flex-shrink: 0;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.style-scale-variables-row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(88px, 0.5fr) auto;
+}
+
+.style-scale-apply-all {
+  margin: 0;
   white-space: nowrap;
-  font-size: 11px;
-  color: #555;
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.style-scale-custom-name-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.style-scale-variable-select {
+  min-width: 0;
 }
 
 .style-scale-value-field {
   font-variant-numeric: tabular-nums;
 }
 
-.style-scale-variable-item.is-active {
-  background: rgba(24, 144, 255, 0.08);
-}
-
-.style-scale-variable-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-.style-scale-variable-badge {
-  font-size: 10px;
-  color: #1677ff;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.style-scale-custom-name-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.style-scale-source-label {
-  font-size: 11px;
-  color: #666;
-  white-space: nowrap;
+.style-scale-modal-actions {
+  margin-top: 10px;
 }
 
 .style-scale-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .style-scale-fieldset--column {
@@ -878,7 +851,7 @@
 }
 
 .style-scale-option-list {
-  max-height: 220px;
+  max-height: 200px;
   overflow: auto;
 }
 
