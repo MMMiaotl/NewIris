@@ -1,0 +1,68 @@
+---
+description: 在本项目中创建或更新 Cursor 规则时的流程与格式
+alwaysApply: true
+---
+
+# 添加 Cursor 规则
+
+当用户要求添加、修改或整理 Cursor 规则时，按以下方式处理。
+
+## 存放位置
+
+- 规则文件放在 `.cursor/rules/`，扩展名为 `.mdc`
+- 文件名使用 kebab-case，例如 `frontend-react.mdc`、`cpp-backend.mdc`
+- 每个文件只描述一个主题，避免把所有约定堆在一个文件里
+
+## 文件格式
+
+```markdown
+---
+description: 简短说明（会显示在规则选择器中）
+globs: **/*.ts        # 可选，仅对匹配文件生效
+alwaysApply: false    # true 表示每次对话都生效
+---
+
+# 规则标题
+
+具体、可执行的约定内容…
+```
+
+| 字段 | 说明 |
+|------|------|
+| `description` | 必填，一句话概括规则用途 |
+| `globs` | 可选，如 `frontend/**/*.tsx`、`WatchIoWebServer/**/*.cpp` |
+| `alwaysApply` | 全局约定设为 `true`；文件级约定设为 `false` 并配合 `globs` |
+
+## 创建前确认
+
+1. **目的**：这条规则要解决什么问题？
+2. **范围**：全局生效，还是仅针对某类文件？
+3. **模式**：若按文件生效，给出具体 glob（例如 `frontend/src/**/*.ts`）
+
+用户未说明范围时，先询问再创建，不要猜测 glob。
+
+## 写作要求
+
+- 控制在 50 行以内，最多不超过 500 行
+- 写可执行的约定，不要写空泛原则
+- 优先给出 ✅ / ❌ 对比示例
+- 与现有规则不重复；若重叠，合并或拆分而不是再建一条
+- 代码示例里的注释用英文；面向用户的说明可用中文
+
+## 本项目常见范围
+
+| 区域 | 建议 glob |
+|------|-----------|
+| 前端 React/TS | `frontend/**/*.{ts,tsx}` |
+| 后端 C++ | `WatchIoWebServer/**/*.{cpp,h,hpp}` |
+| 文档 | `docs/**/*.md` |
+| 构建配置 | `**/CMakeLists.txt`、`frontend/vite.config.ts` |
+
+## 操作流程
+
+1. 阅读 `.cursor/rules/` 下已有规则，避免重复
+2. 新建或编辑对应的 `.mdc` 文件
+3. 检查 frontmatter 字段是否正确
+4. 向用户说明：规则名称、生效范围、主要约定
+
+仅在用户明确要求时才创建规则；普通编码任务不要主动新增规则文件。

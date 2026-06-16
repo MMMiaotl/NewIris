@@ -1,0 +1,48 @@
+---
+description: Chat in Chinese; all source code and comments in English only
+alwaysApply: true
+---
+
+# Language Conventions
+
+## Chat (Chinese)
+
+- Internal reasoning and all user-facing replies must be in **Chinese**
+- Explanations, summaries, commit messages suggested in chat, and PR descriptions in chat: **Chinese**
+- Technical terms may stay in English when natural (e.g. React, CMake, WebSocket)
+
+## Code (English only)
+
+All project source code must use **English only**. Do not use Chinese anywhere in code:
+
+- Identifiers: variables, functions, classes, types, enums, constants
+- Comments and docstrings
+- String literals shown in UI or logs (unless i18n is explicitly requested)
+- Error messages, log messages, assertion text
+- Commit messages and PR bodies when written into the repo (English)
+
+```typescript
+// ❌ BAD
+const 用户列表 = []; // 获取所有用户
+throw new Error('连接失败');
+
+// ✅ GOOD
+const userList = []; // Fetch all users
+throw new Error('Connection failed');
+```
+
+```cpp
+// ❌ BAD
+// 初始化 WebSocket 服务
+void 启动服务器();
+
+// ✅ GOOD
+// Initialize WebSocket service
+void startServer();
+```
+
+## Exceptions
+
+- User explicitly asks for Chinese in code or UI copy
+- Existing Chinese in legacy code: do not expand it; prefer English when touching that area
+- `.mdc` rule files and user-facing docs under `docs/` may use Chinese for prose; code blocks inside them still follow English-only for code

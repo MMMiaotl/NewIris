@@ -1,0 +1,55 @@
+---
+description: React, Ant Design, and UI conventions for NewIris frontend
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend React conventions
+
+## Stack
+
+- React 19 functional components only (no class components).
+- Ant Design 6 for UI primitives (`Splitter`, `Drawer`, `Table`, `Select`, etc.).
+- uPlot in `components/plot/PlotPanel.tsx` for charts — do not swap in Recharts/ECharts without user request.
+- Zustand for shared state in `stores/`; local `useState` only for component-private UI (e.g. open/closed).
+
+## Structure
+
+- Entry: `App.tsx` → `components/layout/AppShell.tsx`.
+- Add feature UI under `components/<feature>/`, not in `AppShell` when avoidable.
+- Shared types live in `api/types.ts`; do not duplicate interfaces in components.
+
+## Patterns
+
+```tsx
+// ❌ BAD — API client in a component
+function Tree() {
+  const client = new SmcServerClient(...);
+}
+
+// ✅ GOOD — callbacks from useWatchIo via AppShell
+<VariableTree onLoadVariables={(branch) => client.current?.fetchVarLeaves(branch)} />
+```
+
+```tsx
+// ❌ BAD — fetch connection config from env in random components
+const url = import.meta.env.VITE_HTTP_URL;
+
+// ✅ GOOD — read from connectionStore
+const { config } = useConnectionStore();
+```
+
+## Styling
+
+- Use existing classes in `App.css` / `index.css`.
+- Match Iris-style layout: header (menu + connection bar), split panes, footer status line.
+- Footer status classes: `footer-status--connected`, `--error`, `--connecting`, `--disconnected`.
+
+## Code language
+
+- All identifiers, comments, and user-visible strings in **English** (see `language-conventions.mdc`).
+
+## Docs
+
+- Architecture map: `docs/FrontendArchitecture.md`
+- Connection behavior: `docs/NewIrisConnection.md`

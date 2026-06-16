@@ -1,0 +1,52 @@
+---
+description: Zustand stores, hooks, and live/replay data flow
+globs: frontend/src/{stores,hooks}/**
+alwaysApply: false
+---
+
+# State and hooks
+
+## Stores (Zustand)
+
+| Store | File | Purpose |
+|-------|------|---------|
+| Connection | `connectionStore.ts` | Config, transport, `/request` results, app/view mode, drawers |
+| Variables | `variableStore.ts` | Tree, table data, branch prefix, plot selection |
+| Plot | `plotStore.ts` | Up to 8 series, colors, Y range, ring buffer (`maxPoints: 600`) |
+| Session | `sessionStore.ts` | Recording, replay, recent sessions (localStorage) |
+
+Keep store actions synchronous unless wrapping async API calls in hooks.
+
+## Orchestration
+
+- **`useWatchIo`** — only place that should create/disconnect `WatchIoClient`, handle `WatchIoMessage`, and expose `connect`, `setVariableValue`, `registerVariable`.
+- **`useReplay`** — reads `sessionStore.replayData`; updates `variableStore` and `plotStore`; no network.
+
+Components must not call `createWatchIoClient` directly.
+
+## Message routing (useWatchIo)
+
+Incoming messages → `normalizeEntries` → by `msg.type`:
+
+- Tree branches → `buildVariableTree` helpers → `variableStore`
+- Updates → `applyUpdate` + optional `plotStore.appendPoint` + `sessionStore.appendRecordingFrame`
+
+When changing message handling, update both the relevant client (if it emits new shapes) and `useWatchIo.handleMessage`.
+
+## Modes
+
+- `appMode === 'offline'` → `useWatchIo.connect` is a no-op.
+- `appMode === 'replay'` → live client disconnected; `useReplay` drives UI.
+
+Switch modes via `connectionStore.setAppMode`, not ad-hoc flags in components.
+
+## Session persistence
+
+- `SessionFile` / `RecordingFile` types in `api/types.ts`.
+- Serialize via `utils/recordingFormat.ts`; bump `version` only with migration logic.
+
+## Cross-store access
+
+Prefer hook composition. Inside store files, use `get()` only within the same store. For cross-store reads in effects, `useXStore.getState()` in hooks is acceptable (see `useReplay`).
+
+See `docs/FrontendArchitecture.md` for diagrams.

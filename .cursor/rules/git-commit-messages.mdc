@@ -1,0 +1,41 @@
+---
+description: AI 生成 git commit message 时保持简短，先总结后 bullet
+alwaysApply: true
+---
+
+# Git commit message（AI 生成）
+
+当用户要求生成、建议或撰写 commit message 时（含 chat 中的草稿、协助 `git commit` 时）：
+
+## 结构
+
+1. **首段 1–2 句**：说明「为什么」改，尽量短；能一句说清就不要两句。
+2. **需要补充时**：首段后空一行，用 **bullet** 简述关键改动（每条一行，动词开头，不展开细节）。
+
+## 要求
+
+- 不要写长段落，不要堆文件列表当正文。
+- bullet 只在改动点多、首段无法涵盖时使用；通常 2–5 条即可。
+- 写入仓库的 commit message 正文使用 **English**（与 `language-conventions` 一致）；在 chat 里向用户解释可用中文。
+
+## 示例
+
+```text
+Tighten parameter table layout and make description column fill remaining width.
+
+- Add resizable fixed columns for name/value/scale
+- Auto-expand description to panel edge
+- Show full variable path in name column
+```
+
+```text
+Fix WatchIO WebSocket connection bar showing redundant gateway fields.
+```
+
+## 避免
+
+```text
+❌ This commit updates ParameterTable.tsx to add ResizableTableHeaderCell,
+implements column width state, changes CSS in App.css, modifies MenuBar...
+（过长、像 changelog）
+```

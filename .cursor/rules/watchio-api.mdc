@@ -1,0 +1,56 @@
+---
+description: WatchIO API clients and transport layer in frontend/src/api
+globs: frontend/src/api/**
+alwaysApply: false
+---
+
+# WatchIO API layer
+
+## Single abstraction
+
+All backends implement `WatchIoClient` in `watchIoClient.ts`. Factory: `createWatchIoClient()` in `watchIoClientFactory.ts`.
+
+```typescript
+// Adding a transport requires all of:
+// 1. New class implementing WatchIoClient
+// 2. Factory switch case
+// 3. ConnectionTransport in api/types.ts + constants/transport.ts
+// 4. Proxy entries in vite.config.ts (if HTTP)
+```
+
+## Three transports (do not mix URL rules)
+
+| Transport | Client | Base path | Tree naming |
+|-----------|--------|-----------|-------------|
+| `smcServer` | `SmcServerClient` | `/SmcServer1`, `/SmcServer2` | Slash paths (`Control/...`) |
+| `watchIoHttp` | `HttpWatchIoClient` | `/watchio` | Dot paths (`C.Filter...`) |
+| `watchIoWs` | `StompWatchIoClient` | STOMP dest `/watchio` | Dot paths |
+
+SmcServer uses `parseSmcJson.ts`; WatchIO messages use `parseWatchIoMessage.ts` shape (`WatchIoMessage`).
+
+## HTTP base URL
+
+- Dev: `config.httpUrl === ''` → same-origin requests hit Vite proxy → `:8082`.
+- Never hardcode `http://localhost:8082` in client code for dev; CORS breaks on `:5173`.
+
+## Discovery
+
+- `smcHttp.ts` — `GET /request` service list → `DiscoveredService[]`.
+- SmcServer and WatchIO are separate registrations; `serverPath` comes from discovery, not guessed.
+
+## Client responsibilities
+
+- `fetchVarTree` / `fetchVarLeaves` — populate tree.
+- `addVariable` / `removeVariable` / `setMonitorList` — polling or push subscription.
+- `setVariable` — write parameter value.
+- Emit normalized `WatchIoMessage` via `onMessage`; connection state via `onStatus`.
+
+## Verification scripts
+
+```text
+scripts/verify-smc-api.mjs      — SmcServer
+scripts/verify-watchio-api.mjs  — /watchio HTTP
+scripts/test-stomp-parse.mjs    — stompFrame.ts (offline)
+```
+
+See `docs/NewIrisConnection.md` for endpoint details.
