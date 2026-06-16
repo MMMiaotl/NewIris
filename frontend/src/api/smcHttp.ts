@@ -63,8 +63,12 @@ export function ensureWatchIoServices(services: DiscoveredService[]): Discovered
   return [createDefaultWatchIoService()];
 }
 
+export function isStompWatchIoTransport(transport: ConnectionTransport): boolean {
+  return transport === 'watchIoWs' || transport === 'sharedMemory';
+}
+
 export function isWatchIoTransport(transport: ConnectionTransport): boolean {
-  return transport === 'watchIoHttp' || transport === 'watchIoWs';
+  return transport === 'watchIoHttp' || isStompWatchIoTransport(transport);
 }
 
 /**
@@ -102,7 +106,7 @@ export async function fetchRequestServices(
   transport: ConnectionTransport = 'smcServer',
   wsUrl?: string,
 ) {
-  if (transport === 'watchIoWs') {
+  if (isStompWatchIoTransport(transport)) {
     const url = (wsUrl || defaultWsUrl(httpHost.replace(/^https?:\/\//, ''))).trim();
     try {
       const services = await fetchRequestServicesViaWebSocket(url);

@@ -82,7 +82,7 @@ export interface RecordingFile {
   frames: RecordingFrame[];
 }
 
-export type ConnectionTransport = 'smcServer' | 'watchIoHttp' | 'watchIoWs';
+export type ConnectionTransport = 'smcServer' | 'sharedMemory' | 'watchIoHttp' | 'watchIoWs';
 
 export type { VariableDisplayOverride };
 
@@ -122,7 +122,7 @@ export interface ConnectionConfig {
   transport: ConnectionTransport;
   /** Empty = Vite proxy / same-origin; SmcServerView uses http://host:8082 */
   httpUrl: string;
-  /** WebSocket URL for watchIoWs (default ws://host:8083) */
+  /** WebSocket URL for watchIoWs / sharedMemory (default ws://host:8083) */
   wsUrl: string;
   /** Display host like SmcServerView serverList: localhost:8082 */
   hostAddress: string;

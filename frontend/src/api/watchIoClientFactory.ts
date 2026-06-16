@@ -15,6 +15,7 @@ export function createWatchIoClient(config: ConnectionConfig): WatchIoClient {
         config.sampleInterval,
       );
     case 'watchIoWs':
+    case 'sharedMemory':
       return new StompWatchIoClient(
         config.wsUrl || defaultWsUrl(config.hostAddress),
         config.serverPath,

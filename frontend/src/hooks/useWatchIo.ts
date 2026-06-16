@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConnectionTransport, WatchIoEntry, WatchIoMessage } from '../api/types';
 import type { WatchIoClient } from '../api/watchIoClient';
-import { isWatchIoTransport } from '../api/smcHttp';
+import { isWatchIoTransport, isStompWatchIoTransport } from '../api/smcHttp';
 import { createWatchIoClient } from '../api/watchIoClientFactory';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useVariableStore } from '../stores/variableStore';
@@ -134,7 +134,7 @@ export function useWatchIo() {
     (msg: WatchIoMessage) => {
       const entries = normalizeEntries(msg.entries);
       const transport = useConnectionStore.getState().config.transport;
-      const useDotTree = transport === 'watchIoHttp' || transport === 'watchIoWs';
+      const useDotTree = isWatchIoTransport(transport);
 
       if (msg.type === 'vartree' || msg.type === 'varleaves' || msg.type === 'varlist' || msg.type === 'varinfo') {
         useConnectionStore.getState().setStatus('connected');
@@ -304,7 +304,7 @@ export function useWatchIo() {
     clientRef.current?.disconnect();
     clientRef.current = null;
     useWatchIoMessageLogStore.getState().clear();
-    if (userInitiated && useConnectionStore.getState().config.transport === 'watchIoWs') {
+    if (userInitiated && isStompWatchIoTransport(useConnectionStore.getState().config.transport)) {
       userDisconnectedWatchIoWsRef.current = true;
     }
     setStatus('disconnected');
@@ -381,12 +381,13 @@ export function useWatchIo() {
   );
 
   useEffect(() => {
-    const switchedToWatchIoWs =
-      prevTransportRef.current !== 'watchIoWs' && config.transport === 'watchIoWs';
+    const switchedToStompWatchIo =
+      !isStompWatchIoTransport(prevTransportRef.current ?? 'smcServer') &&
+      isStompWatchIoTransport(config.transport);
     prevTransportRef.current = config.transport;
 
-    if (config.transport !== 'watchIoWs' || appMode !== 'live') return;
-    if (switchedToWatchIoWs) userDisconnectedWatchIoWsRef.current = false;
+    if (!isStompWatchIoTransport(config.transport) || appMode !== 'live') return;
+    if (switchedToStompWatchIo) userDisconnectedWatchIoWsRef.current = false;
     if (suppressAutoConnectRef.current) return;
     if (userDisconnectedWatchIoWsRef.current) return;
     if (status === 'connecting' || status === 'connected') return;

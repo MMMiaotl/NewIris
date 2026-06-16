@@ -1,4 +1,5 @@
 import { Button, Col, Form, Input, InputNumber, Modal, Row, Select } from 'antd';
+import { isWatchIoTransport, isStompWatchIoTransport } from '../../api/smcHttp';
 import type { ConnectionTransport } from '../../api/types';
 import { transportOptions } from '../../constants/transport';
 import { useConnectionStore } from '../../stores/connectionStore';
@@ -10,8 +11,8 @@ interface ConnectionSettingsModalProps {
 
 export function ConnectionSettingsModal({ open, onClose }: ConnectionSettingsModalProps) {
   const { config, setWatchIoLogDrawerOpen, setConfig } = useConnectionStore();
-  const isWatchIo = config.transport === 'watchIoHttp' || config.transport === 'watchIoWs';
-  const showWsUrl = config.transport === 'watchIoWs';
+  const isWatchIo = isWatchIoTransport(config.transport);
+  const showWsUrl = isStompWatchIoTransport(config.transport);
 
   const openWatchIoLog = () => {
     onClose();

@@ -6,6 +6,7 @@ import {
   createDefaultWatchIoService,
   fetchRequestServices,
   isWatchIoTransport,
+  isStompWatchIoTransport,
 } from '../../api/smcHttp';
 import { defaultWsUrl } from '../../api/watchIoPaths';
 import type { ConnectionTransport } from '../../api/types';
@@ -49,7 +50,7 @@ export function ConnectionBar({
   } = useConnectionStore();
 
   const isWatchIo = isWatchIoTransport(config.transport);
-  const isWatchIoWs = config.transport === 'watchIoWs';
+  const isWatchIoWs = isStompWatchIoTransport(config.transport);
   const defaultWatchIo = createDefaultWatchIoService();
   const watchIoFromRequest = discoveredServices.some(
     (s) =>

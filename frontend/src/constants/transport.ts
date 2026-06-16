@@ -1,7 +1,8 @@
 import type { ConnectionTransport } from '../api/types';
 
 export const transportOptions: { label: string; value: ConnectionTransport }[] = [
-  { label: 'Shared Memory', value: 'smcServer' },
+  { label: 'SmcServer API', value: 'smcServer' },
+  { label: 'Shared Memory', value: 'sharedMemory' },
   { label: 'WatchIO HTTP', value: 'watchIoHttp' },
   { label: 'WatchIO WebSocket', value: 'watchIoWs' },
 ];
@@ -19,6 +20,7 @@ export function parseTransportEnv(value: string | undefined): ConnectionTranspor
 
 export const defaultWatchIoNames: Record<ConnectionTransport, string> = {
   smcServer: 'SmcControl1',
+  sharedMemory: 'SmcControl1',
   watchIoHttp: 'SmcControl1',
   watchIoWs: 'SmcControl1',
 };
