@@ -15,7 +15,28 @@ export type FormatStyleId =
   | 'truncate:2'
   | 'truncate:3'
   | 'angle180:0'
-  | 'angle180:1';
+  | 'angle180:1'
+  | 'degMinSec:0'
+  | 'degMinSec:1'
+  | 'latitude:0'
+  | 'latitude:1'
+  | 'longitude:0'
+  | 'longitude:1'
+  | 'time:s'
+  | 'time:day'
+  | 'utcClock'
+  | 'localClock'
+  | 'localClockDate'
+  | 'localClockTime'
+  | 'intHex'
+  | 'intHexWord'
+  | 'intHexByte'
+  | 'intBit'
+  | 'intBitWord'
+  | 'intBitByte'
+  | 'intChar'
+  | 'arrayString'
+  | 'lookup';
 
 /** Per-variable client-side display preferences (not sent to server). */
 export interface VariableDisplayOverride {
@@ -24,6 +45,11 @@ export interface VariableDisplayOverride {
   format: FormatStyleId;
   unit?: string;
   scaleConversion?: string;
+  /** Lookup table: raw value string → display label (styleLookup parity). */
+  lookupTable?: Record<string, string>;
+  /** Wrap display numeric value to [wrapMin, wrapMax] when both set. */
+  wrapMin?: number;
+  wrapMax?: number;
 }
 
 /** @deprecated Legacy persisted field — read via mergeDisplayOverride. */
@@ -53,6 +79,27 @@ export const FORMAT_STYLE_OPTIONS: readonly FormatStyleOption[] = [
   { id: 'truncate:3', label: 'truncate 3 dec' },
   { id: 'angle180:0', label: 'angle 180 0 dec' },
   { id: 'angle180:1', label: 'angle 180 1 dec' },
+  { id: 'degMinSec:0', label: 'deg min sec 0 dec' },
+  { id: 'degMinSec:1', label: 'deg min sec 1 dec' },
+  { id: 'latitude:0', label: 'latitude 0 dec' },
+  { id: 'latitude:1', label: 'latitude 1 dec' },
+  { id: 'longitude:0', label: 'longitude 0 dec' },
+  { id: 'longitude:1', label: 'longitude 1 dec' },
+  { id: 'time:s', label: 'time (seconds)' },
+  { id: 'time:day', label: 'time (days)' },
+  { id: 'utcClock', label: 'UTC clock' },
+  { id: 'localClock', label: 'local clock' },
+  { id: 'localClockDate', label: 'local date' },
+  { id: 'localClockTime', label: 'local time' },
+  { id: 'intHex', label: 'hex (dword)' },
+  { id: 'intHexWord', label: 'hex (word)' },
+  { id: 'intHexByte', label: 'hex (byte)' },
+  { id: 'intBit', label: 'bits (dword)' },
+  { id: 'intBitWord', label: 'bits (word)' },
+  { id: 'intBitByte', label: 'bits (byte)' },
+  { id: 'intChar', label: 'char' },
+  { id: 'arrayString', label: 'array string' },
+  { id: 'lookup', label: 'lookup table' },
 ] as const;
 
 export interface UnitOption {

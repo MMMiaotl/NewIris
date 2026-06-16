@@ -2,6 +2,7 @@ import { Table, Tooltip } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
+import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 import type { WatchIoVariable } from '../../api/types';
 import {
   createPlaceholderVariable,
@@ -41,6 +42,7 @@ function createInitialFixedWidths(): ParameterFixedWidths {
 
 export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const { appMode } = useConnectionStore();
+  const { showFullNameInTable, showRegisColumn, showSourceColumn } = useUiPreferencesStore();
   const {
     variables,
     selectedVariables,
@@ -219,7 +221,48 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       }),
     };
 
-    return [...fixedColumns, descriptionColumn];
+    const extraColumns: ColumnType<WatchIoVariable>[] = [];
+    if (showRegisColumn) {
+      const regis = useVariableStore.getState().registeredNames;
+      extraColumns.push({
+        title: 'regis',
+        key: 'regis',
+        width: 52,
+        onHeaderCell: () => ({ style: fixedCellStyle(52) }),
+        onCell: () => ({ style: fixedCellStyle(52) }),
+        render: (_: unknown, row: WatchIoVariable) => (regis.has(row.name) ? '●' : ''),
+      });
+    }
+    if (showSourceColumn) {
+      extraColumns.push({
+        title: 'source',
+        dataIndex: 'varKind',
+        key: 'source',
+        width: 72,
+        ellipsis: { showTitle: true },
+        onHeaderCell: () => ({ style: fixedCellStyle(72) }),
+        onCell: () => ({ style: fixedCellStyle(72) }),
+      });
+    }
+
+    if (showFullNameInTable) {
+      const nameColIdx = fixedColumns.findIndex((c) => (c as ColumnType<WatchIoVariable>).key === 'name');
+      if (nameColIdx >= 0) {
+        const orig = fixedColumns[nameColIdx];
+        fixedColumns[nameColIdx] = {
+          ...orig,
+          render: (name: string) => (
+            <Tooltip title={name}>
+              <button type="button" className="parameter-name-link" onClick={() => openControlForVariable(name)}>
+                {name}
+              </button>
+            </Tooltip>
+          ),
+        };
+      }
+    }
+
+    return [...fixedColumns, ...extraColumns, descriptionColumn];
   }, [
     fixedWidths,
     handleResize,
@@ -233,6 +276,9 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     setValueDraft,
     clearValueDraft,
     overrides,
+    showRegisColumn,
+    showSourceColumn,
+    showFullNameInTable,
   ]);
 
   const headerLabel =

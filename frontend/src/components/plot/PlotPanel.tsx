@@ -3,6 +3,7 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { usePlotStore, DEFAULT_PLOT_LINE_WIDTH } from '../../stores/plotStore';
 import { useConnectionStore } from '../../stores/connectionStore';
+import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 import { useDisplayStore, getVariableDisplayOverride } from '../../stores/displayStore';
 import {
   buildPlotAlignedData,
@@ -14,13 +15,6 @@ import {
 import { convertRawToDisplayNumber, getDisplayLabel } from '../../utils/formatVariableValue';
 
 const PLOT_CONTAINER_INSET = 8;
-
-const PLOT_Y_AXIS = { stroke: '#9a9a9a', grid: { show: true, stroke: '#4a4a4a' } };
-const PLOT_X_AXIS = {
-  stroke: '#9a9a9a',
-  grid: { show: true, stroke: '#4a4a4a' },
-  values: (_u: uPlot, ticks: number[]) => ticks.map((t) => formatPlotAxisTime(t)),
-};
 
 function seriesOptions(
   plotVariables: string[],
@@ -92,12 +86,34 @@ export function PlotPanel() {
     usePlotStore();
   const overrides = useDisplayStore((s) => s.overrides);
   const { appMode } = useConnectionStore();
+  const { plotGridX, plotGridY, plotZeroLine } = useUiPreferencesStore();
 
   const valueAt = useCallback((name: string, raw: string) => {
     return convertRawToDisplayNumber(raw, getVariableDisplayOverride(name));
   }, []);
 
-  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}|${JSON.stringify(overrides)}`;
+  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}|${JSON.stringify(overrides)}|${plotGridX}|${plotGridY}|${plotZeroLine}`;
+
+  const plotXAxis = {
+    stroke: '#9a9a9a',
+    grid: { show: plotGridX, stroke: '#4a4a4a' },
+    values: (_u: uPlot, ticks: number[]) => ticks.map((t) => formatPlotAxisTime(t)),
+  };
+
+  const plotYAxis = { stroke: '#9a9a9a', grid: { show: plotGridY, stroke: '#4a4a4a' } };
+
+  /** Zero-line annotation series (invisible point series at y=0). */
+  const zeroLineSeries: uPlot.Series[] = plotZeroLine
+    ? [
+        {
+          stroke: '#888888',
+          width: 1,
+          points: { show: false },
+          paths: () => null,
+          show: true,
+        },
+      ]
+    : [];
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -123,8 +139,8 @@ export function PlotPanel() {
           x: { time: false, auto: false },
           y: yScaleOptions(yMin, yMax),
         },
-        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides)],
-        axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
+        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides), ...zeroLineSeries],
+        axes: [plotXAxis, plotYAxis],
       };
 
       plotRef.current = new uPlot(

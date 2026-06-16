@@ -27,6 +27,9 @@ import { useRegistration } from '../../hooks/useRegistration';
 import { RegistrationPanel } from '../registration/RegistrationPanel';
 import { ExportVariablesModal } from '../registration/ExportVariablesModal';
 import { ImportVariablesModal } from '../registration/ImportVariablesModal';
+import { ExportStatisticsModal } from '../registration/ExportStatisticsModal';
+import { ShowOptionsModal } from '../settings/ShowOptionsModal';
+import { PreferencesModal } from '../settings/PreferencesModal';
 import {
   readInitialParameterPanelDefaultSize,
   readInitialPlotPanelDefaultSize,
@@ -44,6 +47,9 @@ export function AppShell() {
   const [registrationPanelOpen, setRegistrationPanelOpen] = useState(false);
   const [exportVarsOpen, setExportVarsOpen] = useState(false);
   const [importVarsOpen, setImportVarsOpen] = useState(false);
+  const [exportStatsOpen, setExportStatsOpen] = useState(false);
+  const [showOptionsOpen, setShowOptionsOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const {
     viewMode,
     appMode,
@@ -90,6 +96,9 @@ export function AppShell() {
           onOpenRegistration={() => setRegistrationPanelOpen(true)}
           onOpenExportVariables={() => setExportVarsOpen(true)}
           onOpenImportVariables={() => setImportVarsOpen(true)}
+          onOpenExportStatistics={() => setExportStatsOpen(true)}
+          onOpenShowOptions={() => setShowOptionsOpen(true)}
+          onOpenPreferences={() => setPreferencesOpen(true)}
         />
         <ConnectionBar
           onConnect={connect}
@@ -206,6 +215,18 @@ export function AppShell() {
       <ImportVariablesModal
         open={importVarsOpen}
         onClose={() => setImportVarsOpen(false)}
+      />
+      <ExportStatisticsModal
+        open={exportStatsOpen}
+        onClose={() => setExportStatsOpen(false)}
+      />
+      <ShowOptionsModal
+        open={showOptionsOpen}
+        onClose={() => setShowOptionsOpen(false)}
+      />
+      <PreferencesModal
+        open={preferencesOpen}
+        onClose={() => setPreferencesOpen(false)}
       />
       <ChangeStyleScaleModal
         open={styleModalOpen}

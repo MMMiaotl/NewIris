@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Button, Checkbox, Input, List, Modal, Select, Space } from 'antd';
+import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Space, Typography } from 'antd';
 import {
   FORMAT_STYLE_OPTIONS,
   SCALE_LIST_OPTIONS,
@@ -228,6 +228,64 @@ function ChangeStyleScaleModalBody({ initialFocusVariable, onClose }: ModalBodyP
             />
           </fieldset>
         </div>
+      {activeOverride?.format === 'lookup' && (
+        <fieldset className="style-scale-fieldset style-scale-fieldset--lookup">
+          <legend>Lookup table</legend>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            One entry per line: <code>raw = label</code>
+          </Typography.Text>
+          <Input.TextArea
+            rows={6}
+            disabled={!activeVariable}
+            placeholder={'0 = Off\n1 = On\n2 = Standby'}
+            value={
+              activeOverride?.lookupTable
+                ? Object.entries(activeOverride.lookupTable)
+                    .map(([k, v]) => `${k} = ${v}`)
+                    .join('\n')
+                : ''
+            }
+            onChange={(e) => {
+              const table: Record<string, string> = {};
+              for (const line of e.target.value.split('\n')) {
+                const eq = line.indexOf('=');
+                if (eq < 0) continue;
+                const k = line.slice(0, eq).trim();
+                const v = line.slice(eq + 1).trim();
+                if (k) table[k] = v;
+              }
+              patchActive({ lookupTable: Object.keys(table).length ? table : undefined });
+            }}
+          />
+        </fieldset>
+      )}
+
+      {activeVariable && (
+        <fieldset className="style-scale-fieldset style-scale-fieldset--wrap">
+          <legend>Wrap / clamp</legend>
+          <Space>
+            <span>Min</span>
+            <InputNumber
+              size="small"
+              disabled={!activeVariable}
+              value={activeOverride?.wrapMin}
+              onChange={(v) => patchActive({ wrapMin: v ?? undefined })}
+              placeholder="—"
+              style={{ width: 90 }}
+            />
+            <span>Max</span>
+            <InputNumber
+              size="small"
+              disabled={!activeVariable}
+              value={activeOverride?.wrapMax}
+              onChange={(v) => patchActive({ wrapMax: v ?? undefined })}
+              placeholder="—"
+              style={{ width: 90 }}
+            />
+          </Space>
+        </fieldset>
+      )}
+
       </div>
       <Space className="style-scale-modal-actions">
         <Button onClick={handleReset} disabled={!activeVariable}>

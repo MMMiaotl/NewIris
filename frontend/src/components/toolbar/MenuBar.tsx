@@ -28,9 +28,19 @@ interface MenuBarProps {
   onOpenRegistration?: () => void;
   onOpenExportVariables?: () => void;
   onOpenImportVariables?: () => void;
+  onOpenExportStatistics?: () => void;
+  onOpenShowOptions?: () => void;
+  onOpenPreferences?: () => void;
 }
 
-export function MenuBar({ onOpenRegistration, onOpenExportVariables, onOpenImportVariables }: MenuBarProps) {
+export function MenuBar({
+  onOpenRegistration,
+  onOpenExportVariables,
+  onOpenImportVariables,
+  onOpenExportStatistics,
+  onOpenShowOptions,
+  onOpenPreferences,
+}: MenuBarProps) {
   const {
     config,
     status,
@@ -116,6 +126,11 @@ export function MenuBar({ onOpenRegistration, onOpenExportVariables, onOpenImpor
       label: 'Export Variables…',
       onClick: () => onOpenExportVariables?.(),
     },
+    {
+      key: 'export-statistics',
+      label: 'Export Statistics…',
+      onClick: () => onOpenExportStatistics?.(),
+    },
     { type: 'divider' },
     {
       key: 'offline',
@@ -161,6 +176,17 @@ export function MenuBar({ onOpenRegistration, onOpenExportVariables, onOpenImpor
       key: 'format-setting',
       label: 'Format',
       onClick: () => openStyleModal(useVariableStore.getState().focusedVariable),
+    },
+    { type: 'divider' },
+    {
+      key: 'show-options',
+      label: 'Show Options…',
+      onClick: () => onOpenShowOptions?.(),
+    },
+    {
+      key: 'preferences',
+      label: 'Preferences…',
+      onClick: () => onOpenPreferences?.(),
     },
   ];
 

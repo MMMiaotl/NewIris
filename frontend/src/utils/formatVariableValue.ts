@@ -28,6 +28,9 @@ export function mergeDisplayOverride(
     format: partial.format ?? partial.style ?? defaults.format,
     unit: partial.unit,
     scaleConversion: partial.scaleConversion,
+    lookupTable: partial.lookupTable,
+    wrapMin: partial.wrapMin,
+    wrapMax: partial.wrapMax,
   };
 }
 
@@ -78,9 +81,106 @@ function formatAngle180(value: number, decimals: number): string {
   return angle.toFixed(decimals);
 }
 
+function wrapValue(value: number, min?: number, max?: number): number {
+  if (min === undefined || max === undefined || min >= max) return value;
+  const span = max - min;
+  let v = value;
+  while (v > max) v -= span;
+  while (v < min) v += span;
+  return v;
+}
+
+function formatDegMinSec(value: number, decimals: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  const deg = Math.floor(abs);
+  const minFloat = (abs - deg) * 60;
+  const min = Math.floor(minFloat);
+  const sec = (minFloat - min) * 60;
+  return `${sign}${deg}°${min}'${sec.toFixed(decimals)}"`;
+}
+
+function formatLatitude(value: number, decimals: number): string {
+  const hemi = value >= 0 ? 'N' : 'S';
+  return `${formatDegMinSec(Math.abs(value), decimals)} ${hemi}`;
+}
+
+function formatLongitude(value: number, decimals: number): string {
+  const hemi = value >= 0 ? 'E' : 'W';
+  return `${formatDegMinSec(Math.abs(value), decimals)} ${hemi}`;
+}
+
+function formatTimeSeconds(value: number): string {
+  const h = Math.floor(value / 3600);
+  const m = Math.floor((value % 3600) / 60);
+  const s = value % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${s.toFixed(3).padStart(6, '0')}`;
+}
+
+function formatTimeDays(value: number): string {
+  const days = Math.floor(value);
+  const frac = value - days;
+  const sec = frac * 86400;
+  return `day ${days} ${formatTimeSeconds(sec)}`;
+}
+
+function formatClockMs(ms: number, mode: 'utc' | 'local', part: 'full' | 'date' | 'time'): string {
+  const d = new Date(ms);
+  const opts: Intl.DateTimeFormatOptions =
+    part === 'date'
+      ? { year: 'numeric', month: '2-digit', day: '2-digit' }
+      : part === 'time'
+        ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
+        : {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          };
+  const tz = mode === 'utc' ? 'UTC' : undefined;
+  return new Intl.DateTimeFormat(undefined, { ...opts, timeZone: tz }).format(d);
+}
+
+function formatHex(value: number, bits: 8 | 16 | 32): string {
+  const mask = bits === 8 ? 0xff : bits === 16 ? 0xffff : 0xffffffff;
+  const v = Math.trunc(value) & mask;
+  const hexLen = bits / 4;
+  return `0x${v.toString(16).toUpperCase().padStart(hexLen, '0')}`;
+}
+
+function formatBits(value: number, bits: 8 | 16 | 32): string {
+  const mask = bits === 8 ? 0xff : bits === 16 ? 0xffff : 0xffffffff;
+  const v = Math.trunc(value) & mask;
+  return v.toString(2).padStart(bits, '0');
+}
+
+function formatIntChar(value: number): string {
+  const code = Math.trunc(value) & 0xff;
+  if (code >= 32 && code < 127) return `'${String.fromCharCode(code)}'`;
+  return `\\x${code.toString(16).padStart(2, '0')}`;
+}
+
+function formatArrayString(raw: string): string {
+  if (raw.includes(',')) return raw.split(',').map((s) => s.trim()).join(', ');
+  return raw;
+}
+
+function formatLookup(value: number | string, table?: Record<string, string>): string {
+  if (!table) return String(value);
+  const key = String(value);
+  return table[key] ?? key;
+}
+
 const STANDARD_DECIMALS = 3;
 
-function applyFormatStyle(value: number, style: FormatStyleId): string {
+function applyFormatStyle(
+  value: number,
+  style: FormatStyleId,
+  lookupTable?: Record<string, string>,
+): string {
   if (style === 'standard') return value.toFixed(STANDARD_DECIMALS);
 
   if (style.startsWith('decimals:')) {
@@ -105,6 +205,34 @@ function applyFormatStyle(value: number, style: FormatStyleId): string {
     return formatAngle180(value, decimals);
   }
 
+  if (style.startsWith('degMinSec:')) {
+    return formatDegMinSec(value, Number(style.split(':')[1]));
+  }
+
+  if (style.startsWith('latitude:')) {
+    return formatLatitude(value, Number(style.split(':')[1]));
+  }
+
+  if (style.startsWith('longitude:')) {
+    return formatLongitude(value, Number(style.split(':')[1]));
+  }
+
+  if (style === 'time:s') return formatTimeSeconds(value);
+  if (style === 'time:day') return formatTimeDays(value);
+  if (style === 'utcClock') return formatClockMs(value * 1000, 'utc', 'full');
+  if (style === 'localClock') return formatClockMs(value * 1000, 'local', 'full');
+  if (style === 'localClockDate') return formatClockMs(value * 1000, 'local', 'date');
+  if (style === 'localClockTime') return formatClockMs(value * 1000, 'local', 'time');
+
+  if (style === 'intHex') return formatHex(value, 32);
+  if (style === 'intHexWord') return formatHex(value, 16);
+  if (style === 'intHexByte') return formatHex(value, 8);
+  if (style === 'intBit') return formatBits(value, 32);
+  if (style === 'intBitWord') return formatBits(value, 16);
+  if (style === 'intBitByte') return formatBits(value, 8);
+  if (style === 'intChar') return formatIntChar(value);
+  if (style === 'lookup') return formatLookup(value, lookupTable);
+
   return String(value);
 }
 
@@ -120,11 +248,15 @@ export function formatDisplayValue(
   override?: Partial<VariableDisplayOverride> | null,
 ): string {
   const merged = mergeDisplayOverride(override);
+  if (merged.format === 'arrayString') return formatArrayString(rawValue);
+  if (merged.format === 'lookup') return formatLookup(rawValue.trim(), merged.lookupTable);
+
   const num = parseNumeric(rawValue);
   if (num === null) return rawValue;
 
   const converted = applyScaleConversion(num, merged.scaleConversion);
-  const formatted = applyFormatStyle(converted, merged.format);
+  const wrapped = wrapValue(converted, merged.wrapMin, merged.wrapMax);
+  const formatted = applyFormatStyle(wrapped, merged.format, merged.lookupTable);
   return appendUnitSuffix(formatted, merged.unit);
 }
 
