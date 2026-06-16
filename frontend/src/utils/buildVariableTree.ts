@@ -134,6 +134,58 @@ export function mergeSearchBranchPathsIntoDotTree(
   return branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
 }
 
+/** Prefix set of every branch path leading to a search hit — O(1) lookup while filtering. */
+export function buildMatchPathPrefixSet(matchingNames: readonly string[]): Set<string> {
+  const set = new Set<string>();
+  for (const name of matchingNames) {
+    const parts = name.split('.');
+    for (let i = 1; i <= parts.length; i++) {
+      set.add(parts.slice(0, i).join('.'));
+    }
+  }
+  return set;
+}
+
+function attachAllSearchVariablesInTree(
+  tree: TreeNode[],
+  byParent: Map<string, { name: string }[]>,
+  branchVarPrefix: string | null,
+): TreeNode[] {
+  const attach = (nodes: TreeNode[]): TreeNode[] => {
+    let changed = false;
+    const next = nodes.map((node) => {
+      if (node.nodeKind === 'variable') return node;
+      let children = node.children?.length ? attach(node.children) : [];
+      const vars = byParent.get(node.fullPath);
+      if (vars?.length) {
+        changed = true;
+        const branchChildren = children.filter((c) => c.nodeKind !== 'variable');
+        const varChildren: TreeNode[] = vars.map((v) => ({
+          key: v.name,
+          title: variableDisplayName(v.name, node.fullPath, branchVarPrefix),
+          fullPath: v.name,
+          isLeaf: true,
+          nodeKind: 'variable' as const,
+        }));
+        children = [...branchChildren, ...varChildren].sort(sortTreeChildren);
+      }
+      if (children !== node.children) {
+        changed = true;
+        return {
+          ...node,
+          nodeKind: 'branch' as const,
+          variablesLoaded: vars?.length ? true : node.variablesLoaded,
+          isLeaf: children.length === 0,
+          children,
+        };
+      }
+      return node;
+    });
+    return changed ? next : nodes;
+  };
+  return attach(tree);
+}
+
 /** Ensure ancestor branches + matching variable leaves exist (dot-path tree). */
 export function mergeSearchVariablesIntoDotTree(
   tree: TreeNode[],
@@ -146,10 +198,7 @@ export function mergeSearchVariablesIntoDotTree(
   let merged = branchPaths.length ? mergeTreeNodesByPath(tree, buildDotBranchTree(branchPaths)) : tree;
 
   const byParent = groupVariablesByParentBranch(matchingNames.map((name) => ({ name })));
-  for (const [parentBranch, vars] of byParent) {
-    merged = attachVariablesToBranch(merged, parentBranch, vars, branchVarPrefix);
-  }
-  return merged;
+  return attachAllSearchVariablesInTree(merged, byParent, branchVarPrefix);
 }
 
 export function buildFlatVariableSearchNodes(matchingNames: string[]): TreeNode[] {
@@ -170,7 +219,9 @@ function sortTreeChildren(a: TreeNode, b: TreeNode): number {
 function branchLeadsToMatchingVariable(
   branchPath: string,
   matchingNames: readonly string[],
+  matchPathSet?: Set<string>,
 ): boolean {
+  if (matchPathSet) return matchPathSet.has(branchPath);
   const prefix = `${branchPath}.`;
   return matchingNames.some((name) => name === branchPath || name.startsWith(prefix));
 }
@@ -180,11 +231,14 @@ export function filterTreeByVariableSearch(
   nodes: TreeNode[],
   query: string,
   matchingNames?: string[],
+  matchPathSet?: Set<string>,
 ): TreeNode[] {
   const q = query.trim();
   if (!q) return nodes;
 
   const hasMatchIndex = Boolean(matchingNames?.length);
+  const pathSet =
+    matchPathSet ?? (hasMatchIndex ? buildMatchPathPrefixSet(matchingNames!) : undefined);
 
   const walk = (list: TreeNode[]): TreeNode[] => {
     const result: TreeNode[] = [];
@@ -198,7 +252,7 @@ export function filterTreeByVariableSearch(
       const scopedBranchChildren = hasMatchIndex
         ? branchChildren.filter(
             (c) =>
-              branchLeadsToMatchingVariable(c.fullPath, matchingNames!) ||
+              branchLeadsToMatchingVariable(c.fullPath, matchingNames!, pathSet) ||
               branchNodeMatchesSearch(c, q),
           )
         : branchChildren;
@@ -207,7 +261,7 @@ export function filterTreeByVariableSearch(
       const matchingVariables = variableChildren.filter((v) => variableNodeMatchesSearch(v, q));
       const branchSelfMatches = branchNodeMatchesSearch(node, q);
       const onMatchPath = hasMatchIndex
-        ? branchLeadsToMatchingVariable(node.fullPath, matchingNames!)
+        ? branchLeadsToMatchingVariable(node.fullPath, matchingNames!, pathSet)
         : false;
 
       if (

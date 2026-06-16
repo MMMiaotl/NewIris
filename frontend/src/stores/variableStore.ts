@@ -230,7 +230,9 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       );
     }
     set({ variables: Array.from(existing.values()).sort((a, b) => a.name.localeCompare(b.name)) });
-    if (branch) get().attachBranchVariables(branch);
+    if (branch && !useConnectionStore.getState().searchQuery.trim()) {
+      get().attachBranchVariables(branch);
+    }
   },
   attachBranchVariables: (branch) => {
     if (!branch) return;

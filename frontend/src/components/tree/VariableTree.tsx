@@ -10,6 +10,7 @@ import {
   branchHasLoadedChildren,
   branchHasLoadedVariables,
   buildFlatVariableSearchNodes,
+  buildMatchPathPrefixSet,
   collectMatchingVariableNames,
   filterFlatTreeByVariableSearch,
   filterTreeByVariableSearch,
@@ -68,24 +69,34 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     );
   }, [isFiltering, searchVarlistIndex, variables, selectedVariables, searchQueryTrimmed]);
 
+  const matchPathSet = useMemo(
+    () => (matchingNames.length ? buildMatchPathPrefixSet(matchingNames) : undefined),
+    [matchingNames],
+  );
+
+  /** Filter tree is fully derived from varlist index — expand does not need network fetches. */
+  const searchIndexReady = Boolean(searchVarlistIndex?.length && matchingNames.length);
+
   const displayNodes = useMemo(() => {
-    let nodes = flatTree
+    const baseNodes = flatTree
       ? flattenTree(treeNodes)
       : useDotTreeRoot
         ? treeNodes
         : wrapWithWatchIoRoot(watchIoName, treeNodes);
 
-    if (!isFiltering) return nodes;
+    if (!isFiltering) return baseNodes;
 
     if (flatTree) {
       return matchingNames.length
         ? buildFlatVariableSearchNodes(matchingNames)
-        : filterFlatTreeByVariableSearch(nodes, searchQueryTrimmed);
+        : filterFlatTreeByVariableSearch(baseNodes, searchQueryTrimmed);
     }
 
+    let nodes = baseNodes;
     if (matchingNames.length) {
+      const mergeBase = searchIndexReady && useDotTreeRoot ? [] : baseNodes;
       if (useDotTreeRoot) {
-        nodes = mergeSearchVariablesIntoDotTree(nodes, matchingNames, branchVarPrefix);
+        nodes = mergeSearchVariablesIntoDotTree(mergeBase, matchingNames, branchVarPrefix);
       } else {
         nodes = [
           {
@@ -100,10 +111,17 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       }
     }
 
-    return filterTreeByVariableSearch(nodes, searchQueryTrimmed, matchingNames);
+    return filterTreeByVariableSearch(
+      nodes,
+      searchQueryTrimmed,
+      matchingNames,
+      matchPathSet,
+    );
   }, [
+    searchIndexReady,
     treeNodes,
     matchingNames,
+    matchPathSet,
     branchVarPrefix,
     flatTree,
     isFiltering,
@@ -235,7 +253,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
             titleRender={titleRender}
             onExpand={(keys, { node, expanded }) => {
               setExpandedKeys(keys as string[]);
-              if (!expanded) return;
+              if (!expanded || searchIndexReady) return;
               const key = String(node.key);
               if (!useDotTreeRoot && key === watchIoName) {
                 onExpandBranch?.('');
