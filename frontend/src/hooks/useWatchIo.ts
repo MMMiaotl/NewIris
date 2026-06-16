@@ -43,7 +43,7 @@ export function useWatchIo() {
   const userDisconnectedWatchIoWsRef = useRef(false);
   const suppressAutoConnectRef = useRef(false);
   const prevTransportRef = useRef<ConnectionTransport | null>(null);
-  const { config, appMode, status, setStatus, searchQuery } = useConnectionStore();
+  const { config, appMode, status, setStatus, searchQuery, flatTree } = useConnectionStore();
   const selectedVariables = useVariableStore((s) => s.selectedVariables);
   const {
     setTreeNodes,
@@ -240,7 +240,8 @@ export function useWatchIo() {
         case 'varlist': {
           const list = normalizeEntries(msg.entries);
           const q = useConnectionStore.getState().searchQuery.trim();
-          if (!q) break;
+          const flat = useConnectionStore.getState().flatTree;
+          if (!q && !flat) break;
           varlistSearchCacheRef.current = list;
           setSearchVarlistIndex(list.map((e) => e.name));
           break;
@@ -469,7 +470,8 @@ export function useWatchIo() {
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;
     const q = searchQuery.trim();
-    if (!q || !isWatchIoTransport(config.transport)) {
+    const needsVarlist = isWatchIoTransport(config.transport) && (q || flatTree);
+    if (!needsVarlist) {
       varlistSearchCacheRef.current = null;
       setSearchVarlistIndex(null);
       return;
@@ -481,7 +483,7 @@ export function useWatchIo() {
       clientRef.current?.fetchVarList();
     }, 300);
     return () => window.clearTimeout(id);
-  }, [searchQuery, appMode, status, config.transport, setSearchVarlistIndex]);
+  }, [searchQuery, flatTree, appMode, status, config.transport, setSearchVarlistIndex]);
 
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;

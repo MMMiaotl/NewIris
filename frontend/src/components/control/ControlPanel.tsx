@@ -2,6 +2,8 @@ import { Button, ColorPicker, InputNumber, List, Space, Tabs } from 'antd';
 import { CloseOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePlotStore } from '../../stores/plotStore';
 import { useVariableStore } from '../../stores/variableStore';
+import { useDisplayStore } from '../../stores/displayStore';
+import { getDisplayLabel } from '../../utils/formatVariableValue';
 import { PlotLineWidthPicker } from './PlotLineWidthPicker';
 import { VariableControlView } from './VariableControlView';
 
@@ -28,6 +30,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
     setColor,
     setLineWidth,
   } = usePlotStore();
+  const displayOverrides = useDisplayStore((s) => s.overrides);
 
   const lastSelectedParameter =
     focusedVariable && selectedVariables.includes(focusedVariable)
@@ -47,7 +50,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
             <List.Item className="plot-variable-row">
               <div className="plot-variable-row-inner">
                 <span className="plot-variable-name" title={name}>
-                  {name}
+                  {getDisplayLabel(name, displayOverrides[name])}
                 </span>
                 <div className="plot-variable-controls">
                   <PlotLineWidthPicker

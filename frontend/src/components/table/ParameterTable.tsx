@@ -1,4 +1,4 @@
-import { Table } from 'antd';
+import { Table, Tooltip } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
@@ -9,6 +9,12 @@ import {
   useVariableStore,
 } from '../../stores/variableStore';
 import { usePlotStore } from '../../stores/plotStore';
+import { useDisplayStore } from '../../stores/displayStore';
+import {
+  formatDisplayValue,
+  getDisplayLabel,
+  getEffectiveScaleLabel,
+} from '../../utils/formatVariableValue';
 import { ParameterValueCell } from './ParameterValueCell';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
 import {
@@ -43,6 +49,8 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   } = useVariableStore();
   const setPlotDrawerOpen = useConnectionStore((s) => s.setPlotDrawerOpen);
   const { addPlotVariable } = usePlotStore();
+  const overrides = useDisplayStore((s) => s.overrides);
+  const openStyleModal = useDisplayStore((s) => s.openModal);
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createInitialFixedWidths);
   const tableBodyRef = useRef<HTMLDivElement>(null);
@@ -146,15 +154,27 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
 
       if (spec.key === 'name') {
         return buildFixedParameterColumn(spec, width, onResize, {
-          render: (name: string) => (
-            <button
-              type="button"
-              className="parameter-name-link"
-              onClick={() => openControlForVariable(name)}
-            >
-              {name}
-            </button>
-          ),
+          render: (name: string) => {
+            const label = getDisplayLabel(name, overrides[name]);
+            return (
+              <Tooltip title={label !== name ? name : undefined}>
+                <button
+                  type="button"
+                  className="parameter-name-link"
+                  onClick={() => openControlForVariable(name)}
+                >
+                  {label}
+                </button>
+              </Tooltip>
+            );
+          },
+        });
+      }
+
+      if (spec.key === 'scale') {
+        return buildFixedParameterColumn(spec, width, onResize, {
+          render: (_scale: string, row) =>
+            getEffectiveScaleLabel(row.scale, overrides[row.name]),
         });
       }
 
@@ -164,7 +184,9 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
           render: (val: string, row) => {
             const isPlaceholder = !variableMap.has(row.name);
             if (isPlaceholder) return val || '—';
-            if (appMode === 'replay') return val;
+            if (appMode === 'replay') {
+              return formatDisplayValue(val, overrides[row.name]);
+            }
             return (
               <ParameterValueCell
                 name={row.name}
@@ -210,6 +232,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
     visibleFixedSpecs,
     setValueDraft,
     clearValueDraft,
+    overrides,
   ]);
 
   const headerLabel =
@@ -245,6 +268,11 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
                 className:
                   row.name === focusedVariable ? 'parameter-row-focused' : undefined,
                 onDoubleClick: () => addPlotVariable(row.name),
+                onContextMenu: (event) => {
+                  event.preventDefault();
+                  setFocusedVariable(row.name);
+                  openStyleModal(row.name);
+                },
               })}
               locale={{
                 emptyText:

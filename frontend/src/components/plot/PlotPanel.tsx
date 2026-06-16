@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useCallback } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { usePlotStore, DEFAULT_PLOT_LINE_WIDTH } from '../../stores/plotStore';
 import { useConnectionStore } from '../../stores/connectionStore';
+import { useDisplayStore, getVariableDisplayOverride } from '../../stores/displayStore';
 import {
   buildPlotAlignedData,
   collectPlotTimes,
@@ -10,6 +11,7 @@ import {
   formatPlotAxisTime,
   latestPlotTimeSec,
 } from '../../utils/plotTime';
+import { convertRawToDisplayNumber, getDisplayLabel } from '../../utils/formatVariableValue';
 
 const PLOT_CONTAINER_INSET = 8;
 
@@ -24,9 +26,10 @@ function seriesOptions(
   plotVariables: string[],
   colors: Record<string, string>,
   lineWidths: Record<string, number>,
+  overrides: Record<string, ReturnType<typeof getVariableDisplayOverride>>,
 ): uPlot.Series[] {
   return plotVariables.map((name) => ({
-    label: name,
+    label: getDisplayLabel(name, overrides[name]),
     stroke: colors[name] ?? '#4fc3f7',
     width: lineWidths[name] ?? DEFAULT_PLOT_LINE_WIDTH,
     spanGaps: true,
@@ -38,15 +41,16 @@ function seriesOptions(
 function syncPlot(
   u: uPlot,
   plotVariables: string[],
-  seriesData: Record<string, { t: number; v: number }[]>,
+  seriesData: ReturnType<typeof usePlotStore.getState>['seriesData'],
   yMin: number,
   yMax: number,
   xWindowSec: number,
+  valueAt: (name: string, raw: string) => number | null,
 ): void {
   const allTimes = collectPlotTimes(seriesData, plotVariables);
   const elapsedSec = latestPlotTimeSec(allTimes);
   const { min: viewMin, max: viewMax } = computePlotXViewport(elapsedSec, xWindowSec);
-  const data = buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData;
+  const data = buildPlotAlignedData(seriesData, plotVariables, valueAt) as uPlot.AlignedData;
 
   // Lock Y before X — uPlot re-ranges Y from series data when X scale updates.
   u.setData(data, false);
@@ -86,8 +90,14 @@ export function PlotPanel() {
   const chartKeyRef = useRef('');
   const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } =
     usePlotStore();
+  const overrides = useDisplayStore((s) => s.overrides);
   const { appMode } = useConnectionStore();
-  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}`;
+
+  const valueAt = useCallback((name: string, raw: string) => {
+    return convertRawToDisplayNumber(raw, getVariableDisplayOverride(name));
+  }, []);
+
+  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}|${JSON.stringify(overrides)}`;
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -113,16 +123,16 @@ export function PlotPanel() {
           x: { time: false, auto: false },
           y: yScaleOptions(yMin, yMax),
         },
-        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths)],
+        series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides)],
         axes: [PLOT_X_AXIS, PLOT_Y_AXIS],
       };
 
       plotRef.current = new uPlot(
         opts,
-        buildPlotAlignedData(seriesData, plotVariables) as uPlot.AlignedData,
+        buildPlotAlignedData(seriesData, plotVariables, valueAt) as uPlot.AlignedData,
         el,
       );
-      syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec);
+      syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec, valueAt);
     };
 
     syncSize();
@@ -134,14 +144,14 @@ export function PlotPanel() {
       plotRef.current = null;
       chartKeyRef.current = '';
     };
-  }, [plotChartKey]);
+  }, [plotChartKey, valueAt]);
 
   /** Apply data + axis scales before paint so Y range does not flash. */
   useLayoutEffect(() => {
     const u = plotRef.current;
     if (!u) return;
-    syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec);
-  }, [seriesData, plotVariables, yMin, yMax, xWindowSec]);
+    syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec, valueAt);
+  }, [seriesData, plotVariables, yMin, yMax, xWindowSec, valueAt]);
 
   return (
     <div className="panel plot-panel">

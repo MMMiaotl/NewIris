@@ -1,5 +1,6 @@
-import type { ConnectionConfig, ViewMode } from '../api/types';
+import type { ConnectionConfig, ViewMode, VariableDisplayOverride } from '../api/types';
 import { useConnectionStore } from '../stores/connectionStore';
+import { useDisplayStore } from '../stores/displayStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
 import { collectPinnedVariableValues } from './pinnedVariables';
@@ -24,6 +25,8 @@ export interface WorkspaceSnapshot {
   viewMode: ViewMode;
   /** Last known values for pinned parameters — small cache for refresh display. */
   pinnedValues?: Record<string, string>;
+  /** Client-side display overrides (style, unit, custom name). */
+  displayOverrides?: Record<string, VariableDisplayOverride>;
 }
 
 export function workspaceScope(config: ConnectionConfig): string {
@@ -41,6 +44,7 @@ export function collectWorkspaceSnapshot(): WorkspaceSnapshot {
     yMax,
     xWindowSec,
   } = usePlotStore.getState();
+  const { overrides } = useDisplayStore.getState();
 
   return {
     version: 1,
@@ -57,6 +61,7 @@ export function collectWorkspaceSnapshot(): WorkspaceSnapshot {
     flatTree,
     viewMode,
     pinnedValues: collectPinnedVariableValues(),
+    displayOverrides: { ...overrides },
   };
 }
 
@@ -138,6 +143,10 @@ export function restoreWorkspaceSnapshotIfMatching(): boolean {
     xWindowSec,
     snapshot.plotLineWidths,
   );
+
+  if (snapshot.displayOverrides && Object.keys(snapshot.displayOverrides).length) {
+    useDisplayStore.getState().loadOverrides(snapshot.displayOverrides);
+  }
 
   useConnectionStore.setState({
     flatTree: snapshot.flatTree,

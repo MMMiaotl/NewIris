@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useConnectionStore } from './connectionStore';
 import { useVariableStore } from './variableStore';
-import { trimSeriesPoints } from '../utils/plotTime';
+import { trimSeriesPoints, type PlotPoint } from '../utils/plotTime';
 import { WORKSPACE_STORAGE_KEY } from '../utils/workspacePersistence';
 
 const PLOT_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#e57373', '#ba68c8', '#4db6ac', '#ffd54f', '#90a4ae'];
@@ -104,7 +104,7 @@ interface PlotState {
   yMax: number;
   /** Fixed rolling X-axis window width in seconds (default 10 minutes). */
   xWindowSec: number;
-  seriesData: Record<string, { t: number; v: number }[]>;
+  seriesData: Record<string, PlotPoint[]>;
   /** Epoch ms for plot t = 0 (frontend init, or replay recording start). */
   plotInitMs: number;
   maxPoints: number;
@@ -187,8 +187,8 @@ export const usePlotStore = create<PlotState>((set, get) => ({
   setLineWidth: (name, width) =>
     set({ lineWidths: { ...get().lineWidths, [name]: clampLineWidth(width) } }),
   appendPoint: (name, value, tMs) => {
-    const num = parseFloat(value);
-    if (Number.isNaN(num)) return;
+    const trimmed = value.trim();
+    if (!trimmed || Number.isNaN(Number(trimmed))) return;
     const sampleMs = tMs ?? Date.now();
     const state = get();
     const startedMs = state.plotStartedAtMs[name];
@@ -199,8 +199,8 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     const last = prev[prev.length - 1];
     const merged =
       last && last.t === t
-        ? [...prev.slice(0, -1), { t, v: num }]
-        : [...prev, { t, v: num }];
+        ? [...prev.slice(0, -1), { t, raw: trimmed }]
+        : [...prev, { t, raw: trimmed }];
     const arr = trimSeriesPoints(merged, state.maxPoints);
     set({
       seriesData: { ...state.seriesData, [name]: arr },

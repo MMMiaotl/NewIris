@@ -1,3 +1,5 @@
+import type { VariableDisplayOverride } from '../constants/displayFormats';
+
 export type VariableDataType = 'int' | 'double' | 'string' | 'array';
 
 /** Data type for monitor registration (attributes type=). */
@@ -78,6 +80,8 @@ export interface RecordingFile {
 
 export type ConnectionTransport = 'smcServer' | 'watchIoHttp' | 'watchIoWs';
 
+export type { VariableDisplayOverride };
+
 export interface SessionFile {
   version: 1;
   watchIoName: string;
@@ -95,6 +99,7 @@ export interface SessionFile {
   plotXWindowSec?: number;
   flatTree: boolean;
   viewMode: ViewMode;
+  displayOverrides?: Record<string, VariableDisplayOverride>;
 }
 
 export type ViewMode = 'splitter' | 'list' | 'plot';

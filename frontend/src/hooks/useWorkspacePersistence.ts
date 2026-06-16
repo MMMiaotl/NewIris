@@ -1,5 +1,6 @@
 import { useLayoutEffect, useEffect } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
+import { useDisplayStore } from '../stores/displayStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
 import {
@@ -77,6 +78,12 @@ export function useWorkspacePersistence(): void {
       }
     });
 
+    const unsubDisplay = useDisplayStore.subscribe((state, prev) => {
+      if (state.overrides !== prev.overrides) {
+        scheduleWorkspaceSave();
+      }
+    });
+
     const unsubConnection = useConnectionStore.subscribe((state, prev) => {
       const scopeChanged = workspaceScope(state.config) !== workspaceScope(prev.config);
       if (scopeChanged) {
@@ -97,6 +104,7 @@ export function useWorkspacePersistence(): void {
     return () => {
       unsubVariable();
       unsubPlot();
+      unsubDisplay();
       unsubConnection();
       window.removeEventListener('pagehide', onPageHide);
       flushWorkspaceSave();

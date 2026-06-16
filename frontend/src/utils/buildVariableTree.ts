@@ -205,6 +205,25 @@ export function buildFlatVariableSearchNodes(matchingNames: string[]): TreeNode[
   }));
 }
 
+/** Unique full variable names from tree leaves, loaded values, and pinned selection. */
+export function collectLoadedVariableNames(
+  treeNodes: TreeNode[],
+  variables: { name: string }[],
+  selectedNames: string[],
+): string[] {
+  const out = new Set<string>();
+  const walk = (nodes: TreeNode[]) => {
+    for (const node of nodes) {
+      if (node.nodeKind === 'variable') out.add(node.fullPath);
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(treeNodes);
+  for (const v of variables) out.add(v.name);
+  for (const name of selectedNames) out.add(name);
+  return [...out].sort((a, b) => a.localeCompare(b));
+}
+
 function sortTreeChildren(a: TreeNode, b: TreeNode): number {
   if (a.nodeKind !== b.nodeKind) return a.nodeKind === 'branch' ? -1 : 1;
   return a.title.localeCompare(b.title);
@@ -608,14 +627,8 @@ export function mergeSmcBranchIntoTree(
   return attach(tree);
 }
 
+/** Flat list of variable leaves with full dotted names (excludes branch nodes). */
 export function flattenTree(nodes: TreeNode[]): TreeNode[] {
-  const result: TreeNode[] = [];
-  const walk = (list: TreeNode[]) => {
-    for (const node of list) {
-      result.push({ ...node, children: undefined, isLeaf: true });
-      if (node.children?.length) walk(node.children);
-    }
-  };
-  walk(nodes);
-  return result;
+  const names = collectLoadedVariableNames(nodes, [], []);
+  return buildFlatVariableSearchNodes(names);
 }

@@ -1,5 +1,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Input, Space, Tooltip } from 'antd';
+import { useDisplayStore } from '../../stores/displayStore';
+import { formatDisplayValue, parseDisplayValueForWrite } from '../../utils/formatVariableValue';
 
 interface ParameterValueCellProps {
   name: string;
@@ -18,12 +20,15 @@ export function ParameterValueCell({
   onClearDraft,
   onSetValue,
 }: ParameterValueCellProps) {
-  const display = draft !== undefined ? draft : value;
-  const hasPending = draft !== undefined && draft !== value;
+  const override = useDisplayStore((s) => s.overrides[name]);
+  const formatted = formatDisplayValue(value, override);
+  const display = draft !== undefined ? draft : formatted;
+  const hasPending = draft !== undefined && draft !== formatted;
 
   const apply = () => {
     if (!hasPending || draft === undefined) return;
-    onSetValue(name, draft);
+    const raw = parseDisplayValueForWrite(draft, override) ?? draft;
+    onSetValue(name, raw);
     onClearDraft(name);
   };
 

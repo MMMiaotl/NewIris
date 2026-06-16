@@ -5,7 +5,14 @@ import {
   createPlaceholderVariable,
   useVariableStore,
 } from '../../stores/variableStore';
+import { useDisplayStore } from '../../stores/displayStore';
 import { isVariableDataType } from '../../api/types';
+import {
+  formatDisplayValue,
+  getDisplayLabel,
+  parseDisplayValueForWrite,
+  summarizeDisplayOverride,
+} from '../../utils/formatVariableValue';
 
 interface VariableControlViewProps {
   onSetValue: (name: string, value: string) => void;
@@ -31,6 +38,10 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
   } = useVariableStore();
   const [valueDraft, setValueDraft] = useState<{ name: string; value: string } | null>(null);
   const [showAlias, setShowAlias] = useState(false);
+  const displayOverride = useDisplayStore((s) =>
+    focusedVariable ? s.overrides[focusedVariable] : undefined,
+  );
+  const openStyleModal = useDisplayStore((s) => s.openModal);
 
   const variableMap = useMemo(() => new Map(variables.map((v) => [v.name, v])), [variables]);
 
@@ -51,10 +62,12 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
   const readOnly = appMode === 'replay' || isPlaceholder;
   const numeric = isVariableDataType(variable.dataType) && variable.dataType !== 'string';
   const displayLabel = showAlias && variable.alias ? variable.alias : variable.description;
+  const panelTitle = getDisplayLabel(variable.name, displayOverride);
+  const formattedValue = formatDisplayValue(variable.value, displayOverride);
   const inList = selectedVariables.includes(variable.name);
   const listIndex = selectedVariables.indexOf(variable.name);
   const draftValue =
-    valueDraft?.name === variable.name ? valueDraft.value : variable.value;
+    valueDraft?.name === variable.name ? valueDraft.value : formattedValue;
 
   const setDraftValue = (value: string) => {
     setValueDraft({ name: variable.name, value });
@@ -77,9 +90,10 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
         <label className="control-field-label control-field-label--readonly">Name</label>
         <Input
           size="small"
-          value={variable.name}
+          value={panelTitle}
           readOnly
           className="control-field control-field-readonly"
+          title={variable.name}
         />
         <label className="control-field-label control-field-label--readonly">Description</label>
         <Input
@@ -133,7 +147,10 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
           <Button
             size="small"
             disabled={readOnly}
-            onClick={() => onSetValue(variable.name, draftValue)}
+            onClick={() => {
+              const raw = parseDisplayValueForWrite(draftValue, displayOverride) ?? draftValue;
+              onSetValue(variable.name, raw);
+            }}
           >
             Set
           </Button>
@@ -147,13 +164,23 @@ export function VariableControlView({ onSetValue, onRefresh }: VariableControlVi
       <div className="control-side-row">
         <fieldset className="control-fieldset control-fieldset--style">
           <legend>Style</legend>
-          <label className="control-field-label control-field-label--readonly">Scale</label>
+          <label className="control-field-label control-field-label--readonly">Display</label>
+          <Input
+            size="small"
+            value={summarizeDisplayOverride(displayOverride)}
+            readOnly
+            className="control-field control-field-readonly"
+          />
+          <label className="control-field-label control-field-label--readonly">Server scale</label>
           <Input
             size="small"
             value={variable.scale || '-----'}
             readOnly
             className="control-field control-field-readonly"
           />
+          <Button size="small" onClick={() => openStyleModal(variable.name)}>
+            Change Style / Scale…
+          </Button>
           <Checkbox checked={showAlias} onChange={(e) => setShowAlias(e.target.checked)}>
             Show Name/Alias
           </Checkbox>

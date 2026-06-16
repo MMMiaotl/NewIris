@@ -28,7 +28,7 @@ export function computePlotXViewport(
 }
 
 export function collectPlotTimes(
-  seriesData: Record<string, { t: number; v: number }[]>,
+  seriesData: Record<string, PlotPoint[]>,
   plotVariables: string[],
 ): number[] {
   const allTimes = new Set<number>();
@@ -42,33 +42,45 @@ export function latestPlotTimeSec(times: number[]): number {
   return times.length > 0 ? times[times.length - 1]! : 0;
 }
 
+export interface PlotPoint {
+  t: number;
+  /** Raw server value — converted to display units at render time. */
+  raw: string;
+}
+
 /** Cap buffer size only; never trim by visible X window. */
 export function trimSeriesPoints(
-  points: { t: number; v: number }[],
+  points: PlotPoint[],
   maxPoints: number,
-): { t: number; v: number }[] {
+): PlotPoint[] {
   if (points.length <= maxPoints) return points;
   return points.slice(-maxPoints);
 }
 
 /** Build uPlot aligned data; single-series uses native arrays, multi-series unions times. */
 export function buildPlotAlignedData(
-  seriesData: Record<string, { t: number; v: number }[]>,
+  seriesData: Record<string, PlotPoint[]>,
   plotVariables: string[],
+  valueAt: (name: string, raw: string) => number | null,
 ): (number | null)[][] {
   if (plotVariables.length === 0) return [[]];
 
   if (plotVariables.length === 1) {
     const name = plotVariables[0]!;
     const points = seriesData[name] ?? [];
-    return [points.map((p) => p.t), points.map((p) => p.v)];
+    return [
+      points.map((p) => p.t),
+      points.map((p) => valueAt(name, p.raw)),
+    ];
   }
 
   const allTimes = collectPlotTimes(seriesData, plotVariables);
   return [
     allTimes,
     ...plotVariables.map((name) => {
-      const map = new Map((seriesData[name] ?? []).map((p) => [p.t, p.v]));
+      const map = new Map(
+        (seriesData[name] ?? []).map((p) => [p.t, valueAt(name, p.raw)]),
+      );
       return allTimes.map((t) => map.get(t) ?? null);
     }),
   ];

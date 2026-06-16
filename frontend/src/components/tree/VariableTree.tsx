@@ -11,11 +11,11 @@ import {
   branchHasLoadedVariables,
   buildFlatVariableSearchNodes,
   buildMatchPathPrefixSet,
+  collectLoadedVariableNames,
   collectMatchingVariableNames,
-  filterFlatTreeByVariableSearch,
   filterTreeByVariableSearch,
-  flattenTree,
   mergeSearchVariablesIntoDotTree,
+  variableNameMatchesSearch,
   wrapWithWatchIoRoot,
 } from '../../utils/buildVariableTree';
 import { VariableTreeNodeTitle } from './VariableTreeNodeTitle';
@@ -78,19 +78,26 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const searchIndexReady = Boolean(searchVarlistIndex?.length && matchingNames.length);
 
   const displayNodes = useMemo(() => {
-    const baseNodes = flatTree
-      ? flattenTree(treeNodes)
-      : useDotTreeRoot
-        ? treeNodes
-        : wrapWithWatchIoRoot(watchIoName, treeNodes);
+    if (flatTree) {
+      const allNames = searchVarlistIndex?.length
+        ? searchVarlistIndex
+        : collectLoadedVariableNames(treeNodes, variables, selectedVariables);
+
+      if (!isFiltering) {
+        return buildFlatVariableSearchNodes(allNames);
+      }
+
+      const filtered = matchingNames.length
+        ? matchingNames
+        : allNames.filter((name) => variableNameMatchesSearch(name, searchQueryTrimmed));
+      return buildFlatVariableSearchNodes(filtered);
+    }
+
+    const baseNodes = useDotTreeRoot
+      ? treeNodes
+      : wrapWithWatchIoRoot(watchIoName, treeNodes);
 
     if (!isFiltering) return baseNodes;
-
-    if (flatTree) {
-      return matchingNames.length
-        ? buildFlatVariableSearchNodes(matchingNames)
-        : filterFlatTreeByVariableSearch(baseNodes, searchQueryTrimmed);
-    }
 
     let nodes = baseNodes;
     if (matchingNames.length) {
@@ -120,6 +127,9 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   }, [
     searchIndexReady,
     treeNodes,
+    variables,
+    selectedVariables,
+    searchVarlistIndex,
     matchingNames,
     matchPathSet,
     branchVarPrefix,

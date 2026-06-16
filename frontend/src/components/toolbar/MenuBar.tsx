@@ -12,6 +12,7 @@ import { useConnectionStore } from '../../stores/connectionStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { usePlotStore } from '../../stores/plotStore';
 import { useVariableStore } from '../../stores/variableStore';
+import { useDisplayStore } from '../../stores/displayStore';
 import {
   createRecording,
   downloadJson,
@@ -41,6 +42,9 @@ export function MenuBar() {
     useSessionStore();
   const { plotVariables, colors, lineWidths, yMin, yMax, xWindowSec } = usePlotStore();
   const { registeredNames, clear: clearVars } = useVariableStore();
+  const displayOverrides = useDisplayStore((s) => s.overrides);
+  const openStyleModal = useDisplayStore((s) => s.openModal);
+  const clearDisplay = useDisplayStore((s) => s.clearAll);
 
   const openSession = () =>
     openFilePicker('.json', (text) => {
@@ -61,6 +65,7 @@ export function MenuBar() {
       onClick: () => {
         clearVars();
         usePlotStore.getState().clearSeries();
+        clearDisplay();
         clearReplay();
         setAppMode('live');
       },
@@ -121,8 +126,11 @@ export function MenuBar() {
   ];
 
   const showMenu: MenuProps['items'] = [
-    { key: 'name', label: 'Name Variables' },
-    { key: 'alias', label: 'Alias Variables', disabled: true },
+    {
+      key: 'style-scale',
+      label: 'Change Style / Scale…',
+      onClick: () => openStyleModal(useVariableStore.getState().focusedVariable),
+    },
   ];
 
   const applySession = (session: SessionFile) => {
@@ -147,6 +155,9 @@ export function MenuBar() {
     for (const name of session.registeredVariables) {
       useVariableStore.getState().setRegistered(name, true);
     }
+    if (session.displayOverrides) {
+      useDisplayStore.getState().loadOverrides(session.displayOverrides);
+    }
   };
 
   const buildSession = (): SessionFile => ({
@@ -166,6 +177,7 @@ export function MenuBar() {
     plotXWindowSec: xWindowSec,
     flatTree,
     viewMode,
+    displayOverrides: { ...displayOverrides },
   });
 
   const saveSession = () => {

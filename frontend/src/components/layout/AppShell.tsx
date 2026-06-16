@@ -11,6 +11,7 @@ import { PlotPanel } from '../plot/PlotPanel';
 import { ControlPanel } from '../control/ControlPanel';
 import { SettingsDrawer } from '../settings/SettingsDrawer';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
+import { ChangeStyleScaleModal } from '../display/ChangeStyleScaleModal';
 import { ReplayControls } from '../replay/ReplayControls';
 import {
   DEFAULT_TREE_PANEL_WIDTH,
@@ -26,6 +27,7 @@ import {
   readInitialPlotPanelDefaultSize,
   writePersistedParameterPlotSplitRatio,
 } from '../../utils/layoutPersistence';
+import { useDisplayStore } from '../../stores/displayStore';
 
 const parameterPanelDefaultSize = readInitialParameterPanelDefaultSize();
 const plotPanelDefaultSize = readInitialPlotPanelDefaultSize();
@@ -45,6 +47,9 @@ export function AppShell() {
   const { connect, disconnect, applyWatchIoName, setVariableValue, refreshVariable, client } =
     useWatchIo();
   useReplayPlayback();
+  const styleModalOpen = useDisplayStore((s) => s.modalOpen);
+  const styleModalFocus = useDisplayStore((s) => s.modalFocusVariable);
+  const closeStyleModal = useDisplayStore((s) => s.closeModal);
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';
@@ -170,6 +175,11 @@ export function AppShell() {
 
       <SettingsDrawer onApplyWatchIoName={applyWatchIoName} />
       <WatchIoMessageLogDrawer />
+      <ChangeStyleScaleModal
+        open={styleModalOpen}
+        onClose={closeStyleModal}
+        initialFocusVariable={styleModalFocus}
+      />
     </div>
   );
 }
