@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button, Checkbox, Dropdown, Input, Space, Tooltip } from 'antd';
 import {
   FolderOpenOutlined,
@@ -14,6 +15,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { usePlotStore } from '../../stores/plotStore';
 import { useVariableStore } from '../../stores/variableStore';
 import { useDisplayStore } from '../../stores/displayStore';
+import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 import {
   createRecording,
   downloadJson,
@@ -23,6 +25,8 @@ import {
   serializeSession,
 } from '../../utils/recordingFormat';
 import type { SessionFile } from '../../api/types';
+import { AboutModal } from '../settings/AboutModal';
+import { SearchFilterToggles } from './SearchFilterToggles';
 
 interface MenuBarProps {
   onOpenRegistration?: () => void;
@@ -41,6 +45,7 @@ export function MenuBar({
   onOpenShowOptions,
   onOpenPreferences,
 }: MenuBarProps) {
+  const [aboutOpen, setAboutOpen] = useState(false);
   const {
     config,
     status,
@@ -62,6 +67,10 @@ export function MenuBar({
   const displayOverrides = useDisplayStore((s) => s.overrides);
   const openStyleModal = useDisplayStore((s) => s.openModal);
   const clearDisplay = useDisplayStore((s) => s.clearAll);
+  const searchMatchCase = useUiPreferencesStore((s) => s.searchMatchCase);
+  const searchMatchWholeWord = useUiPreferencesStore((s) => s.searchMatchWholeWord);
+  const setSearchMatchCase = useUiPreferencesStore((s) => s.setSearchMatchCase);
+  const setSearchMatchWholeWord = useUiPreferencesStore((s) => s.setSearchMatchWholeWord);
 
   const openSession = () =>
     openFilePicker('.json', (text) => {
@@ -298,15 +307,30 @@ export function MenuBar({
           allowClear
           size="small"
         />
+        <SearchFilterToggles
+          matchCase={searchMatchCase}
+          matchWholeWord={searchMatchWholeWord}
+          onMatchCaseChange={setSearchMatchCase}
+          onMatchWholeWordChange={setSearchMatchWholeWord}
+        />
         <Checkbox checked={flatTree} onChange={(e) => setFlatTree(e.target.checked)}>
           Flat Tree
         </Checkbox>
       </Space>
-      <Tooltip title={statusDetail}>
-        <span className="status-pill menu-bar-status" style={{ borderColor: statusColor, color: statusColor }}>
-          {statusLabel}
-        </span>
-      </Tooltip>
+      <div className="menu-bar-right">
+        <Button type="text" onClick={() => setAboutOpen(true)}>
+          About
+        </Button>
+        <Tooltip title={statusDetail}>
+          <span
+            className="status-pill menu-bar-status"
+            style={{ borderColor: statusColor, color: statusColor }}
+          >
+            {statusLabel}
+          </span>
+        </Tooltip>
+      </div>
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

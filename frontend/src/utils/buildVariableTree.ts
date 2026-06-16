@@ -52,23 +52,70 @@ export function groupVariablesByParentBranch(
   return byParent;
 }
 
-export function variableNameMatchesSearch(fullName: string, query: string): boolean {
-  const q = query.trim().toLowerCase();
+export interface SearchMatchOptions {
+  matchCase?: boolean;
+  matchWholeWord?: boolean;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Substring or whole-segment match for variable paths (dot/slash separated). */
+export function stringMatchesSearch(
+  text: string,
+  query: string,
+  options: SearchMatchOptions = {},
+): boolean {
+  const q = query.trim();
   if (!q) return true;
-  return fullName.toLowerCase().includes(q);
+
+  const matchCase = options.matchCase ?? false;
+  const matchWholeWord = options.matchWholeWord ?? false;
+
+  if (matchWholeWord) {
+    const segments = text.split(/[./]/);
+    const same = (a: string, b: string) =>
+      matchCase ? a === b : a.toLowerCase() === b.toLowerCase();
+    if (segments.some((seg) => same(seg, q))) return true;
+    const flags = matchCase ? '' : 'i';
+    const escaped = escapeRegExp(q);
+    return new RegExp(`(^|[./])${escaped}($|[./])|^${escaped}$`, flags).test(text);
+  }
+
+  const haystack = matchCase ? text : text.toLowerCase();
+  const needle = matchCase ? q : q.toLowerCase();
+  return haystack.includes(needle);
 }
 
-export function variableNodeMatchesSearch(node: TreeNode, query: string): boolean {
+export function variableNameMatchesSearch(
+  fullName: string,
+  query: string,
+  options?: SearchMatchOptions,
+): boolean {
+  return stringMatchesSearch(fullName, query, options);
+}
+
+export function variableNodeMatchesSearch(
+  node: TreeNode,
+  query: string,
+  options?: SearchMatchOptions,
+): boolean {
   if (node.nodeKind !== 'variable') return false;
-  return variableNameMatchesSearch(node.fullPath, query);
+  return variableNameMatchesSearch(node.fullPath, query, options);
 }
 
-export function branchNodeMatchesSearch(node: TreeNode, query: string): boolean {
+export function branchNodeMatchesSearch(
+  node: TreeNode,
+  query: string,
+  options?: SearchMatchOptions,
+): boolean {
   if (node.nodeKind === 'variable') return false;
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return false;
   return (
-    node.fullPath.toLowerCase().includes(q) || node.title.toLowerCase().includes(q)
+    stringMatchesSearch(node.fullPath, q, options) ||
+    stringMatchesSearch(node.title, q, options)
   );
 }
 
@@ -78,21 +125,22 @@ export function collectMatchingVariableNames(
   selectedNames: string[],
   query: string,
   varlistIndex?: string[],
+  options?: SearchMatchOptions,
 ): string[] {
   const q = query.trim();
   if (!q) return [];
   const out = new Set<string>();
   if (varlistIndex?.length) {
     for (const name of varlistIndex) {
-      if (variableNameMatchesSearch(name, q)) out.add(name);
+      if (variableNameMatchesSearch(name, q, options)) out.add(name);
     }
   } else {
     for (const v of variables) {
-      if (variableNameMatchesSearch(v.name, q)) out.add(v.name);
+      if (variableNameMatchesSearch(v.name, q, options)) out.add(v.name);
     }
   }
   for (const name of selectedNames) {
-    if (variableNameMatchesSearch(name, q)) out.add(name);
+    if (variableNameMatchesSearch(name, q, options)) out.add(name);
   }
   return [...out].sort((a, b) => a.localeCompare(b));
 }
@@ -245,6 +293,7 @@ export function filterTreeByVariableSearch(
   query: string,
   matchingNames?: string[],
   matchPathSet?: Set<string>,
+  options?: SearchMatchOptions,
 ): TreeNode[] {
   const q = query.trim();
   if (!q) return nodes;
@@ -257,7 +306,7 @@ export function filterTreeByVariableSearch(
     const result: TreeNode[] = [];
     for (const node of list) {
       if (node.nodeKind === 'variable') {
-        if (variableNodeMatchesSearch(node, q)) result.push({ ...node, children: undefined });
+        if (variableNodeMatchesSearch(node, q, options)) result.push({ ...node, children: undefined });
         continue;
       }
 
@@ -266,13 +315,13 @@ export function filterTreeByVariableSearch(
         ? branchChildren.filter(
             (c) =>
               branchLeadsToMatchingVariable(c.fullPath, matchingNames!, pathSet) ||
-              branchNodeMatchesSearch(c, q),
+              branchNodeMatchesSearch(c, q, options),
           )
         : branchChildren;
       const variableChildren = (node.children ?? []).filter((c) => c.nodeKind === 'variable');
       const filteredBranches = walk(scopedBranchChildren);
-      const matchingVariables = variableChildren.filter((v) => variableNodeMatchesSearch(v, q));
-      const branchSelfMatches = branchNodeMatchesSearch(node, q);
+      const matchingVariables = variableChildren.filter((v) => variableNodeMatchesSearch(v, q, options));
+      const branchSelfMatches = branchNodeMatchesSearch(node, q, options);
       const onMatchPath = hasMatchIndex
         ? branchLeadsToMatchingVariable(node.fullPath, matchingNames!, pathSet)
         : false;
@@ -309,10 +358,14 @@ export function filterTreeByVariableSearch(
   return walk(nodes);
 }
 
-export function filterFlatTreeByVariableSearch(nodes: TreeNode[], query: string): TreeNode[] {
+export function filterFlatTreeByVariableSearch(
+  nodes: TreeNode[],
+  query: string,
+  options?: SearchMatchOptions,
+): TreeNode[] {
   const q = query.trim();
   if (!q) return nodes;
-  return nodes.filter((n) => n.nodeKind === 'variable' && variableNodeMatchesSearch(n, q));
+  return nodes.filter((n) => n.nodeKind === 'variable' && variableNodeMatchesSearch(n, q, options));
 }
 
 /** C.Control.Roll.Accuracy -> Control/Control.Roll.Accuracy (SmcServer object path). */

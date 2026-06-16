@@ -6,6 +6,7 @@ import { isWatchIoTransport } from '../../api/smcHttp';
 import { MAX_SELECTED_PARAMETERS, useVariableStore } from '../../stores/variableStore';
 import { usePlotStore } from '../../stores/plotStore';
 import type { TreeNode } from '../../api/types';
+import type { SearchMatchOptions } from '../../utils/buildVariableTree';
 import {
   branchHasLoadedChildren,
   branchHasLoadedVariables,
@@ -18,6 +19,7 @@ import {
   variableNameMatchesSearch,
   wrapWithWatchIoRoot,
 } from '../../utils/buildVariableTree';
+import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 import { VariableTreeNodeTitle } from './VariableTreeNodeTitle';
 import {
   collectTopLevelBranchKeys,
@@ -39,6 +41,13 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
   const searchQuery = useConnectionStore((s) => s.searchQuery);
   const transport = useConnectionStore((s) => s.config.transport);
   const watchIoName = useConnectionStore((s) => s.config.watchIoName);
+  const searchMatchCase = useUiPreferencesStore((s) => s.searchMatchCase);
+  const searchMatchWholeWord = useUiPreferencesStore((s) => s.searchMatchWholeWord);
+
+  const searchOptions = useMemo<SearchMatchOptions>(
+    () => ({ matchCase: searchMatchCase, matchWholeWord: searchMatchWholeWord }),
+    [searchMatchCase, searchMatchWholeWord],
+  );
 
   const treeNodes = useVariableStore((s) => s.treeNodes);
   const searchVarlistIndex = useVariableStore((s) => s.searchVarlistIndex);
@@ -66,8 +75,16 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       selectedVariables,
       searchQueryTrimmed,
       searchVarlistIndex ?? undefined,
+      searchOptions,
     );
-  }, [isFiltering, searchVarlistIndex, variables, selectedVariables, searchQueryTrimmed]);
+  }, [
+    isFiltering,
+    searchVarlistIndex,
+    variables,
+    selectedVariables,
+    searchQueryTrimmed,
+    searchOptions,
+  ]);
 
   const matchPathSet = useMemo(
     () => (matchingNames.length ? buildMatchPathPrefixSet(matchingNames) : undefined),
@@ -89,7 +106,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
 
       const filtered = matchingNames.length
         ? matchingNames
-        : allNames.filter((name) => variableNameMatchesSearch(name, searchQueryTrimmed));
+        : allNames.filter((name) => variableNameMatchesSearch(name, searchQueryTrimmed, searchOptions));
       return buildFlatVariableSearchNodes(filtered);
     }
 
@@ -123,6 +140,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       searchQueryTrimmed,
       matchingNames,
       matchPathSet,
+      searchOptions,
     );
   }, [
     searchIndexReady,
@@ -138,6 +156,7 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
     searchQueryTrimmed,
     watchIoName,
     useDotTreeRoot,
+    searchOptions,
   ]);
 
   const treeData = useMemo(() => toVariableTreeData(displayNodes), [displayNodes]);
@@ -183,6 +202,11 @@ export function VariableTree({ onExpandBranch, onLoadVariables }: VariableTreePr
       setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
     }
   }, [searchQuery, displayNodes]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    setExpandedKeys(collectTopLevelBranchKeys(displayNodes));
+  }, [searchMatchCase, searchMatchWholeWord, searchQuery, displayNodes]);
 
   useEffect(() => {
     if (searchQuery) return;

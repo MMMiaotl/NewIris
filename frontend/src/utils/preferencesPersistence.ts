@@ -5,6 +5,8 @@ export type TreeLabelMode = 'name' | 'alias' | 'custom';
 export interface PersistedUiPreferences {
   treeLabelMode: TreeLabelMode;
   directFilter: boolean;
+  searchMatchCase: boolean;
+  searchMatchWholeWord: boolean;
   showFullNameInTable: boolean;
   showRegisColumn: boolean;
   showSourceColumn: boolean;
@@ -23,6 +25,8 @@ export interface PersistedUiPreferences {
 export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
   treeLabelMode: 'name',
   directFilter: false,
+  searchMatchCase: false,
+  searchMatchWholeWord: false,
   showFullNameInTable: false,
   showRegisColumn: false,
   showSourceColumn: false,

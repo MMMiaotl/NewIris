@@ -2,6 +2,8 @@
 
 Modern browser-based WatchIO parameter monitor with Iris-style layout.
 
+**Author:** Tianlei miao
+
 ## Architecture
 
 | Address | Role |

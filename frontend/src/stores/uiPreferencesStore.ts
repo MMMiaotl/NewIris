@@ -24,6 +24,8 @@ interface UiPreferencesState extends PersistedUiPreferences {
   // Named helpers keep the external API stable.
   setTreeLabelMode: (mode: TreeLabelMode) => void;
   setDirectFilter: (on: boolean) => void;
+  setSearchMatchCase: (on: boolean) => void;
+  setSearchMatchWholeWord: (on: boolean) => void;
   setShowFullNameInTable: (on: boolean) => void;
   setShowRegisColumn: (on: boolean) => void;
   setShowSourceColumn: (on: boolean) => void;
@@ -59,6 +61,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
     loadFromDisk: () => set(loadUiPreferences()),
     setTreeLabelMode: (v) => setPref('treeLabelMode', v),
     setDirectFilter: (v) => setPref('directFilter', v),
+    setSearchMatchCase: (v) => setPref('searchMatchCase', v),
+    setSearchMatchWholeWord: (v) => setPref('searchMatchWholeWord', v),
     setShowFullNameInTable: (v) => setPref('showFullNameInTable', v),
     setShowRegisColumn: (v) => setPref('showRegisColumn', v),
     setShowSourceColumn: (v) => setPref('showSourceColumn', v),
