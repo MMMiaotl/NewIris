@@ -1,0 +1,47 @@
+---
+description: WatchIO live parameter updates — monitor list, workspace restore, no regression
+globs: frontend/src/hooks/useWatchIo.ts,frontend/src/utils/pinnedVariables.ts,frontend/src/utils/watchIoLiveMonitor.ts,frontend/src/utils/pinnedLivePipeline.ts,frontend/src/stores/variableStore.ts,frontend/src/utils/workspacePersistence.ts,frontend/src/hooks/useWorkspacePersistence.ts,frontend/src/stores/plotStore.ts
+alwaysApply: false
+---
+
+# WatchIO live parameter updates
+
+Applies when editing pinned parameters, workspace restore, `useWatchIo`, or variable/plot stores.
+
+## Symptom to protect against
+
+After **page refresh**: Parameters / Plot show **frozen** values; **description empty** (no varleaves/varinfo metadata).
+
+## Architecture (do not regress)
+
+| Layer | Responsibility |
+|-------|----------------|
+| `runPinnedLivePipeline` | **Only** orchestrator for pinned live recovery |
+| `fetchVarInfo` | Per-variable metadata for workspace-restored pins (not branch varleaves) |
+| `syncWatchIoMonitorDiff` | **add/delete only** — never `type:list` on WebSocket (resets update stream) |
+| `serverMetadataLoaded` | Set only by `buildWatchIoVariable` (varinfo/varleaves) — not `applyUpdate` |
+
+## WatchIO transport (`watchIoHttp` / `watchIoWs`)
+
+- **Metadata**: `varinfo` per missing pinned name (serialized in STOMP metadata queue).
+- **Monitor**: `addVariable(name, mode, dataType)` / `removeVariable` via diff — **no** `setMonitorList` except HTTP poll client.
+- **Do not** call `add` + `list` together.
+- **`requestUpdate` interval** starts only after `serverMonitored` is non-empty.
+- **Do not** add parallel effects that sync monitor or fetch pinned metadata outside the pipeline.
+
+## Workspace restore
+
+- `seedPinnedVariableCache` → `sessionCacheOnly: true`, `serverMetadataLoaded: false`.
+- `isPinnedVariableLiveLoaded` = `serverMetadataLoaded === true`.
+- `applyUpdate` must not clear `sessionCacheOnly` until metadata loaded.
+
+## Plot after restore
+
+- `resyncPlotSeries` on first live `update` or varleaves for plot vars.
+- Plot vars: monitor mode **`value`**; table params: **`set`**.
+
+## After changing this area
+
+1. Select param → values tick live.
+2. Hard refresh ×10 → description present, values keep ticking.
+3. No repeated `list` in WS log during steady state.

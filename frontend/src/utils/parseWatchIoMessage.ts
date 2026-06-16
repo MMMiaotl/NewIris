@@ -1,5 +1,5 @@
 import type { WatchIoEntry, WatchIoMessage } from '../api/types';
-import { normalizeEntryParams } from './parseAttributes';
+import { normalizeEntryParams, parseAttributes } from './parseAttributes';
 import { parseSmcJson, smcJsonToWatchIoMessage, type SmcJsonMessage } from './parseSmcJson';
 import { watchIoLog } from './watchIoDebug';
 
@@ -104,8 +104,7 @@ export function parseVartreeParent(msg: WatchIoMessage): string | null {
   return null;
 }
 
-/** status: entries[{name:'status',value:'1'}] or top-level name/value — SmcServerView single-entry form. */
-/** varleaves meta from SmcServer: attributes=branch=...;varprefix=... */
+/** varleaves meta — branch/varprefix from params.attributes (space- or semicolon-separated). */
 export function parseVarleavesMeta(msg: WatchIoMessage): {
   branch: string | null;
   varprefix: string | null;
@@ -116,14 +115,9 @@ export function parseVarleavesMeta(msg: WatchIoMessage): {
   const list = params ? (Array.isArray(params) ? params : [params]) : [];
   for (const p of list) {
     if (p.name !== 'attributes' || !p.value) continue;
-    for (const part of p.value.split(';')) {
-      const eq = part.indexOf('=');
-      if (eq < 0) continue;
-      const key = part.slice(0, eq).trim();
-      const val = part.slice(eq + 1).trim();
-      if (key === 'branch') branch = val;
-      if (key === 'varprefix') varprefix = val;
-    }
+    const parsed = parseAttributes(p.value);
+    if (parsed.branch) branch = parsed.branch;
+    if (parsed.varprefix) varprefix = parsed.varprefix;
   }
   return { branch, varprefix };
 }

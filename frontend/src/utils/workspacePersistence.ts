@@ -1,9 +1,9 @@
-import type { ConnectionConfig, ViewMode, VariableDisplayOverride } from '../api/types';
+import type { ConnectionConfig, ViewMode, VariableDisplayOverride, VariableType } from '../api/types';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useDisplayStore } from '../stores/displayStore';
 import { usePlotStore } from '../stores/plotStore';
 import { useVariableStore } from '../stores/variableStore';
-import { collectPinnedVariableValues } from './pinnedVariables';
+import { collectPinnedVariableNames, collectPinnedVariableValues } from './pinnedVariables';
 
 /** sessionStorage: survives refresh, cleared when the tab closes. */
 export const WORKSPACE_STORAGE_KEY = 'newiris-workspace-v1';
@@ -25,12 +25,33 @@ export interface WorkspaceSnapshot {
   viewMode: ViewMode;
   /** Last known values for pinned parameters — small cache for refresh display. */
   pinnedValues?: Record<string, string>;
+  /** Cached type/description so monitor add can run before varleaves on refresh. */
+  pinnedMetadata?: Record<
+    string,
+    { dataType: VariableType; description: string; varKind: string; scale: string }
+  >;
   /** Client-side display overrides (style, unit, custom name). */
   displayOverrides?: Record<string, VariableDisplayOverride>;
 }
 
 export function workspaceScope(config: ConnectionConfig): string {
   return [config.transport, config.hostAddress, config.serverPath, config.watchIoName].join('|');
+}
+
+export function collectPinnedVariableMetadata(): WorkspaceSnapshot['pinnedMetadata'] {
+  const pinned = new Set(collectPinnedVariableNames());
+  const meta: NonNullable<WorkspaceSnapshot['pinnedMetadata']> = {};
+  for (const v of useVariableStore.getState().variables) {
+    if (!pinned.has(v.name)) continue;
+    if (v.dataType === 'unknown' && !v.description && !v.varKind) continue;
+    meta[v.name] = {
+      dataType: v.dataType,
+      description: v.description,
+      varKind: v.varKind,
+      scale: v.scale,
+    };
+  }
+  return Object.keys(meta).length ? meta : undefined;
 }
 
 export function collectWorkspaceSnapshot(): WorkspaceSnapshot {
@@ -61,6 +82,7 @@ export function collectWorkspaceSnapshot(): WorkspaceSnapshot {
     flatTree,
     viewMode,
     pinnedValues: collectPinnedVariableValues(),
+    pinnedMetadata: collectPinnedVariableMetadata(),
     displayOverrides: { ...overrides },
   };
 }
@@ -125,7 +147,12 @@ export function restoreWorkspaceSnapshotIfMatching(): boolean {
   );
 
   if (snapshot.pinnedValues && Object.keys(snapshot.pinnedValues).length) {
-    useVariableStore.getState().seedPinnedVariableCache(snapshot.pinnedValues);
+    useVariableStore.getState().seedPinnedVariableCache(
+      snapshot.pinnedValues,
+      snapshot.pinnedMetadata,
+    );
+  } else if (snapshot.pinnedMetadata && Object.keys(snapshot.pinnedMetadata).length) {
+    useVariableStore.getState().seedPinnedVariableCache({}, snapshot.pinnedMetadata);
   }
 
   const plot = usePlotStore.getState();

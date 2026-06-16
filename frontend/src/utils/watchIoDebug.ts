@@ -73,6 +73,9 @@ export function watchIoLogMessage(direction: 'recv' | 'send', msg: WatchIoMessag
 
 export function watchIoLogSendBody(body: Record<string, unknown>): void {
   const type = typeof body.type === 'string' ? body.type : undefined;
+  if (type && !isWatchIoNoisyMessageType(type)) {
+    useWatchIoMessageLogStore.getState().append('send', body as unknown as WatchIoMessage);
+  }
   if (isWatchIoNoisyMessageType(type)) {
     watchIoLogVerbose('ws', 'SEND', body);
   } else {

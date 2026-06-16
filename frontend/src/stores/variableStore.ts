@@ -38,6 +38,7 @@ function buildWatchIoVariable(
     registered,
     alias: attrs.alias ?? prev?.alias,
     sessionCacheOnly: false,
+    serverMetadataLoaded: true,
   };
 }
 
@@ -94,7 +95,13 @@ interface VariableState {
   /** Drop cached tree/leaves; keep selected parameters (reconnect / refresh). */
   clearConnectionCache: (keepVariableNames?: Iterable<string>) => void;
   /** Seed table rows from sessionStorage until live values arrive. */
-  seedPinnedVariableCache: (values: Record<string, string>) => void;
+  seedPinnedVariableCache: (
+    values: Record<string, string>,
+    metadata?: Record<
+      string,
+      { dataType: VariableType; description: string; varKind: string; scale: string }
+    >,
+  ) => void;
   mergeVarLeaves: (
     entries: WatchIoEntry[],
     branchOverride?: string | null,
@@ -102,6 +109,8 @@ interface VariableState {
   ) => void;
   attachBranchVariables: (branch: string) => void;
   mergeVarList: (entries: WatchIoEntry[]) => void;
+  /** Merge varinfo / single-variable metadata into the store. */
+  applyServerVariableEntries: (entries: WatchIoEntry[]) => void;
   applyUpdate: (entries: WatchIoEntry[]) => void;
   setRegistered: (name: string, registered: boolean) => void;
   updateLocalValue: (name: string, value: string) => void;
@@ -168,29 +177,28 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       focusedVariable && capped.includes(focusedVariable) ? focusedVariable : null;
     set({ selectedVariables: capped, focusedVariable: focused });
   },
-  seedPinnedVariableCache: (values) => {
-    const names = Object.keys(values);
-    if (!names.length) return;
+  seedPinnedVariableCache: (values, metadata) => {
+    const names = new Set([...Object.keys(values), ...Object.keys(metadata ?? {})]);
+    if (!names.size) return;
     const map = new Map(get().variables.map((v) => [v.name, v]));
     for (const name of names) {
       const cached = values[name];
-      if (cached === undefined || cached === '') continue;
+      const meta = metadata?.[name];
+      const hasServerMeta = meta !== undefined && meta.dataType !== 'unknown';
       const prev = map.get(name);
-      map.set(
+      const valueFromCache = cached !== undefined && cached !== '';
+      map.set(name, {
         name,
-        prev
-          ? { ...prev, value: cached, sessionCacheOnly: true }
-          : {
-              name,
-              value: cached,
-              varKind: '',
-              dataType: 'unknown',
-              description: '',
-              scale: '',
-              registered: false,
-              sessionCacheOnly: true,
-            },
-      );
+        value: valueFromCache ? cached : (prev?.value ?? ''),
+        varKind: meta?.varKind ?? prev?.varKind ?? '',
+        dataType: meta?.dataType ?? prev?.dataType ?? 'unknown',
+        description: meta?.description ?? prev?.description ?? '',
+        scale: meta?.scale ?? prev?.scale ?? '',
+        registered: prev?.registered ?? false,
+        alias: prev?.alias,
+        sessionCacheOnly: valueFromCache || (prev?.sessionCacheOnly ?? false),
+        serverMetadataLoaded: hasServerMeta,
+      });
     }
     set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
   },
@@ -267,6 +275,20 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     }
     set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
   },
+  applyServerVariableEntries: (entries) => {
+    const list = normalizeEntries(entries);
+    if (!list.length) return;
+    const map = new Map(get().variables.map((v) => [v.name, v]));
+    for (const entry of list) {
+      const name = entry.name;
+      const prev = map.get(name);
+      map.set(
+        name,
+        buildWatchIoVariable(name, entry, prev, get().registeredNames.has(name)),
+      );
+    }
+    set({ variables: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) });
+  },
   applyUpdate: (entries) => {
     const list = normalizeEntries(entries);
     const map = new Map(get().variables.map((v) => [v.name, v]));
@@ -276,7 +298,8 @@ export const useVariableStore = create<VariableState>((set, get) => ({
         map.set(entry.name, {
           ...prev,
           value: entry.value ?? prev.value,
-          sessionCacheOnly: false,
+          // Do not treat value-only updates as varleaves metadata — keeps monitor bootstrap waiting.
+          sessionCacheOnly: prev.serverMetadataLoaded ? false : (prev.sessionCacheOnly ?? false),
         });
       } else {
         map.set(entry.name, {
@@ -288,6 +311,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
           scale: '',
           registered: get().registeredNames.has(entry.name),
           sessionCacheOnly: false,
+          serverMetadataLoaded: false,
         });
       }
     }

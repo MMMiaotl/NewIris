@@ -101,7 +101,33 @@ node scripts/probe-watchio-ws.mjs
 | watchIoWs fails, HTTP works | `:8083` down or STOMP misconfigured | [WatchIoWebSocket.md](../../docs/WatchIoWebSocket.md) |
 | Write fails, read works | `nameToPostPath` / POST path wrong | `smcServerClient.ts`, variable full name vs branch prefix |
 | Replay works, live does not | `appMode === 'offline'` or client disconnected | `connectionStore.appMode`, footer status |
+| **Parameters frozen after refresh** | Monitor list spam or `add`+`list` mix | See § Live parameter values below; message log should show `update` not only `list` |
 | CAS / `C.Cas.*` not visible | CAS not registered to gateway | See CAS section in NewIrisConnection.md — not in SmcServer1 tree |
+
+## Live parameter values (pinned / workspace restore)
+
+**Before editing** `useWatchIo.ts`, `pinnedVariables.ts`, `workspacePersistence.ts`, or related stores — read `.cursor/rules/watchio-live-monitor.mdc`.
+
+| Rule | Why |
+|------|-----|
+| WatchIO: register via **`setMonitorList` only** | `addVariable` + `list` resets server monitor |
+| **Dedupe** `setMonitorList` (`watchIoMonitorListKey`) | Repeated `list` stops `update` stream |
+| Never `setMonitorList` in `varleaves` / retry loops | Same regression |
+| `sessionCacheOnly` on workspace cache rows | Distinguish cache from live; `isPinnedVariableLiveLoaded` = `!sessionCacheOnly` |
+| Filter varlist → `searchVarlistIndex`, not `variables` | Avoid store churn |
+
+**Verify after changes:**
+
+1. Select param → table ticks live.
+2. Hard refresh → brief cache → live resumes.
+3. Message log: steady **`update`** messages.
+
+| Area | File |
+|------|------|
+| Monitor sync | `frontend/src/hooks/useWatchIo.ts` → `syncWatchIoMonitorList` |
+| Dedupe helpers | `frontend/src/utils/watchIoLiveMonitor.ts` |
+| Pinned / cache | `frontend/src/utils/pinnedVariables.ts` |
+| Workspace seed | `frontend/src/utils/workspacePersistence.ts`, `variableStore.seedPinnedVariableCache` |
 
 ### 4. Inspect frontend code paths
 

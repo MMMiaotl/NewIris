@@ -60,7 +60,12 @@ export function useWorkspacePersistence(): void {
       const valuesChanged = state.variables.some((v) => {
         if (!pinned.has(v.name)) return false;
         const prevVar = prev.variables.find((p) => p.name === v.name);
-        return prevVar?.value !== v.value;
+        return (
+          prevVar?.value !== v.value ||
+          prevVar?.dataType !== v.dataType ||
+          prevVar?.description !== v.description ||
+          prevVar?.serverMetadataLoaded !== v.serverMetadataLoaded
+        );
       });
       if (valuesChanged) scheduleWorkspaceSave();
     });

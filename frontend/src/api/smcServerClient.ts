@@ -81,12 +81,17 @@ export class SmcServerClient implements WatchIoClient {
     void this.loadVarTree(branch);
   }
 
-  fetchVarLeaves(branch: string, _withMeta = true): void {
+  fetchVarLeaves(branch: string, _withMeta = true, _priority = false): void {
     void this.loadVariables(branch);
   }
 
   fetchVarList(_filter = ''): void {
     if (this.activeObjectPath) void this.loadVariables(this.activeObjectPath);
+  }
+
+  fetchVarInfo(name: string): void {
+    const branch = branchPathForVariableName(name, 'smcServer');
+    if (branch) this.fetchVarLeaves(branch);
   }
 
   setMonitorList(): void {

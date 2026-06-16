@@ -14,11 +14,11 @@ export function isPinnedVariableLoaded(name: string): boolean {
   return useVariableStore.getState().variables.some((v) => v.name === name);
 }
 
-/** True after server varleaves/update — not sessionStorage cache placeholder. */
+/** True after server varleaves — not sessionStorage cache or a stray value-only update. */
 export function isPinnedVariableLiveLoaded(name: string): boolean {
   const v = useVariableStore.getState().variables.find((x) => x.name === name);
   if (!v) return false;
-  return !v.sessionCacheOnly;
+  return v.serverMetadataLoaded === true;
 }
 
 export function missingPinnedVariableNames(): string[] {
@@ -35,22 +35,6 @@ export function pinnedNamesMissingOnBranch(
     if (isPinnedVariableLiveLoaded(name)) return false;
     return branchPathForVariableName(name, transport) === branch;
   });
-}
-
-/** Stop varleaves retry once a branch fetch completed — live values come via monitor update. */
-export function clearSessionCacheForPinnedOnBranch(
-  branch: string,
-  transport: ConnectionTransport,
-): void {
-  const pinned = new Set(collectPinnedVariableNames());
-  if (!pinned.size) return;
-  useVariableStore.setState((state) => ({
-    variables: state.variables.map((v) => {
-      if (!v.sessionCacheOnly || !pinned.has(v.name)) return v;
-      if (branchPathForVariableName(v.name, transport) !== branch) return v;
-      return { ...v, sessionCacheOnly: false };
-    }),
-  }));
 }
 
 export function collectPinnedVariableValues(): Record<string, string> {

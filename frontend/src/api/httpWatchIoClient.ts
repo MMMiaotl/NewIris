@@ -1,6 +1,6 @@
 /** WatchIoWebServer HTTP client — GET/POST on /watchio/{name}:option paths. */
 
-import type { WatchIoMessage } from './types';
+import type { VariableType, WatchIoMessage } from './types';
 import type { MessageHandler, MonitorVariable, StatusHandler, WatchIoClient } from './watchIoClient';
 import { smcHttpGet } from './smcHttp';
 import { normalizeEntries, parseWatchIoResponse } from '../utils/parseWatchIoMessage';
@@ -83,7 +83,7 @@ export class HttpWatchIoClient implements WatchIoClient {
     void this.loadVarTree(branch);
   }
 
-  fetchVarLeaves(branch: string, withMeta = true): void {
+  fetchVarLeaves(branch: string, withMeta = true, _priority = false): void {
     void this.loadVarLeaves(branch, withMeta);
   }
 
@@ -114,14 +114,40 @@ export class HttpWatchIoClient implements WatchIoClient {
       .catch((err) => watchIoLog('http', 'monitor list failed', err));
   }
 
-  addVariable(name: string, mode: 'value' | 'set' = 'set'): void {
+  addVariable(name: string, mode: 'value' | 'set' = 'set', dataType?: VariableType): void {
     this.registered.add(name);
-    const attrs = watchIoMonitorAttributes(undefined, mode);
+    const attrs = watchIoMonitorAttributes(dataType, mode);
     const url = buildWatchIoInstanceUrl(this.base, this.watchIoName, 'add', name, attrs);
     void smcHttpGet(url, 12_000)
       .then(({ text }) => this.handleResponse(text))
       .catch((err) => watchIoLog('http', `add ${name} failed`, err));
     this.startPolling();
+  }
+
+  fetchVarInfo(name: string): void {
+    void this.loadVarInfo(name);
+  }
+
+  private async loadVarInfo(name: string): Promise<void> {
+    const url = buildWatchIoInstanceUrl(
+      this.base,
+      this.watchIoName,
+      'varinfo',
+      name,
+      WATCHIO_VARLEAVES_ATTRS,
+    );
+    try {
+      const { text } = await smcHttpGet(url, 12_000);
+      const msg = parseWatchIoResponse(text);
+      if (!msg) return;
+      const entries = normalizeEntries(msg.entries).map((e) => ({
+        ...e,
+        name: e.name.includes('.') ? e.name : name,
+      }));
+      this.emit({ type: 'varinfo', entries });
+    } catch (err) {
+      watchIoLog('http', `varinfo ${name} failed`, err);
+    }
   }
 
   removeVariable(name: string): void {

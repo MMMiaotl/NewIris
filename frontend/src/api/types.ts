@@ -45,6 +45,8 @@ export interface WatchIoVariable {
   alias?: string;
   /** True when value came from sessionStorage only — needs varleaves before live monitor. */
   sessionCacheOnly?: boolean;
+  /** True after varleaves populated type/description — required before monitor list. */
+  serverMetadataLoaded?: boolean;
 }
 
 export type TreeNodeKind = 'branch' | 'variable';
