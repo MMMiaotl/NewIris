@@ -128,6 +128,8 @@ interface PlotState {
     xWindowSec?: number,
     lineWidths?: Record<string, number>,
   ) => void;
+  /** Replace plot series with the current parameter value (after live reload). */
+  resyncPlotSeries: (name: string, value?: string, sampleMs?: number) => void;
 }
 
 export const usePlotStore = create<PlotState>((set, get) => ({
@@ -228,25 +230,44 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       seriesData: {},
     });
   },
+  resyncPlotSeries: (name, value, sampleMs) => {
+    const state = get();
+    if (!state.plotVariables.includes(name)) return;
+    const resolved =
+      value ??
+      useVariableStore.getState().variables.find((v) => v.name === name)?.value ??
+      '';
+    if (resolved === '') return;
+    const startedMs = state.plotStartedAtMs[name] ?? Date.now();
+    const { [name]: _drop, ...rest } = state.seriesData;
+    set({ seriesData: { ...rest, [name]: [] } });
+    seedPlotVariable(get, name, resolved, startedMs);
+    if (sampleMs !== undefined) {
+      get().appendPoint(name, resolved, sampleMs);
+    }
+  },
 }));
 
 /** Append one sample per plot variable from the parameter table (live plot tick). */
 export function sampleLivePlotVariables(sampleMs = Date.now()): void {
-  const { plotVariables, plotStartedAtMs, appendPoint } = usePlotStore.getState();
+  const { plotVariables, plotStartedAtMs, resyncPlotSeries, appendPoint } = usePlotStore.getState();
   if (!plotVariables.length) return;
 
   const variables = useVariableStore.getState().variables;
   for (const name of plotVariables) {
-    const value = variables.find((v) => v.name === name)?.value;
+    const variable = variables.find((v) => v.name === name);
+    const value = variable?.value;
     if (value === undefined || value === '') continue;
 
     const startedMs = plotStartedAtMs[name];
-    if (startedMs !== undefined) {
-      const points = usePlotStore.getState().seriesData[name] ?? [];
-      if (points.length === 0) {
-        seedPlotVariable(usePlotStore.getState, name, value, startedMs);
-        continue;
+    const points = usePlotStore.getState().seriesData[name] ?? [];
+    const cacheOnly = variable?.sessionCacheOnly === true;
+
+    if (cacheOnly || points.length === 0) {
+      if (startedMs !== undefined) {
+        resyncPlotSeries(name, value, sampleMs);
       }
+      continue;
     }
     appendPoint(name, value, sampleMs);
   }

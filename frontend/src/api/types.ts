@@ -43,6 +43,8 @@ export interface WatchIoVariable {
   scale: string;
   registered: boolean;
   alias?: string;
+  /** True when value came from sessionStorage only — needs varleaves before live monitor. */
+  sessionCacheOnly?: boolean;
 }
 
 export type TreeNodeKind = 'branch' | 'variable';

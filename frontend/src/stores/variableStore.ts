@@ -37,6 +37,7 @@ function buildWatchIoVariable(
     scale: attrs.scale ?? prev?.scale ?? '',
     registered,
     alias: attrs.alias ?? prev?.alias,
+    sessionCacheOnly: false,
   };
 }
 
@@ -178,7 +179,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
       map.set(
         name,
         prev
-          ? { ...prev, value: cached }
+          ? { ...prev, value: cached, sessionCacheOnly: true }
           : {
               name,
               value: cached,
@@ -187,6 +188,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
               description: '',
               scale: '',
               registered: false,
+              sessionCacheOnly: true,
             },
       );
     }
@@ -270,8 +272,13 @@ export const useVariableStore = create<VariableState>((set, get) => ({
     const map = new Map(get().variables.map((v) => [v.name, v]));
     for (const entry of list) {
       const prev = map.get(entry.name);
-      if (prev) map.set(entry.name, { ...prev, value: entry.value ?? prev.value });
-      else {
+      if (prev) {
+        map.set(entry.name, {
+          ...prev,
+          value: entry.value ?? prev.value,
+          sessionCacheOnly: false,
+        });
+      } else {
         map.set(entry.name, {
           name: entry.name,
           value: entry.value ?? '',
@@ -280,6 +287,7 @@ export const useVariableStore = create<VariableState>((set, get) => ({
           description: '',
           scale: '',
           registered: get().registeredNames.has(entry.name),
+          sessionCacheOnly: false,
         });
       }
     }

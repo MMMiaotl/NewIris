@@ -14,9 +14,16 @@ export function isPinnedVariableLoaded(name: string): boolean {
   return useVariableStore.getState().variables.some((v) => v.name === name);
 }
 
+/** True after server varleaves/update — not sessionStorage cache placeholder. */
+export function isPinnedVariableLiveLoaded(name: string): boolean {
+  const v = useVariableStore.getState().variables.find((x) => x.name === name);
+  if (!v) return false;
+  return !v.sessionCacheOnly;
+}
+
 export function missingPinnedVariableNames(): string[] {
   const pinned = collectPinnedVariableNames();
-  return pinned.filter((name) => !isPinnedVariableLoaded(name));
+  return pinned.filter((name) => !isPinnedVariableLiveLoaded(name));
 }
 
 export function pinnedNamesMissingOnBranch(
@@ -25,7 +32,7 @@ export function pinnedNamesMissingOnBranch(
   pinnedNames: string[],
 ): boolean {
   return pinnedNames.some((name) => {
-    if (isPinnedVariableLoaded(name)) return false;
+    if (isPinnedVariableLiveLoaded(name)) return false;
     return branchPathForVariableName(name, transport) === branch;
   });
 }
