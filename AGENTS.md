@@ -78,6 +78,7 @@ node scripts/test-stomp-parse.mjs     # STOMP frame parsing (offline)
 | File | Scope |
 |------|-------|
 | `language-conventions.mdc` | Chat in Chinese; code in English |
+| `code-style.mdc` | Minimal code; thorough comments and `docs/` |
 | `add-cursor-rules.mdc` | How to add new rules in this project |
 | `frontend-react.mdc` | React / Ant Design / component patterns |
 | `watchio-api.mdc` | `frontend/src/api/**` — transports and clients |

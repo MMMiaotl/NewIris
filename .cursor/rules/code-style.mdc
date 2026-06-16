@@ -1,0 +1,62 @@
+---
+description: Minimal code, modular structure; thorough comments and docs for readers
+alwaysApply: true
+---
+
+# Code style — minimal code, thorough explanation
+
+## Code (minimal)
+
+Default: **if it is not necessary, do not add a symbol**. Prefer the smallest correct diff.
+
+- **Concise**: short names when scope is obvious; no ceremony (`return x` not `return Promise.resolve(x)`).
+- **Modular**: one responsibility per file/function; shared logic in `api/`, `stores/`, `hooks/`, `utils/` — not duplicated in components.
+- **No noise**: skip redundant types, wrappers, re-exports, `else` after `return`, nested ternaries, one-line helpers used once.
+- **No over-engineering**: no speculative abstractions, extra error branches, or “future-proof” layers the task does not need.
+- **Match the repo**: extend existing patterns before inventing new ones.
+
+```typescript
+// ❌ Verbose
+const isConnectedFlag = status === 'connected';
+if (isConnectedFlag === true) {
+  return await connectClient();
+} else {
+  return false;
+}
+
+// ✅ Minimal
+if (status === 'connected') return connectClient();
+return false;
+```
+
+```typescript
+// ❌ Unnecessary wrapper
+function getTransportLabel(t: ConnectionTransport): string {
+  return transportOptions.find((o) => o.value === t)?.label ?? t;
+}
+
+// ✅ Inline at single call site, or export a map if reused
+```
+
+## Comments & docs (thorough)
+
+Goal: **any reader** (human or agent) can understand purpose, boundaries, and non-obvious behavior.
+
+- **Module/file header** (when non-trivial): what this unit owns, what it must not do, key dependencies.
+- **Comments**: explain *why*, invariants, protocol quirks, and failure modes — not restate the code line-by-line.
+- **`docs/`**: complete enough to onboard without spelunking; update when connection flow, stores, or transports change.
+- **Do not** use comments to excuse unclear code; simplify the code first, then document what remains non-obvious.
+
+```typescript
+// ❌ Noise
+// Set connected to true
+this.connected = true;
+
+// ✅ Useful
+// SmcServer returns entrycount=-1 as a single object; normalize before tree merge (SmcServerView parity).
+```
+
+## When they conflict
+
+- **Readable beats clever** — but readability comes from structure and names, not extra syntax.
+- **Document the hard parts**; keep the happy path code short.
