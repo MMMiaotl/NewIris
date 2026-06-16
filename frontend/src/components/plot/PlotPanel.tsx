@@ -39,11 +39,16 @@ function syncPlot(
   yMin: number,
   yMax: number,
   xWindowSec: number,
+  viewEndSec: number | null,
   valueAt: (name: string, raw: string) => number | null,
 ): void {
   const allTimes = collectPlotTimes(seriesData, plotVariables);
   const elapsedSec = latestPlotTimeSec(allTimes);
-  const { min: viewMin, max: viewMax } = computePlotXViewport(elapsedSec, xWindowSec);
+  const { min: viewMin, max: viewMax } = computePlotXViewport(
+    elapsedSec,
+    xWindowSec,
+    viewEndSec,
+  );
   const data = buildPlotAlignedData(seriesData, plotVariables, valueAt) as uPlot.AlignedData;
 
   // Lock Y before X — uPlot re-ranges Y from series data when X scale updates.
@@ -78,12 +83,58 @@ function applyYScale(u: uPlot, yMin: number, yMax: number): void {
   } as { min: number; max: number });
 }
 
+function buildPlotHooks(plotSampleMode: boolean, plotZeroLine: boolean): uPlot.Options['hooks'] {
+  const hooks: uPlot.Options['hooks'] = {};
+
+  if (plotSampleMode) {
+    hooks.setScale = [
+      (u, scaleKey) => {
+        if (scaleKey !== 'x') return;
+        const max = u.scales.x.max;
+        if (typeof max === 'number') {
+          usePlotStore.getState().setXViewEndSec(max);
+        }
+      },
+    ];
+  }
+
+  if (plotZeroLine) {
+    hooks.draw = [
+      (u) => {
+        const y0 = u.valToPos(0, 'y', true);
+        if (y0 === undefined) return;
+        const ctx = u.ctx;
+        ctx.save();
+        ctx.strokeStyle = '#888888';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(u.bbox.left, y0);
+        ctx.lineTo(u.bbox.left + u.bbox.width, y0);
+        ctx.stroke();
+        ctx.restore();
+      },
+    ];
+  }
+
+  return hooks;
+}
+
 export function PlotPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
   const chartKeyRef = useRef('');
-  const { plotVariables, colors, lineWidths, seriesData, yMin, yMax, xWindowSec } =
-    usePlotStore();
+  const {
+    plotVariables,
+    colors,
+    lineWidths,
+    seriesData,
+    yMin,
+    yMax,
+    xWindowSec,
+    plotSampleMode,
+    xViewEndSec,
+  } = usePlotStore();
   const overrides = useDisplayStore((s) => s.overrides);
   const { appMode } = useConnectionStore();
   const { plotGridX, plotGridY, plotZeroLine } = useUiPreferencesStore();
@@ -92,7 +143,9 @@ export function PlotPanel() {
     return convertRawToDisplayNumber(raw, getVariableDisplayOverride(name));
   }, []);
 
-  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}|${JSON.stringify(overrides)}|${plotGridX}|${plotGridY}|${plotZeroLine}`;
+  const viewEndSec = plotSampleMode ? xViewEndSec : null;
+
+  const plotChartKey = `${plotVariables.join(',')}|${JSON.stringify(colors)}|${JSON.stringify(lineWidths)}|${JSON.stringify(overrides)}|${plotGridX}|${plotGridY}|${plotZeroLine}|sample:${plotSampleMode}`;
 
   const plotXAxis = {
     stroke: '#9a9a9a',
@@ -101,28 +154,6 @@ export function PlotPanel() {
   };
 
   const plotYAxis = { stroke: '#9a9a9a', grid: { show: plotGridY, stroke: '#4a4a4a' } };
-
-  /** Draw a y=0 reference line via the draw hook — no extra data series needed. */
-  const zeroLineHooks: uPlot.Options['hooks'] = plotZeroLine
-    ? {
-        draw: [
-          (u) => {
-            const y0 = u.valToPos(0, 'y', true);
-            if (y0 === undefined) return;
-            const ctx = u.ctx;
-            ctx.save();
-            ctx.strokeStyle = '#888888';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(u.bbox.left, y0);
-            ctx.lineTo(u.bbox.left + u.bbox.width, y0);
-            ctx.stroke();
-            ctx.restore();
-          },
-        ],
-      }
-    : {};
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -144,13 +175,16 @@ export function PlotPanel() {
       const opts: uPlot.Options = {
         width,
         height,
+        cursor: plotSampleMode
+          ? { show: true, drag: { x: true, setScale: true } }
+          : { show: true },
         scales: {
           x: { time: false, auto: false },
           y: yScaleOptions(yMin, yMax),
         },
         series: [{}, ...seriesOptions(plotVariables, colors, lineWidths, overrides)],
         axes: [plotXAxis, plotYAxis],
-        hooks: zeroLineHooks,
+        hooks: buildPlotHooks(plotSampleMode, plotZeroLine),
       };
 
       plotRef.current = new uPlot(
@@ -158,7 +192,16 @@ export function PlotPanel() {
         buildPlotAlignedData(seriesData, plotVariables, valueAt) as uPlot.AlignedData,
         el,
       );
-      syncPlot(plotRef.current, plotVariables, seriesData, yMin, yMax, xWindowSec, valueAt);
+      syncPlot(
+        plotRef.current,
+        plotVariables,
+        seriesData,
+        yMin,
+        yMax,
+        xWindowSec,
+        viewEndSec,
+        valueAt,
+      );
     };
 
     syncSize();
@@ -170,23 +213,29 @@ export function PlotPanel() {
       plotRef.current = null;
       chartKeyRef.current = '';
     };
-  }, [plotChartKey, valueAt]);
+  }, [plotChartKey, valueAt, plotSampleMode, plotZeroLine, yMin, yMax, xWindowSec]);
 
   /** Apply data + axis scales before paint so Y range does not flash. */
   useLayoutEffect(() => {
     const u = plotRef.current;
     if (!u) return;
-    syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec, valueAt);
-  }, [seriesData, plotVariables, yMin, yMax, xWindowSec, valueAt]);
+    syncPlot(u, plotVariables, seriesData, yMin, yMax, xWindowSec, viewEndSec, valueAt);
+  }, [seriesData, plotVariables, yMin, yMax, xWindowSec, viewEndSec, valueAt]);
+
+  const headerSuffix = plotSampleMode
+    ? '(Sample)'
+    : appMode === 'replay'
+      ? '(Replay)'
+      : '';
 
   return (
-    <div className="panel plot-panel">
-      <div className="panel-header">
-        Plot {appMode === 'replay' ? '(Replay)' : ''}
-      </div>
+    <div className={`panel plot-panel${plotSampleMode ? ' plot-panel--sample' : ''}`}>
+      <div className="panel-header">Plot {headerSuffix}</div>
       <div ref={containerRef} className="plot-container" />
       {plotVariables.length === 0 && (
-        <div className="plot-empty">Double-click a parameter row or use Control → Plot to add variables</div>
+        <div className="plot-empty">
+          Double-click a parameter row or use Control → Plot to add variables
+        </div>
       )}
     </div>
   );

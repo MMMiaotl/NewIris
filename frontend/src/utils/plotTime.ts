@@ -11,13 +11,19 @@ export function formatPlotAxisTime(seconds: number): string {
  *
  * - elapsed <= window: axis [0, window] (e.g. 3 min data, 10 min window → 0:00–10:00)
  * - elapsed > window:  axis [elapsed − window, elapsed] (live tail, scrolls with new data)
+ * - viewEndSec set (sample mode): axis [viewEnd − window, viewEnd], clamped to data range
  *
  * Series data stays in absolute coordinates; only uPlot scale min/max changes.
  */
 export function computePlotXViewport(
   elapsedSec: number,
   windowSec: number,
+  viewEndSec?: number | null,
 ): { min: number; max: number } {
+  if (viewEndSec !== null && viewEndSec !== undefined) {
+    const end = Math.max(windowSec, Math.min(viewEndSec, Math.max(elapsedSec, windowSec)));
+    return { min: Math.max(0, end - windowSec), max: end };
+  }
   if (elapsedSec <= windowSec) {
     return { min: 0, max: windowSec };
   }
@@ -48,13 +54,35 @@ export interface PlotPoint {
   raw: string;
 }
 
-/** Cap buffer size only; never trim by visible X window. */
+/** Keep up to one hour of plot history for Sample mode scrubbing. */
+export const MAX_PLOT_RETENTION_SEC = 3600;
+
+/** Cap buffer size only; also drop points older than retention window. */
 export function trimSeriesPoints(
   points: PlotPoint[],
   maxPoints: number,
+  retentionSec = MAX_PLOT_RETENTION_SEC,
 ): PlotPoint[] {
-  if (points.length <= maxPoints) return points;
-  return points.slice(-maxPoints);
+  if (points.length === 0) return points;
+  const latest = points[points.length - 1]!.t;
+  const cutoff = latest - retentionSec;
+  let trimmed = points.filter((p) => p.t >= cutoff);
+  if (trimmed.length > maxPoints) trimmed = trimmed.slice(-maxPoints);
+  return trimmed;
+}
+
+/** Last sample at or before tSec (step-hold interpolation). */
+export function nearestPlotValueAt(
+  points: PlotPoint[],
+  tSec: number,
+): PlotPoint | null {
+  if (!points.length) return null;
+  let best: PlotPoint | null = null;
+  for (const p of points) {
+    if (p.t <= tSec) best = p;
+    else break;
+  }
+  return best;
 }
 
 /** Build uPlot aligned data; single-series uses native arrays, multi-series unions times. */

@@ -3,10 +3,10 @@ import { CloseOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePlotStore } from '../../stores/plotStore';
 import { useVariableStore } from '../../stores/variableStore';
 import { useDisplayStore } from '../../stores/displayStore';
-import { useConnectionStore } from '../../stores/connectionStore';
 import { getDisplayLabel } from '../../utils/formatVariableValue';
 import { PlotLineWidthPicker } from './PlotLineWidthPicker';
 import { VariableControlView } from './VariableControlView';
+import { PlotSamplePanel } from './PlotSamplePanel';
 import { RegistrationBody } from '../registration/RegistrationPanel';
 
 interface ControlPanelProps {
@@ -17,7 +17,6 @@ interface ControlPanelProps {
 
 export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: ControlPanelProps) {
   const { selectedVariables, focusedVariable } = useVariableStore();
-  const { config, setConfig } = useConnectionStore();
   const {
     plotVariables,
     colors,
@@ -170,29 +169,7 @@ export function ControlPanel({ onClose, onSetValue, onRefreshVariable }: Control
             {
               key: 'sample',
               label: 'Sample',
-              children: (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  <div>
-                    <div className="control-label">Sample interval (ms)</div>
-                    <Space>
-                      <InputNumber
-                        min={50}
-                        max={60000}
-                        step={50}
-                        value={config.sampleInterval}
-                        onChange={(v) => setConfig({ sampleInterval: v ?? config.sampleInterval })}
-                      />
-                      <span>ms</span>
-                    </Space>
-                    <Space style={{ marginTop: 8 }} wrap>
-                      <Button size="small" onClick={() => setConfig({ sampleInterval: 100 })}>100 ms</Button>
-                      <Button size="small" onClick={() => setConfig({ sampleInterval: 500 })}>500 ms</Button>
-                      <Button size="small" onClick={() => setConfig({ sampleInterval: 1000 })}>1 s</Button>
-                      <Button size="small" onClick={() => setConfig({ sampleInterval: 5000 })}>5 s</Button>
-                    </Space>
-                  </div>
-                </Space>
-              ),
+              children: <PlotSamplePanel />,
             },
             {
               key: 'registration',

@@ -518,6 +518,7 @@ export function useWatchIo() {
   useEffect(() => {
     if (appMode !== 'live' || status !== 'connected') return;
     if (!plotVariables.length) return;
+    if (usePlotStore.getState().plotSampleMode) return;
 
     sampleLivePlotVariables();
     const interval = Math.max(100, config.sampleInterval);

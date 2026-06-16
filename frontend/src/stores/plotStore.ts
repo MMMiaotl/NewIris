@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useConnectionStore } from './connectionStore';
 import { useVariableStore } from './variableStore';
-import { trimSeriesPoints, type PlotPoint } from '../utils/plotTime';
+import { trimSeriesPoints, MAX_PLOT_RETENTION_SEC, type PlotPoint, collectPlotTimes, latestPlotTimeSec } from '../utils/plotTime';
 import { workspaceScope } from '../utils/workspaceScope';
 import { WORKSPACE_STORAGE_KEY } from '../utils/workspacePersistence';
 
@@ -66,7 +66,11 @@ function clampXWindowSec(seconds: number): number {
 function maxPointsForStore(): number {
   const sampleInterval = useConnectionStore.getState().config.sampleInterval;
   const intervalSec = Math.max(0.05, sampleInterval / 1000);
-  return Math.ceil(MAX_PLOT_X_WINDOW_SEC / intervalSec) + 50;
+  return Math.ceil(MAX_PLOT_RETENTION_SEC / intervalSec) + 50;
+}
+
+function plotElapsedSec(state: PlotState): number {
+  return latestPlotTimeSec(collectPlotTimes(state.seriesData, state.plotVariables));
 }
 
 /** Minimal segment at add time so uPlot can draw a line (two distinct timestamps). */
@@ -100,6 +104,10 @@ interface PlotState {
   /** Epoch ms for plot t = 0 (frontend init, or replay recording start). */
   plotInitMs: number;
   maxPoints: number;
+  /** Live plot frozen — inspect buffered history with a manual time window. */
+  plotSampleMode: boolean;
+  /** Sample mode: right edge of the visible X range (seconds); null = live tail. */
+  xViewEndSec: number | null;
   addPlotVariable: (name: string) => void;
   removePlotVariable: (name: string) => void;
   setYRange: (min: number, max: number) => void;
@@ -122,6 +130,9 @@ interface PlotState {
   ) => void;
   /** Replace plot series with the current parameter value (after live reload). */
   resyncPlotSeries: (name: string, value?: string, sampleMs?: number) => void;
+  enterPlotSampleMode: () => void;
+  exitPlotSampleMode: () => void;
+  setXViewEndSec: (endSec: number) => void;
 }
 
 export const usePlotStore = create<PlotState>((set, get) => ({
@@ -135,6 +146,8 @@ export const usePlotStore = create<PlotState>((set, get) => ({
   seriesData: {},
   plotInitMs: PLOT_INIT_MS,
   maxPoints: maxPointsForStore(),
+  plotSampleMode: false,
+  xViewEndSec: null,
   addPlotVariable: (name) => {
     const plotVariables = get().plotVariables;
     if (plotVariables.includes(name) || plotVariables.length >= 8) return;
@@ -181,6 +194,7 @@ export const usePlotStore = create<PlotState>((set, get) => ({
   setLineWidth: (name, width) =>
     set({ lineWidths: { ...get().lineWidths, [name]: clampLineWidth(width) } }),
   appendPoint: (name, value, tMs) => {
+    if (get().plotSampleMode) return;
     const trimmed = value.trim();
     if (!trimmed || Number.isNaN(Number(trimmed))) return;
     const sampleMs = tMs ?? Date.now();
@@ -200,8 +214,10 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       seriesData: { ...state.seriesData, [name]: arr },
     });
   },
-  clearSeries: () => set({ seriesData: {}, plotStartedAtMs: {} }),
-  setPlotInitMs: (plotInitMs) => set({ plotInitMs, seriesData: {}, plotStartedAtMs: {} }),
+  clearSeries: () =>
+    set({ seriesData: {}, plotStartedAtMs: {}, plotSampleMode: false, xViewEndSec: null }),
+  setPlotInitMs: (plotInitMs) =>
+    set({ plotInitMs, seriesData: {}, plotStartedAtMs: {}, plotSampleMode: false, xViewEndSec: null }),
   loadPlotConfig: (plotVariables, colors, yMin, yMax, xWindowSec, lineWidths) => {
     const windowSec = clampXWindowSec(xWindowSec ?? get().xWindowSec);
     const nextLineWidths: Record<string, number> = {};
@@ -223,6 +239,7 @@ export const usePlotStore = create<PlotState>((set, get) => ({
     });
   },
   resyncPlotSeries: (name, value, sampleMs) => {
+    if (get().plotSampleMode) return;
     const state = get();
     if (!state.plotVariables.includes(name)) return;
     const resolved =
@@ -238,10 +255,28 @@ export const usePlotStore = create<PlotState>((set, get) => ({
       get().appendPoint(name, resolved, sampleMs);
     }
   },
+  enterPlotSampleMode: () => {
+    const state = get();
+    if (!state.plotVariables.length) return;
+    const elapsed = plotElapsedSec(state);
+    set({
+      plotSampleMode: true,
+      xViewEndSec: elapsed > 0 ? elapsed : state.xWindowSec,
+    });
+  },
+  exitPlotSampleMode: () => set({ plotSampleMode: false, xViewEndSec: null }),
+  setXViewEndSec: (endSec) => {
+    const state = get();
+    const elapsed = plotElapsedSec(state);
+    const window = state.xWindowSec;
+    const end = Math.max(window, Math.min(endSec, Math.max(elapsed, window)));
+    set({ xViewEndSec: end });
+  },
 }));
 
 /** Append one sample per plot variable from the parameter table (live plot tick). */
 export function sampleLivePlotVariables(sampleMs = Date.now()): void {
+  if (usePlotStore.getState().plotSampleMode) return;
   const { plotVariables, plotStartedAtMs, resyncPlotSeries, appendPoint } = usePlotStore.getState();
   if (!plotVariables.length) return;
 
