@@ -34,7 +34,8 @@ interface RegistrationPanelProps {
   onClose: () => void;
 }
 
-export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
+/** Shared body — renders as-is inside ControlPanel Tab, or wrapped in Modal. */
+export function RegistrationBody() {
   const {
     active,
     paused,
@@ -53,7 +54,6 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
   const { selectedVariables, registeredNames } = useVariableStore();
   const watchIoName = useConnectionStore((s) => s.config.watchIoName);
 
-  // Candidate variables for registration (selected + registered)
   const candidateVars = Array.from(
     new Set([...selectedVariables, ...Array.from(registeredNames)]),
   );
@@ -86,7 +86,6 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
     downloadJson(`${name}.nirislog`, content);
   };
 
-  // Use lines.length as a proxy for elapsed — avoids calling Date.now() during render.
   const [elapsedSec, setElapsedSec] = useState(0);
   useEffect(() => {
     if (!active || paused) return;
@@ -99,15 +98,9 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
   const elapsed = active ? elapsedSec : 0;
 
   return (
-    <Modal
-      title="Registration"
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={480}
-    >
-      {/* Status row */}
-      <Space style={{ marginBottom: 12 }}>
+    <Space direction="vertical" style={{ width: '100%' }} size="small">
+      {/* Status */}
+      <div>
         {active ? (
           paused ? (
             <Tag color="warning">Paused — {lines.length} lines</Tag>
@@ -115,44 +108,44 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
             <Tag color="success">Recording — {lines.length} lines ({elapsed}s)</Tag>
           )
         ) : (
-          <Tag color="default">Stopped {lines.length > 0 ? `— ${lines.length} lines saved` : ''}</Tag>
+          <Tag color="default">Stopped{lines.length > 0 ? ` — ${lines.length} lines` : ''}</Tag>
         )}
-      </Space>
+      </div>
 
       {/* Controls */}
-      <Space wrap style={{ marginBottom: 16 }}>
+      <Space wrap>
         {!active && (
-          <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleStart}>
+          <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleStart}>
             Start
           </Button>
         )}
         {active && !paused && (
-          <Button icon={<PauseCircleOutlined />} onClick={pauseRegistration}>
+          <Button size="small" icon={<PauseCircleOutlined />} onClick={pauseRegistration}>
             Pause
           </Button>
         )}
         {active && paused && (
-          <Button type="primary" icon={<PlayCircleOutlined />} onClick={resumeRegistration}>
+          <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={resumeRegistration}>
             Resume
           </Button>
         )}
         {active && (
-          <Button danger icon={<StopOutlined />} onClick={handleStop}>
+          <Button size="small" danger icon={<StopOutlined />} onClick={handleStop}>
             Stop &amp; Save
           </Button>
         )}
         {lines.length > 0 && (
-          <Button icon={<SaveOutlined />} onClick={handleSaveNow}>
+          <Button size="small" icon={<SaveOutlined />} onClick={handleSaveNow}>
             Save Now
           </Button>
         )}
       </Space>
 
-      <Divider style={{ margin: '8px 0' }} />
+      <Divider style={{ margin: '4px 0' }} />
 
-      {/* Settings form */}
+      {/* Settings */}
       <Form layout="vertical" size="small">
-        <Form.Item label="Filename (without extension)">
+        <Form.Item label="Filename" style={{ marginBottom: 8 }}>
           <Input
             value={settings.filename}
             onChange={(e) => updateSettings({ filename: e.target.value })}
@@ -160,7 +153,7 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
             addonAfter=".nirislog"
           />
         </Form.Item>
-        <Form.Item label="Sample interval override (ms, 0 = use global)">
+        <Form.Item label="Sample interval override (ms, 0 = global)" style={{ marginBottom: 8 }}>
           <InputNumber
             min={0}
             max={60000}
@@ -170,8 +163,8 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
             style={{ width: '100%' }}
           />
         </Form.Item>
-        <Form.Item>
-          <Space direction="vertical">
+        <Form.Item style={{ marginBottom: 8 }}>
+          <Space direction="vertical" size={2}>
             <Checkbox
               checked={settings.includeTimestamp}
               onChange={(e) => updateSettings({ includeTimestamp: e.target.checked })}
@@ -184,29 +177,29 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
               onChange={(e) => updateSettings({ changesOnly: e.target.checked })}
               disabled={active}
             >
-              Changes only (skip unchanged rows)
+              Changes only
             </Checkbox>
           </Space>
         </Form.Item>
       </Form>
 
-      <Divider style={{ margin: '8px 0' }} />
+      <Divider style={{ margin: '4px 0' }} />
 
       {/* Variable selection */}
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        Variables to log — defaults to all selected/registered if empty
+      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+        Variables (defaults to all selected/registered)
       </Typography.Text>
-      <div style={{ marginTop: 8, maxHeight: 160, overflowY: 'auto' }}>
+      <div style={{ maxHeight: 140, overflowY: 'auto', marginTop: 4 }}>
         {candidateVars.length === 0 ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            No variables selected. Select variables in the tree/table first.
+            Select variables in the tree first.
           </Typography.Text>
         ) : (
           <Checkbox.Group
             value={variables.length ? variables : candidateVars}
             onChange={(vals) => setVariables(vals as string[])}
             disabled={active}
-            style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
           >
             {candidateVars.map((name) => (
               <Checkbox key={name} value={name} style={{ marginLeft: 0 }}>
@@ -216,6 +209,14 @@ export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
           </Checkbox.Group>
         )}
       </div>
+    </Space>
+  );
+}
+
+export function RegistrationPanel({ open, onClose }: RegistrationPanelProps) {
+  return (
+    <Modal title="Registration" open={open} onCancel={onClose} footer={null} width={480}>
+      <RegistrationBody />
     </Modal>
   );
 }
