@@ -22,6 +22,10 @@ export function isSmcServerTransport(transport: ConnectionTransport): boolean {
   return transport === 'smcServer';
 }
 
+export function isSharedMemoryTransport(transport: ConnectionTransport): boolean {
+  return transport === 'sharedMemory';
+}
+
 /** Default gateway path when switching transport or restoring sessions without serverPath. */
 export function defaultServerPath(transport: ConnectionTransport): string {
   return isSmcServerTransport(transport) ? '/SmcServer1' : '/watchio';

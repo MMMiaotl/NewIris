@@ -1,5 +1,6 @@
 import { Button, Col, Form, Input, InputNumber, Modal, Row, Select } from 'antd';
 import { isWatchIoTransport, isStompWatchIoTransport } from '../../api/smcHttp';
+import { isSharedMemoryTransport } from '../../constants/transport';
 import type { ConnectionTransport } from '../../api/types';
 import { transportOptions } from '../../constants/transport';
 import { useConnectionStore } from '../../stores/connectionStore';
@@ -13,6 +14,7 @@ export function ConnectionSettingsModal({ open, onClose }: ConnectionSettingsMod
   const { config, setWatchIoLogDrawerOpen, setConfig, setTransport } = useConnectionStore();
   const isWatchIo = isWatchIoTransport(config.transport);
   const showWsUrl = isStompWatchIoTransport(config.transport);
+  const isShm = isSharedMemoryTransport(config.transport);
 
   const openWatchIoLog = () => {
     onClose();
@@ -44,7 +46,7 @@ export function ConnectionSettingsModal({ open, onClose }: ConnectionSettingsMod
             </Col>
             <Col span={12}>
               <Form.Item
-                label={isWatchIo ? 'Gateway path' : 'SmcServer path'}
+                label={isShm ? 'WatchIO segment' : isWatchIo ? 'Gateway path' : 'SmcServer path'}
                 className="connection-settings-field"
               >
                 <Input

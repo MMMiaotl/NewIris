@@ -106,7 +106,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       return { config: next };
     }),
   setTransport: (transport) => {
-    const watchIo = isWatchIoTransport(transport);
+    const gatewayDefault = transport === 'watchIoHttp' || transport === 'watchIoWs';
     const fallback = createDefaultWatchIoService();
     set({
       config: {
@@ -115,10 +115,10 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         serverPath: defaultServerPath(transport),
         watchIoName: defaultWatchIoNames[transport],
       },
-      requestStatus: watchIo ? 'ok' : 'idle',
+      requestStatus: gatewayDefault ? 'ok' : 'idle',
       requestError: undefined,
-      discoveredServices: watchIo ? [fallback] : [],
-      selectedServiceName: watchIo ? fallback.name : null,
+      discoveredServices: gatewayDefault ? [fallback] : [],
+      selectedServiceName: gatewayDefault ? fallback.name : null,
     });
   },
   resetWatchIoDiscovery: () => {
@@ -149,8 +149,11 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Request failed';
       set({ requestStatus: 'error', requestError: msg });
-      if (isWatchIoTransport(config.transport)) get().resetWatchIoDiscovery();
-      else set({ discoveredServices: [], selectedServiceName: null });
+      if (config.transport === 'watchIoHttp' || config.transport === 'watchIoWs') {
+        get().resetWatchIoDiscovery();
+      } else {
+        set({ discoveredServices: [], selectedServiceName: null });
+      }
     }
   },
   setDiscoveredServices: (discoveredServices) => set({ discoveredServices }),

@@ -64,11 +64,15 @@ export function ensureWatchIoServices(services: DiscoveredService[]): Discovered
 }
 
 export function isStompWatchIoTransport(transport: ConnectionTransport): boolean {
-  return transport === 'watchIoWs' || transport === 'sharedMemory';
+  return transport === 'watchIoWs';
 }
 
 export function isWatchIoTransport(transport: ConnectionTransport): boolean {
-  return transport === 'watchIoHttp' || isStompWatchIoTransport(transport);
+  return (
+    transport === 'watchIoHttp' ||
+    isStompWatchIoTransport(transport) ||
+    transport === 'sharedMemory'
+  );
 }
 
 /**

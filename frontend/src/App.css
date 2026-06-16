@@ -3,9 +3,20 @@
   flex-direction: column;
   height: 100vh;
   background: #f0f0f0;
+  position: relative;
+}
+
+.watchio-com-host {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .app-header {
+  flex-shrink: 0;
   background: #e8e8e8;
   border-bottom: 1px solid #c0c0c0;
   padding: 4px 8px;
@@ -398,6 +409,7 @@
 }
 
 .app-footer {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 6px;

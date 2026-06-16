@@ -2,6 +2,7 @@
  * Single factory for transport clients. All live I/O goes through useWatchIo → createWatchIoClient.
  */
 import { HttpWatchIoClient } from './httpWatchIoClient';
+import { SharedMemoryWatchIoClient } from './sharedMemoryWatchIoClient';
 import { SmcServerClient } from './smcServerClient';
 import { StompWatchIoClient } from './stompWatchIoClient';
 import type { ConnectionConfig } from './types';
@@ -18,9 +19,15 @@ export function createWatchIoClient(config: ConnectionConfig): WatchIoClient {
         config.sampleInterval,
       );
     case 'watchIoWs':
-    case 'sharedMemory':
       return new StompWatchIoClient(
         config.wsUrl || defaultWsUrl(config.hostAddress),
+        config.serverPath,
+        config.watchIoName,
+        config.sampleInterval,
+      );
+    case 'sharedMemory':
+      return new SharedMemoryWatchIoClient(
+        config.httpUrl,
         config.serverPath,
         config.watchIoName,
         config.sampleInterval,

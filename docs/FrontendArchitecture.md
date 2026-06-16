@@ -14,7 +14,7 @@ Browser (:5173)
   ├─ useWatchIo() ── createWatchIoClient(config)
   │       │
   │       ├─ smcServer      → SmcServerClient     → GET /SmcServerN/...  (slash tree)
-  │       ├─ sharedMemory   → StompWatchIoClient  → STOMP ws://:8083     (local WatchIO shm)
+  │       ├─ sharedMemory   → SharedMemoryWatchIoClient → WatchIoCom ActiveX (local shm)
   │       ├─ watchIoHttp    → HttpWatchIoClient    → GET /watchio/...     (dot tree)
   │       └─ watchIoWs      → StompWatchIoClient   → STOMP ws://:8083     (dot tree)
   │
@@ -34,6 +34,8 @@ Vite proxies `/request`, `/SmcServer1`, `/SmcServer2`, `/watchio` to `localhost:
 | `api/smcServerClient.ts` | SmcServer HTTP polling client (default) |
 | `api/httpWatchIoClient.ts` | WatchIO over HTTP `/watchio` |
 | `api/stompWatchIoClient.ts` | WatchIO over STOMP WebSocket |
+| `api/sharedMemoryWatchIoClient.ts` | Windows COM shared-memory client |
+| `api/watchIoComActiveX.ts` | WatchIoCom ActiveX host helpers |
 | `api/smcHttp.ts` | `/request` discovery, service list helpers |
 | `api/types.ts` | Shared types: `WatchIoMessage`, `ConnectionConfig`, `SessionFile`, etc. |
 | `api/watchIoPaths.ts`, `watchIoServerJson.ts`, `watchIoWsDiscovery.ts` | URL builders and discovery |

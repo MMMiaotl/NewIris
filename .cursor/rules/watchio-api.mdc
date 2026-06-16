@@ -23,7 +23,7 @@ All backends implement `WatchIoClient` in `watchIoClient.ts`. Factory: `createWa
 | Transport | Client | Base path | Tree naming |
 |-----------|--------|-----------|-------------|
 | `smcServer` | `SmcServerClient` | `/SmcServer1`, `/SmcServer2` | Slash paths (`Control/...`) |
-| `sharedMemory` | `StompWatchIoClient` | STOMP dest `/watchio` | Dot paths |
+| `sharedMemory` | `SharedMemoryWatchIoClient` | COM `WatchIoCom.ocx` | Dot paths |
 | `watchIoHttp` | `HttpWatchIoClient` | `/watchio` | Dot paths (`C.Filter...`) |
 | `watchIoWs` | `StompWatchIoClient` | STOMP dest `/watchio` | Dot paths |
 

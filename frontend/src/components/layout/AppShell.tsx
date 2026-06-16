@@ -4,6 +4,7 @@
  */
 import { Splitter } from 'antd';
 import { ConnectionBar } from '../connection/ConnectionBar';
+import { WatchIoComHost } from '../connection/WatchIoComHost';
 import { MenuBar } from '../toolbar/MenuBar';
 import { VariableTree } from '../tree/VariableTree';
 import { ParameterTable } from '../table/ParameterTable';
@@ -70,6 +71,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <WatchIoComHost />
       <header className="app-header">
         <div className="app-header-top">
           <div className="app-title">Iris Next</div>

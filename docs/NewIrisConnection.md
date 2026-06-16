@@ -5,11 +5,11 @@
 | Transport | UI 名称 | 发现方式 | API 路径 | 变量树形式 | 典型场景 |
 |-----------|---------|----------|----------|------------|----------|
 | **smcServer** | SmcServer API | `GET /request` → SmcServer1 | `/SmcServer1/...` | 斜杠对象树 | 与 SmcServerView 相同 |
-| **sharedMemory** | Shared Memory | 默认 `/watchio`（STOMP WS） | STOMP `destination=/watchio` | 点分路径 | 本机 WatchIO 段（WatchIoWebServer 本地共享内存） |
+| **sharedMemory** | Shared Memory | WatchIO 段名（COM） | `WatchIoCom` ActiveX | 点分路径 | 本机 Windows 服务进程共享内存（IrisWeb 同款） |
 | **watchIoWs** | WatchIO WebSocket | STOMP `ws://8083` `/request` | STOMP `/watchio` | 点分路径 | 远端或通用 WS 部署 |
 | **watchIoHttp** | WatchIO HTTP | `GET /request`（需 `http=1`） | `GET /watchio/{name}:...` | 点分路径 | WatchIoWebServer 同时注册 HTTP 时 |
 
-`sharedMemory` 与 `watchIoWs` 使用同一 STOMP 客户端；区别在于 UI 语义与本机默认发现路径。
+**Shared Memory** 经 `WatchIoCom.ocx` 读本地 shm；变量树在 `/watchio` HTTP 可用时用于浏览（见 [WatchIoSharedMemory.md](WatchIoSharedMemory.md)）。**不要**与 STOMP/WebSocket 混用为同一连接方式。
 
 **SmcServer** 与 **WatchIO** 是两条独立桥接，不要混用 URL 与命名规则。WS 协议细节与完整故障排查见 **[WatchIoWebSocket.md](WatchIoWebSocket.md)**。
 

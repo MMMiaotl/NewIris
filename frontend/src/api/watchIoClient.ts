@@ -1,5 +1,5 @@
 /**
- * Transport-agnostic WatchIO client contract. Implementations: SmcServerClient, HttpWatchIoClient, StompWatchIoClient.
+ * Transport-agnostic WatchIO client contract. Implementations: SmcServerClient, HttpWatchIoClient, StompWatchIoClient, SharedMemoryWatchIoClient.
  */
 import type { VariableType, WatchIoMessage } from './types';
 

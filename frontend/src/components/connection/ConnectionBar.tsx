@@ -3,7 +3,7 @@ import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import { PlugConnectedIcon, PlugDisconnectedIcon } from './PlugIcons';
 import { WatchIoNameField } from './WatchIoNameField';
 import { createDefaultWatchIoService, isWatchIoTransport, isStompWatchIoTransport } from '../../api/smcHttp';
-import { isSmcServerTransport, transportOptions } from '../../constants/transport';
+import { isSharedMemoryTransport, isSmcServerTransport, transportOptions } from '../../constants/transport';
 import { predefinedHosts, useConnectionStore } from '../../stores/connectionStore';
 
 interface ConnectionBarProps {
@@ -34,6 +34,7 @@ export function ConnectionBar({
 
   const isWatchIo = isWatchIoTransport(config.transport);
   const isStomp = isStompWatchIoTransport(config.transport);
+  const isShm = isSharedMemoryTransport(config.transport);
   const defaultWatchIo = createDefaultWatchIoService();
   const watchIoFromRequest = discoveredServices.some(
     (s) =>
@@ -90,7 +91,7 @@ export function ConnectionBar({
             />
           </Tooltip>
         </Space.Compact>
-        {!isStomp && (
+        {!isStomp && !isShm && (
           <>
             <Typography.Text type="secondary">Server</Typography.Text>
             <Select
@@ -125,7 +126,12 @@ export function ConnectionBar({
         {requestStatus === 'error' && (
           <Typography.Text type="danger">{requestError}</Typography.Text>
         )}
-        {isWatchIo && !isStomp && requestStatus === 'ok' && !watchIoFromRequest && (
+        {isShm && (
+          <Typography.Text type="secondary">
+            Windows WatchIoCom.ocx — Edge IE mode; values from local shared memory
+          </Typography.Text>
+        )}
+        {isWatchIo && !isStomp && !isShm && requestStatus === 'ok' && !watchIoFromRequest && (
           <Typography.Text type="secondary">
             HTTP /request has no /watchio — using default; need http=1 on WatchIoWebServer
           </Typography.Text>
