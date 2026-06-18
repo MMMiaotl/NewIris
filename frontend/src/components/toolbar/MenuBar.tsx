@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode, type RefObject } from 'react';
 import { Button, Checkbox, Dropdown, Input, Segmented, Space, Tooltip } from 'antd';
+import type { InputRef } from 'antd';
 import {
   AppstoreOutlined,
   FolderOpenOutlined,
@@ -30,8 +31,10 @@ import {
 import type { SessionFile, ViewMode } from '../../api/types';
 import { AboutModal } from '../settings/AboutModal';
 import { SearchFilterToggles } from './SearchFilterToggles';
+import { toggleControlDrawer } from '../../utils/controlDrawer';
 
 interface MenuBarProps {
+  searchInputRef?: RefObject<InputRef | null>;
   onOpenRegistration?: () => void;
   onOpenExportVariables?: () => void;
   onOpenImportVariables?: () => void;
@@ -41,6 +44,7 @@ interface MenuBarProps {
 }
 
 export function MenuBar({
+  searchInputRef,
   onOpenRegistration,
   onOpenExportVariables,
   onOpenImportVariables,
@@ -49,6 +53,8 @@ export function MenuBar({
   onOpenPreferences,
 }: MenuBarProps) {
   const [aboutOpen, setAboutOpen] = useState(false);
+  const localSearchRef = useRef<InputRef>(null);
+  const resolvedSearchRef = searchInputRef ?? localSearchRef;
   const {
     config,
     appMode,
@@ -301,7 +307,7 @@ export function MenuBar({
             aria-label={recording ? 'Stop recording' : 'Start recording'}
           />
         </Tooltip>
-        <Tooltip title="Control panel">
+        <Tooltip title="Control panel (Ctrl+Shift+C)">
           <Button
             type={plotDrawerOpen ? 'primary' : 'text'}
             icon={<SlidersOutlined />}
@@ -311,14 +317,17 @@ export function MenuBar({
             Control
           </Button>
         </Tooltip>
-        <Input
-          className="menu-bar-search"
-          placeholder="Search variables…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          allowClear
-          size="small"
-        />
+        <Tooltip title="Search variables (Ctrl+F)">
+          <Input
+            ref={resolvedSearchRef}
+            className="menu-bar-search"
+            placeholder="Search variables…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            allowClear
+            size="small"
+          />
+        </Tooltip>
         <SearchFilterToggles
           matchCase={searchMatchCase}
           matchWholeWord={searchMatchWholeWord}
@@ -335,19 +344,6 @@ export function MenuBar({
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
-}
-
-function toggleControlDrawer() {
-  const { plotDrawerOpen, setPlotDrawerOpen } = useConnectionStore.getState();
-  if (plotDrawerOpen) {
-    setPlotDrawerOpen(false);
-    return;
-  }
-  const { focusedVariable, selectedVariables, setFocusedVariable } = useVariableStore.getState();
-  if (!focusedVariable && selectedVariables.length) {
-    setFocusedVariable(selectedVariables[0]);
-  }
-  setPlotDrawerOpen(true);
 }
 
 function openFilePicker(accept: string, onLoad: (text: string, name: string) => void) {

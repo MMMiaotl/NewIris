@@ -40,7 +40,9 @@ import {
   writePersistedParameterPlotSplitRatio,
 } from '../../utils/layoutPersistence';
 import { useDisplayStore } from '../../stores/displayStore';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useAppKeyboardShortcuts } from '../../hooks/useAppKeyboardShortcuts';
+import type { InputRef } from 'antd';
 
 const parameterPanelDefaultSize = readInitialParameterPanelDefaultSize();
 const plotPanelDefaultSize = readInitialPlotPanelDefaultSize();
@@ -70,6 +72,8 @@ export function AppShell() {
   const styleModalOpen = useDisplayStore((s) => s.modalOpen);
   const styleModalFocus = useDisplayStore((s) => s.modalFocusVariable);
   const closeStyleModal = useDisplayStore((s) => s.closeModal);
+  const searchInputRef = useRef<InputRef>(null);
+  useAppKeyboardShortcuts(searchInputRef);
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';
@@ -86,6 +90,7 @@ export function AppShell() {
           <ConnectionStatusTrigger />
         </div>
         <MenuBar
+          searchInputRef={searchInputRef}
           onOpenRegistration={() => setRegistrationPanelOpen(true)}
           onOpenExportVariables={() => setExportVarsOpen(true)}
           onOpenImportVariables={() => setImportVarsOpen(true)}
