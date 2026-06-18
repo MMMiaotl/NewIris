@@ -597,6 +597,54 @@
   padding: 6px 12px;
 }
 
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 4px 12px;
+  background: #fff1f0;
+  border-bottom: 1px solid #ffa39e;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--status-error-fg);
+}
+
+.recording-bar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  flex-shrink: 0;
+  animation: recording-pulse 1.2s ease-in-out infinite;
+}
+
+.recording-bar-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recording-bar-meta {
+  font-weight: 500;
+  color: rgba(207, 19, 34, 0.85);
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-bar-dot {
+    animation: none;
+  }
+}
+
 .plot-panel--sample .plot-container {
   cursor: grab;
 }

@@ -15,6 +15,7 @@ import { ConnectionSettingsModal } from '../settings/ConnectionSettingsModal';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ChangeStyleScaleModal } from '../display/ChangeStyleScaleModal';
 import { ReplayControls } from '../replay/ReplayControls';
+import { RecordingBar } from '../replay/RecordingBar';
 import { ConnectionStatusDrawer } from '../status/ConnectionStatusDrawer';
 import { ConnectionStatusTrigger } from '../status/ConnectionStatusTrigger';
 import {
@@ -102,6 +103,7 @@ export function AppShell() {
       </header>
 
       {appMode === 'replay' && <ReplayControls />}
+      <RecordingBar />
 
       <main className="app-main">
         <Splitter
