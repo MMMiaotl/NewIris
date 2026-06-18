@@ -444,6 +444,15 @@
   overflow: auto;
 }
 
+.parameter-table-scroll:focus {
+  outline: none;
+}
+
+.parameter-table-scroll:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(22, 119, 255, 0.25);
+  border-radius: var(--radius-sm);
+}
+
 .parameter-table-panel .ant-table-wrapper {
   width: 100%;
   margin: 0;
@@ -968,7 +977,7 @@
 }
 
 .parameter-table-panel .ant-table-tbody > tr.parameter-row-focused > td {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(22, 119, 255, 0.08);
 }
 
 .watchio-log-json {

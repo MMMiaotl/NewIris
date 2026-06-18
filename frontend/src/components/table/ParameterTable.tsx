@@ -1,6 +1,6 @@
 import { Table, Tooltip } from 'antd';
 import type { ColumnType, ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useConnectionStore } from '../../stores/connectionStore';
 import { useUiPreferencesStore } from '../../stores/uiPreferencesStore';
 import type { WatchIoVariable } from '../../api/types';
@@ -16,7 +16,7 @@ import {
   getDisplayLabel,
   getEffectiveScaleLabel,
 } from '../../utils/formatVariableValue';
-import { ParameterValueCell } from './ParameterValueCell';
+import { ParameterValueCell, parameterValueInputId } from './ParameterValueCell';
 import { ResizableTableHeaderCell } from './ResizableTableHeaderCell';
 import {
   buildFixedParameterColumn,
@@ -57,6 +57,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [fixedWidths, setFixedWidths] = useState<ParameterFixedWidths>(createInitialFixedWidths);
   const tableBodyRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState(300);
   const [containerWidth, setContainerWidth] = useState(0);
   const columnWidthSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -80,6 +81,72 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       return rest;
     });
   }, []);
+
+  const scrollFocusedRowIntoView = useCallback((name: string) => {
+    requestAnimationFrame(() => {
+      const row = tableScrollRef.current?.querySelector(
+        `tr[data-row-key="${CSS.escape(name)}"]`,
+      );
+      row?.scrollIntoView({ block: 'nearest' });
+    });
+  }, []);
+
+  const handleTableKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (appMode === 'replay' || !selectedVariables.length) return;
+
+      const active = document.activeElement;
+      const inValueInput =
+        active instanceof HTMLElement && active.id.startsWith('param-value-');
+
+      if (e.key === 'Escape') {
+        if (inValueInput && focusedVariable && editing[focusedVariable] !== undefined) {
+          e.preventDefault();
+          clearValueDraft(focusedVariable);
+          active.blur();
+          tableScrollRef.current?.focus();
+        }
+        return;
+      }
+
+      if (inValueInput && e.key === 'Enter') return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        let idx = focusedVariable ? selectedVariables.indexOf(focusedVariable) : -1;
+        if (idx < 0) idx = 0;
+        else if (e.key === 'ArrowDown') idx = Math.min(selectedVariables.length - 1, idx + 1);
+        else idx = Math.max(0, idx - 1);
+        const next = selectedVariables[idx];
+        setFocusedVariable(next);
+        scrollFocusedRowIntoView(next);
+        tableScrollRef.current?.focus();
+        return;
+      }
+
+      if (e.key === 'Enter' && !inValueInput) {
+        e.preventDefault();
+        const name = focusedVariable ?? selectedVariables[0];
+        if (!name) return;
+        document.getElementById(parameterValueInputId(name))?.focus();
+      }
+    },
+    [
+      appMode,
+      selectedVariables,
+      focusedVariable,
+      editing,
+      clearValueDraft,
+      setFocusedVariable,
+      scrollFocusedRowIntoView,
+    ],
+  );
+
+  const handleTableFocus = useCallback(() => {
+    if (!focusedVariable && selectedVariables.length) {
+      setFocusedVariable(selectedVariables[0]);
+    }
+  }, [focusedVariable, selectedVariables, setFocusedVariable]);
 
   const handleResize = useCallback(
     (key: ParameterFixedColumnKey) => (width: number) => {
@@ -297,7 +364,11 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
       <div className="panel-header">{headerLabel}</div>
       <div ref={tableBodyRef} className="parameter-table-body">
         <div
+          ref={tableScrollRef}
           className="parameter-table-scroll"
+          tabIndex={selectedVariables.length > 0 && appMode !== 'replay' ? 0 : undefined}
+          onKeyDown={handleTableKeyDown}
+          onFocus={handleTableFocus}
           style={tableReady ? { maxHeight: tableScrollY } : undefined}
         >
           {tableReady ? (
@@ -315,6 +386,7 @@ export function ParameterTable({ onSetValue }: ParameterTableProps) {
                 onRow={(row) => ({
                   className:
                     row.name === focusedVariable ? 'parameter-row-focused' : undefined,
+                  onClick: () => setFocusedVariable(row.name),
                   onDoubleClick: () => addPlotVariable(row.name),
                   onContextMenu: (event) => {
                     event.preventDefault();

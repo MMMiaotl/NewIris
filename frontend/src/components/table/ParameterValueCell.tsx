@@ -12,6 +12,10 @@ interface ParameterValueCellProps {
   onSetValue: (name: string, value: string) => void;
 }
 
+export function parameterValueInputId(name: string): string {
+  return `param-value-${name}`;
+}
+
 export function ParameterValueCell({
   name,
   value,
@@ -35,10 +39,18 @@ export function ParameterValueCell({
   return (
     <Space.Compact className="parameter-value-field">
       <Input
+        id={parameterValueInputId(name)}
         size="small"
         value={display}
         onChange={(e) => onDraftChange(name, e.target.value)}
         onPressEnter={apply}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && draft !== undefined) {
+            e.preventDefault();
+            onClearDraft(name);
+            (e.target as HTMLElement).blur();
+          }
+        }}
         status={hasPending ? 'warning' : undefined}
       />
       <Tooltip title={hasPending ? 'Set value' : 'No changes'}>
