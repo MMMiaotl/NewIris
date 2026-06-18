@@ -100,9 +100,11 @@ export function ConnectionBar({
               onChange={(hostAddress) => setConfig({ hostAddress })}
               options={predefinedHosts.map((h) => ({ label: h, value: h }))}
             />
-            <Button loading={requestStatus === 'loading'} onClick={() => void runDiscovery()}>
-              request
-            </Button>
+            <Tooltip title="GET /request — discover services">
+              <Button loading={requestStatus === 'loading'} onClick={() => void runDiscovery()}>
+                Discover
+              </Button>
+            </Tooltip>
             {isSmcServerTransport(config.transport) && (
               <>
                 <Typography.Text type="secondary">Service</Typography.Text>

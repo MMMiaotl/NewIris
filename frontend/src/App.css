@@ -109,16 +109,12 @@
   min-width: 0;
 }
 
-.menu-bar-right {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+.menu-bar-search {
+  width: 200px;
 }
 
-.menu-bar-status {
-  flex-shrink: 0;
+.view-mode-segmented .anticon {
+  font-size: 13px;
 }
 
 .search-filter-toggles {

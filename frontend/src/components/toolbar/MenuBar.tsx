@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { Button, Checkbox, Dropdown, Input, Space, Tooltip } from 'antd';
+import { useState, type ReactNode } from 'react';
+import { Button, Checkbox, Dropdown, Input, Segmented, Space, Tooltip } from 'antd';
 import {
+  AppstoreOutlined,
   FolderOpenOutlined,
+  LineChartOutlined,
   PlayCircleOutlined,
   SaveOutlined,
   SettingOutlined,
   SlidersOutlined,
   StopOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { defaultServerPath } from '../../constants/transport';
@@ -24,7 +27,7 @@ import {
   serializeRecording,
   serializeSession,
 } from '../../utils/recordingFormat';
-import type { SessionFile } from '../../api/types';
+import type { SessionFile, ViewMode } from '../../api/types';
 import { AboutModal } from '../settings/AboutModal';
 import { SearchFilterToggles } from './SearchFilterToggles';
 
@@ -48,12 +51,11 @@ export function MenuBar({
   const [aboutOpen, setAboutOpen] = useState(false);
   const {
     config,
-    status,
-    statusDetail,
     appMode,
     viewMode,
     flatTree,
     searchQuery,
+    plotDrawerOpen,
     setAppMode,
     setViewMode,
     setFlatTree,
@@ -143,35 +145,8 @@ export function MenuBar({
     { type: 'divider' },
     {
       key: 'offline',
-      label: appMode === 'offline' ? 'Go Online' : 'Off Line',
+      label: appMode === 'offline' ? 'Go Online' : 'Offline',
       onClick: () => setAppMode(appMode === 'offline' ? 'live' : 'offline'),
-    },
-  ];
-
-  const viewLabel = (mode: typeof viewMode, text: string) =>
-    viewMode === mode ? `✓ ${text}` : text;
-
-  const viewMenu: MenuProps['items'] = [
-    {
-      key: 'list',
-      label: viewLabel('list', 'List View'),
-      onClick: () => setViewMode('list'),
-    },
-    {
-      key: 'plot',
-      label: viewLabel('plot', 'Plot View'),
-      onClick: () => setViewMode('plot'),
-    },
-    {
-      key: 'splitter',
-      label: viewLabel('splitter', 'Splitter View'),
-      onClick: () => setViewMode('splitter'),
-    },
-    { type: 'divider' },
-    {
-      key: 'control',
-      label: 'Control Window',
-      onClick: toggleControlDrawer,
     },
   ];
 
@@ -266,11 +241,32 @@ export function MenuBar({
     }
   };
 
-  const statusColor =
-    status === 'connected' ? '#52c41a' : status === 'error' ? '#ff4d4f' : '#faad14';
-
-  const statusLabel =
-    appMode === 'offline' ? 'Off Line' : appMode === 'replay' ? 'Replay' : status;
+  const viewOptions: { value: ViewMode; label: ReactNode }[] = [
+    {
+      value: 'splitter',
+      label: (
+        <Tooltip title="Splitter view">
+          <AppstoreOutlined />
+        </Tooltip>
+      ),
+    },
+    {
+      value: 'list',
+      label: (
+        <Tooltip title="List view">
+          <UnorderedListOutlined />
+        </Tooltip>
+      ),
+    },
+    {
+      value: 'plot',
+      label: (
+        <Tooltip title="Plot view">
+          <LineChartOutlined />
+        </Tooltip>
+      ),
+    },
+  ];
 
   return (
     <div className="menu-bar">
@@ -283,27 +279,43 @@ export function MenuBar({
             Settings
           </Button>
         </Dropdown>
-        <Dropdown menu={{ items: viewMenu }} trigger={['click']}>
-          <Button type="text">View</Button>
-        </Dropdown>
-        <Button type="text" icon={<FolderOpenOutlined />} onClick={openSession} />
-        <Button type="text" icon={<SaveOutlined />} onClick={() => saveSession()} />
+        <Segmented
+          className="view-mode-segmented"
+          size="small"
+          value={viewMode}
+          onChange={(value) => setViewMode(value as ViewMode)}
+          options={viewOptions}
+        />
+        <Tooltip title="Open session">
+          <Button type="text" icon={<FolderOpenOutlined />} onClick={openSession} aria-label="Open session" />
+        </Tooltip>
+        <Tooltip title="Save session">
+          <Button type="text" icon={<SaveOutlined />} onClick={() => saveSession()} aria-label="Save session" />
+        </Tooltip>
         <Tooltip title={recording ? 'Stop recording' : 'Start recording'}>
           <Button
             type={recording ? 'primary' : 'text'}
             danger={recording}
             icon={recording ? <StopOutlined /> : <PlayCircleOutlined />}
             onClick={toggleRecord}
+            aria-label={recording ? 'Stop recording' : 'Start recording'}
           />
         </Tooltip>
-        <Button type="text" icon={<SlidersOutlined />} onClick={toggleControlDrawer}>
-          Control
-        </Button>
+        <Tooltip title="Control panel">
+          <Button
+            type={plotDrawerOpen ? 'primary' : 'text'}
+            icon={<SlidersOutlined />}
+            onClick={toggleControlDrawer}
+            aria-label="Control panel"
+          >
+            Control
+          </Button>
+        </Tooltip>
         <Input
+          className="menu-bar-search"
           placeholder="Search variables…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: 180 }}
           allowClear
           size="small"
         />
@@ -316,20 +328,10 @@ export function MenuBar({
         <Checkbox checked={flatTree} onChange={(e) => setFlatTree(e.target.checked)}>
           Flat Tree
         </Checkbox>
-      </Space>
-      <div className="menu-bar-right">
         <Button type="text" onClick={() => setAboutOpen(true)}>
           About
         </Button>
-        <Tooltip title={statusDetail}>
-          <span
-            className="status-pill menu-bar-status"
-            style={{ borderColor: statusColor, color: statusColor }}
-          >
-            {statusLabel}
-          </span>
-        </Tooltip>
-      </div>
+      </Space>
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
