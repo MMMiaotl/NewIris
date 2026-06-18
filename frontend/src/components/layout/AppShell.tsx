@@ -14,6 +14,8 @@ import { ConnectionSettingsModal } from '../settings/ConnectionSettingsModal';
 import { WatchIoMessageLogDrawer } from '../debug/WatchIoMessageLogDrawer';
 import { ChangeStyleScaleModal } from '../display/ChangeStyleScaleModal';
 import { ReplayControls } from '../replay/ReplayControls';
+import { ConnectionStatusDrawer } from '../status/ConnectionStatusDrawer';
+import { ConnectionStatusTrigger } from '../status/ConnectionStatusTrigger';
 import {
   DEFAULT_TREE_PANEL_WIDTH,
   MIN_CONTROL_PANEL_WIDTH,
@@ -53,8 +55,6 @@ export function AppShell() {
   const {
     viewMode,
     appMode,
-    config,
-    status,
     plotDrawerOpen,
     setPlotDrawerOpen,
     controlPanelWidth,
@@ -72,25 +72,16 @@ export function AppShell() {
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';
 
-  const statusClass =
-    status === 'connected'
-      ? 'footer-status--connected'
-      : status === 'error'
-        ? 'footer-status--error'
-        : status === 'connecting'
-          ? 'footer-status--connecting'
-          : 'footer-status--disconnected';
-
-  const modeLabel =
-    appMode === 'offline' ? 'Off Line' : appMode === 'replay' ? 'Replay' : status;
-
   return (
     <div className="app-shell">
       <WatchIoComHost />
       <header className="app-header">
         <div className="app-header-top">
-          <div className="app-title">Iris Next</div>
-          <span className="app-subtitle">WatchIO Monitor</span>
+          <div className="app-header-brand">
+            <div className="app-title">Iris Next</div>
+            <span className="app-subtitle">WatchIO Monitor</span>
+          </div>
+          <ConnectionStatusTrigger />
         </div>
         <MenuBar
           onOpenRegistration={() => setRegistrationPanelOpen(true)}
@@ -187,22 +178,11 @@ export function AppShell() {
         </Splitter>
       </main>
 
-      <footer className="app-footer">
-        <span className="footer-item">{config.transport}</span>
-        <span className="footer-sep">·</span>
-        <span className="footer-item">
-          {config.hostAddress}
-          {config.serverPath}
-        </span>
-        <span className="footer-sep">·</span>
-        <span className="footer-item">{config.watchIoName}</span>
-        <span className={`footer-status ${statusClass}`}>{modeLabel}</span>
-      </footer>
-
       <ConnectionSettingsModal
         open={connectionModalOpen}
         onClose={() => setConnectionModalOpen(false)}
       />
+      <ConnectionStatusDrawer />
       <WatchIoMessageLogDrawer />
       <RegistrationPanel
         open={registrationPanelOpen}

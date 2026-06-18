@@ -40,6 +40,7 @@ interface ConnectionState {
   controlPanelWidth: number;
   connectionModalOpen: boolean;
   watchIoLogDrawerOpen: boolean;
+  statusDrawerOpen: boolean;
   setConfig: (partial: Partial<ConnectionConfig>) => void;
   setTransport: (transport: ConnectionTransport) => void;
   resetWatchIoDiscovery: () => void;
@@ -59,6 +60,7 @@ interface ConnectionState {
   setControlPanelWidth: (width: number) => void;
   setConnectionModalOpen: (open: boolean) => void;
   setWatchIoLogDrawerOpen: (open: boolean) => void;
+  setStatusDrawerOpen: (open: boolean) => void;
 }
 
 export const DEFAULT_CONTROL_PANEL_WIDTH = 400;
@@ -94,6 +96,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   controlPanelWidth: DEFAULT_CONTROL_PANEL_WIDTH,
   connectionModalOpen: false,
   watchIoLogDrawerOpen: false,
+  statusDrawerOpen: false,
   setConfig: (partial) =>
     set((s) => {
       const next = { ...s.config, ...partial };
@@ -182,4 +185,5 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     set({ controlPanelWidth: Math.max(MIN_CONTROL_PANEL_WIDTH, Math.round(controlPanelWidth)) }),
   setConnectionModalOpen: (connectionModalOpen) => set({ connectionModalOpen }),
   setWatchIoLogDrawerOpen: (watchIoLogDrawerOpen) => set({ watchIoLogDrawerOpen }),
+  setStatusDrawerOpen: (statusDrawerOpen) => set({ statusDrawerOpen }),
 }));
