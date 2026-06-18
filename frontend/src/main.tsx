@@ -1,35 +1,22 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App as AntApp, ConfigProvider, theme } from 'antd';
 import App from './App';
+import { AppThemeProvider } from './components/theme/AppThemeProvider';
+import { applyColorThemeToDocument, applyHighContrastToDocument, DEFAULT_COLOR_THEME, isColorThemeId } from './constants/colorTheme';
 import { hydrateWorkspaceOnce } from './utils/workspacePersistence';
+import { loadUiPreferences } from './utils/preferencesPersistence';
 import './index.css';
 
 hydrateWorkspaceOnce();
 
+const initialPrefs = loadUiPreferences();
+applyColorThemeToDocument(isColorThemeId(initialPrefs.colorTheme) ? initialPrefs.colorTheme : DEFAULT_COLOR_THEME);
+applyHighContrastToDocument(initialPrefs.highContrast);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          colorBgLayout: '#f5f5f5',
-          colorBgContainer: '#ffffff',
-          colorBorder: '#e8e8e8',
-          colorBorderSecondary: '#f0f0f0',
-          borderRadius: 6,
-          fontSize: 13,
-        },
-        components: {
-          Tree: {
-            titleHeight: 22,
-          },
-        },
-      }}
-    >
-      <AntApp>
-        <App />
-      </AntApp>
-    </ConfigProvider>
+    <AppThemeProvider>
+      <App />
+    </AppThemeProvider>
   </StrictMode>,
 );

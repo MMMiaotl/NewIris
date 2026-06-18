@@ -235,9 +235,9 @@
 }
 
 .transport-connect-group .connect-btn--connected:hover {
-  color: #237804 !important;
-  border-color: #95de64 !important;
-  background: #d9f7be !important;
+  color: var(--status-connected-hover-fg) !important;
+  border-color: var(--status-connected-hover-border) !important;
+  background: var(--status-connected-hover-bg) !important;
 }
 
 .watchio-name-compact-full {
@@ -449,7 +449,7 @@
 }
 
 .parameter-table-scroll:focus-visible {
-  box-shadow: inset 0 0 0 2px rgba(22, 119, 255, 0.25);
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
   border-radius: var(--radius-sm);
 }
 
@@ -536,7 +536,7 @@
 }
 
 .parameter-table-panel .parameter-table-resize-handle:hover {
-  background: rgba(22, 119, 255, 0.15);
+  background: var(--resize-handle-hover);
 }
 
 .plot-panel {
@@ -548,7 +548,7 @@
 .plot-panel .panel-header {
   background: var(--surface-plot-header);
   color: var(--text-on-dark);
-  border-color: #333;
+  border-color: var(--plot-panel-border);
 }
 
 .plot-container {
@@ -562,7 +562,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-on-plot);
   font-size: var(--font-size-sm);
   pointer-events: none;
 }
@@ -612,8 +612,8 @@
   gap: 10px;
   flex-shrink: 0;
   padding: 4px 12px;
-  background: #fff1f0;
-  border-bottom: 1px solid #ffa39e;
+  background: var(--surface-recording);
+  border-bottom: 1px solid var(--border-recording);
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--status-error-fg);
@@ -623,7 +623,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ff4d4f;
+  background: var(--recording-dot);
   flex-shrink: 0;
   animation: recording-pulse 1.2s ease-in-out infinite;
 }
@@ -635,7 +635,7 @@
 
 .recording-bar-meta {
   font-weight: 500;
-  color: rgba(207, 19, 34, 0.85);
+  color: var(--recording-meta);
 }
 
 @keyframes recording-pulse {
@@ -837,29 +837,29 @@
 }
 
 .control-field-label--readonly {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--text-muted);
 }
 
 .control-field-label--editable {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--text-secondary);
 }
 
 .control-panel .control-field-readonly.ant-input {
   background: var(--surface-panel-muted);
   border-color: var(--border-subtle);
-  color: rgba(0, 0, 0, 0.72);
+  color: var(--text-field-readonly);
   box-shadow: none;
   cursor: default;
 }
 
 .control-panel .control-field-readonly.ant-input::placeholder {
-  color: rgba(0, 0, 0, 0.35);
+  color: var(--text-placeholder);
 }
 
 .control-panel .control-field-editable.ant-input {
   background: var(--surface-panel);
   border-color: var(--border-default);
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--text-field);
 }
 
 .control-panel .control-field-editable.ant-input:hover:not(:read-only) {
@@ -869,7 +869,7 @@
 .control-panel .control-field-editable.ant-input:focus,
 .control-panel .control-field-editable.ant-input:focus-within {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 0 2px var(--focus-ring-subtle);
 }
 
 .control-editable-group {
@@ -957,11 +957,11 @@
 }
 
 .parameter-table-panel .parameter-name-link:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--row-hover-bg);
 }
 
 .parameter-table-panel .parameter-name-link:active {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--row-active-bg);
   transform: scale(0.985);
   transition-duration: 0.08s;
 }
@@ -977,7 +977,7 @@
 }
 
 .parameter-table-panel .ant-table-tbody > tr.parameter-row-focused > td {
-  background: rgba(22, 119, 255, 0.08);
+  background: var(--row-focused-bg);
 }
 
 .watchio-log-json {
@@ -1076,7 +1076,7 @@
 }
 
 .style-scale-option-item.is-selected {
-  background: rgba(24, 144, 255, 0.12);
+  background: var(--option-selected-bg);
   font-weight: 600;
 }
 

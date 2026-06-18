@@ -9,6 +9,7 @@ import {
   type PersistedUiPreferences,
   type TreeLabelMode,
 } from '../utils/preferencesPersistence';
+import type { ColorThemeId } from '../constants/colorTheme';
 import type { SearchMatchOptions } from '../utils/buildVariableTree';
 
 export type { TreeLabelMode };
@@ -41,6 +42,8 @@ interface UiPreferencesState extends PersistedUiPreferences {
   setStartupConnectWatchIo: (on: boolean) => void;
   setConnectionBarCollapsed: (on: boolean) => void;
   setConnectionBarStartCollapsed: (on: boolean) => void;
+  setColorTheme: (theme: ColorThemeId) => void;
+  setHighContrast: (on: boolean) => void;
 }
 
 export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
@@ -83,6 +86,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
       setPref('connectionBarStartCollapsed', v);
       if (v) setPref('connectionBarCollapsed', true);
     },
+    setColorTheme: (v) => setPref('colorTheme', v),
+    setHighContrast: (v) => setPref('highContrast', v),
   };
 });
 

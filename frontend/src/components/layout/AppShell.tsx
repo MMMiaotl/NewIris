@@ -34,6 +34,7 @@ import { ImportVariablesModal } from '../registration/ImportVariablesModal';
 import { ExportStatisticsModal } from '../registration/ExportStatisticsModal';
 import { ShowOptionsModal } from '../settings/ShowOptionsModal';
 import { PreferencesModal } from '../settings/PreferencesModal';
+import { ThemeSettingsModal } from '../settings/ThemeSettingsModal';
 import {
   readInitialParameterPanelDefaultSize,
   readInitialPlotPanelDefaultSize,
@@ -57,6 +58,7 @@ export function AppShell() {
   const [exportStatsOpen, setExportStatsOpen] = useState(false);
   const [showOptionsOpen, setShowOptionsOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
   const {
     viewMode,
     appMode,
@@ -99,6 +101,7 @@ export function AppShell() {
           onOpenExportStatistics={() => setExportStatsOpen(true)}
           onOpenShowOptions={() => setShowOptionsOpen(true)}
           onOpenPreferences={() => setPreferencesOpen(true)}
+          onOpenTheme={() => setThemeSettingsOpen(true)}
         />
         <ConnectionBarSection>
           <ConnectionBar
@@ -219,6 +222,10 @@ export function AppShell() {
       <PreferencesModal
         open={preferencesOpen}
         onClose={() => setPreferencesOpen(false)}
+      />
+      <ThemeSettingsModal
+        open={themeSettingsOpen}
+        onClose={() => setThemeSettingsOpen(false)}
       />
       <ChangeStyleScaleModal
         open={styleModalOpen}

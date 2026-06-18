@@ -1,3 +1,5 @@
+import { DEFAULT_COLOR_THEME, isColorThemeId, type ColorThemeId } from '../constants/colorTheme';
+
 const UI_PREFERENCES_KEY = 'newiris-ui-preferences-v1';
 
 export type TreeLabelMode = 'name' | 'alias' | 'custom';
@@ -22,6 +24,8 @@ export interface PersistedUiPreferences {
   watchIoHistory: string[];
   connectionBarCollapsed: boolean;
   connectionBarStartCollapsed: boolean;
+  colorTheme: ColorThemeId;
+  highContrast: boolean;
 }
 
 export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
@@ -44,6 +48,8 @@ export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
   watchIoHistory: [],
   connectionBarCollapsed: false,
   connectionBarStartCollapsed: false,
+  colorTheme: 'light',
+  highContrast: false,
 };
 
 export function loadUiPreferences(): PersistedUiPreferences {
@@ -51,7 +57,11 @@ export function loadUiPreferences(): PersistedUiPreferences {
     const raw = localStorage.getItem(UI_PREFERENCES_KEY);
     if (!raw) return { ...DEFAULT_UI_PREFERENCES };
     const data = JSON.parse(raw) as Partial<PersistedUiPreferences>;
-    return { ...DEFAULT_UI_PREFERENCES, ...data };
+    const merged = { ...DEFAULT_UI_PREFERENCES, ...data };
+    if (!isColorThemeId(merged.colorTheme)) {
+      merged.colorTheme = DEFAULT_COLOR_THEME;
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_UI_PREFERENCES };
   }

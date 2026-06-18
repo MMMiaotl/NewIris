@@ -41,6 +41,7 @@ interface MenuBarProps {
   onOpenExportStatistics?: () => void;
   onOpenShowOptions?: () => void;
   onOpenPreferences?: () => void;
+  onOpenTheme?: () => void;
 }
 
 export function MenuBar({
@@ -51,6 +52,7 @@ export function MenuBar({
   onOpenExportStatistics,
   onOpenShowOptions,
   onOpenPreferences,
+  onOpenTheme,
 }: MenuBarProps) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const localSearchRef = useRef<InputRef>(null);
@@ -177,6 +179,11 @@ export function MenuBar({
       key: 'preferences',
       label: 'Preferences…',
       onClick: () => onOpenPreferences?.(),
+    },
+    {
+      key: 'theme',
+      label: 'Theme…',
+      onClick: () => onOpenTheme?.(),
     },
   ];
 
