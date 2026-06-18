@@ -12,10 +12,17 @@ createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       theme={{
         algorithm: theme.defaultAlgorithm,
-        token: { colorBgLayout: '#f0f0f0' },
+        token: {
+          colorBgLayout: '#f5f5f5',
+          colorBgContainer: '#ffffff',
+          colorBorder: '#e8e8e8',
+          colorBorderSecondary: '#f0f0f0',
+          borderRadius: 6,
+          fontSize: 13,
+        },
         components: {
           Tree: {
-            titleHeight: 20,
+            titleHeight: 22,
           },
         },
       }}
