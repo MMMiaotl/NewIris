@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode, type RefObject } from 'react';
+import { useState, type ReactNode, type RefObject } from 'react';
 import { Button, Checkbox, Dropdown, Input, Segmented, Space, Tooltip } from 'antd';
 import type { InputRef } from 'antd';
 import {
@@ -34,7 +34,7 @@ import { SearchFilterToggles } from './SearchFilterToggles';
 import { toggleControlDrawer } from '../../utils/controlDrawer';
 
 interface MenuBarProps {
-  searchInputRef?: RefObject<InputRef | null>;
+  searchInputRef: RefObject<InputRef | null>;
   onOpenRegistration?: () => void;
   onOpenExportVariables?: () => void;
   onOpenImportVariables?: () => void;
@@ -55,8 +55,6 @@ export function MenuBar({
   onOpenTheme,
 }: MenuBarProps) {
   const [aboutOpen, setAboutOpen] = useState(false);
-  const localSearchRef = useRef<InputRef>(null);
-  const resolvedSearchRef = searchInputRef ?? localSearchRef;
   const {
     config,
     appMode,
@@ -326,7 +324,7 @@ export function MenuBar({
         </Tooltip>
         <Tooltip title="Search variables (Ctrl+F)">
           <Input
-            ref={resolvedSearchRef}
+            ref={searchInputRef}
             className="menu-bar-search"
             placeholder="Search variables…"
             value={searchQuery}

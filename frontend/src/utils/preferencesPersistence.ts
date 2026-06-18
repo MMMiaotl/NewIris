@@ -53,17 +53,18 @@ export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
 };
 
 export function loadUiPreferences(): PersistedUiPreferences {
+  const normalize = (prefs: PersistedUiPreferences): PersistedUiPreferences => {
+    if (!isColorThemeId(prefs.colorTheme)) prefs.colorTheme = DEFAULT_COLOR_THEME;
+    if (prefs.connectionBarStartCollapsed) prefs.connectionBarCollapsed = true;
+    return prefs;
+  };
+
   try {
     const raw = localStorage.getItem(UI_PREFERENCES_KEY);
-    if (!raw) return { ...DEFAULT_UI_PREFERENCES };
-    const data = JSON.parse(raw) as Partial<PersistedUiPreferences>;
-    const merged = { ...DEFAULT_UI_PREFERENCES, ...data };
-    if (!isColorThemeId(merged.colorTheme)) {
-      merged.colorTheme = DEFAULT_COLOR_THEME;
-    }
-    return merged;
+    if (!raw) return normalize({ ...DEFAULT_UI_PREFERENCES });
+    return normalize({ ...DEFAULT_UI_PREFERENCES, ...JSON.parse(raw) });
   } catch {
-    return { ...DEFAULT_UI_PREFERENCES };
+    return normalize({ ...DEFAULT_UI_PREFERENCES });
   }
 }
 

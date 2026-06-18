@@ -75,14 +75,8 @@
   color: var(--text-secondary);
 }
 
-.connection-status-drawer-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .connection-status-descriptions {
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .app-title {
@@ -247,14 +241,6 @@
 
 .watchio-name-compact-full .ant-input {
   flex: 1;
-}
-
-.status-pill {
-  font-size: var(--font-size-xs);
-  padding: 2px 8px;
-  border: 1px solid;
-  border-radius: var(--radius-sm);
-  text-transform: capitalize;
 }
 
 .app-main {

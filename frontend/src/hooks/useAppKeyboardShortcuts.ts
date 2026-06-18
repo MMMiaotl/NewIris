@@ -1,7 +1,3 @@
-/**
- * Global keyboard shortcuts for veteran workflows.
- * Skips when focus is in an editable field (except Ctrl+F which always focuses search).
- */
 import { useEffect, type RefObject } from 'react';
 import type { InputRef } from 'antd';
 import { toggleControlDrawer } from '../utils/controlDrawer';

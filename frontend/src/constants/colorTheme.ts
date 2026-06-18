@@ -12,47 +12,43 @@ export const COLOR_THEME_OPTIONS: { value: ColorThemeId; label: string }[] = [
   { value: 'navy', label: 'Navy' },
 ];
 
+export const COLOR_THEME_HINTS: Record<ColorThemeId, string> = {
+  light: 'White panels on light gray — default daytime workspace.',
+  dark: 'Neutral charcoal surfaces with light text.',
+  navy: 'Deep navy workspace with cool accent highlights.',
+};
+
 export const DEFAULT_COLOR_THEME: ColorThemeId = 'light';
 
 export function isColorThemeId(value: string): value is ColorThemeId {
   return value === 'light' || value === 'dark' || value === 'navy';
 }
 
-export function applyColorThemeToDocument(themeId: ColorThemeId): void {
-  document.documentElement.setAttribute('data-color-theme', themeId);
+export function applyDocumentTheme(themeId: ColorThemeId, highContrast: boolean): void {
+  const root = document.documentElement;
+  root.setAttribute('data-color-theme', themeId);
+  root.setAttribute('data-high-contrast', highContrast ? 'true' : 'false');
 }
 
-export function applyHighContrastToDocument(enabled: boolean): void {
-  document.documentElement.setAttribute('data-high-contrast', enabled ? 'true' : 'false');
-}
+const SHARED_ANT: ThemeConfig = {
+  token: { borderRadius: 6, fontSize: 13 },
+  components: { Tree: { titleHeight: 22 } },
+};
 
 export function buildAntThemeConfig(themeId: ColorThemeId, highContrast = false): ThemeConfig {
-  const shared: ThemeConfig = {
-    token: {
-      borderRadius: 6,
-      fontSize: 13,
-    },
-    components: {
-      Tree: { titleHeight: 22 },
-    },
-  };
-
   if (themeId === 'light') {
     return {
-      ...shared,
+      ...SHARED_ANT,
       algorithm: antTheme.defaultAlgorithm,
       token: {
-        ...shared.token,
+        ...SHARED_ANT.token,
         colorPrimary: '#1677ff',
         colorBgLayout: '#f5f5f5',
         colorBgContainer: '#ffffff',
         colorBorder: highContrast ? '#cccccc' : '#e8e8e8',
         colorBorderSecondary: highContrast ? '#e0e0e0' : '#f0f0f0',
         ...(highContrast
-          ? {
-              colorText: 'rgba(0, 0, 0, 0.92)',
-              colorTextSecondary: 'rgba(0, 0, 0, 0.68)',
-            }
+          ? { colorText: 'rgba(0, 0, 0, 0.92)', colorTextSecondary: 'rgba(0, 0, 0, 0.68)' }
           : {}),
       },
     };
@@ -60,10 +56,10 @@ export function buildAntThemeConfig(themeId: ColorThemeId, highContrast = false)
 
   if (themeId === 'dark') {
     return {
-      ...shared,
+      ...SHARED_ANT,
       algorithm: antTheme.darkAlgorithm,
       token: {
-        ...shared.token,
+        ...SHARED_ANT.token,
         colorPrimary: '#4096ff',
         colorBgLayout: '#141414',
         colorBgContainer: '#1f1f1f',
@@ -77,10 +73,10 @@ export function buildAntThemeConfig(themeId: ColorThemeId, highContrast = false)
   }
 
   return {
-    ...shared,
+    ...SHARED_ANT,
     algorithm: antTheme.darkAlgorithm,
     token: {
-      ...shared.token,
+      ...SHARED_ANT.token,
       colorPrimary: '#4dabf7',
       colorBgLayout: '#040a14',
       colorBgContainer: '#081828',

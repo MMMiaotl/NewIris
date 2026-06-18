@@ -43,7 +43,6 @@ import {
 import { useDisplayStore } from '../../stores/displayStore';
 import { useState, useRef } from 'react';
 import { useAppKeyboardShortcuts } from '../../hooks/useAppKeyboardShortcuts';
-import { useStartupUiPreferences } from '../../hooks/useStartupUiPreferences';
 import type { InputRef } from 'antd';
 
 const parameterPanelDefaultSize = readInitialParameterPanelDefaultSize();
@@ -77,7 +76,6 @@ export function AppShell() {
   const closeStyleModal = useDisplayStore((s) => s.closeModal);
   const searchInputRef = useRef<InputRef>(null);
   useAppKeyboardShortcuts(searchInputRef);
-  useStartupUiPreferences();
 
   const showList = viewMode === 'splitter' || viewMode === 'list';
   const showPlot = viewMode === 'splitter' || viewMode === 'plot';
