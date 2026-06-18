@@ -4,6 +4,7 @@
  */
 import { Splitter } from 'antd';
 import { ConnectionBar } from '../connection/ConnectionBar';
+import { ConnectionBarSection } from '../connection/ConnectionBarSection';
 import { WatchIoComHost } from '../connection/WatchIoComHost';
 import { MenuBar } from '../toolbar/MenuBar';
 import { VariableTree } from '../tree/VariableTree';
@@ -91,11 +92,13 @@ export function AppShell() {
           onOpenShowOptions={() => setShowOptionsOpen(true)}
           onOpenPreferences={() => setPreferencesOpen(true)}
         />
-        <ConnectionBar
-          onConnect={connect}
-          onDisconnect={() => disconnect(true)}
-          onApplyWatchIoName={applyWatchIoName}
-        />
+        <ConnectionBarSection>
+          <ConnectionBar
+            onConnect={connect}
+            onDisconnect={() => disconnect(true)}
+            onApplyWatchIoName={applyWatchIoName}
+          />
+        </ConnectionBarSection>
       </header>
 
       {appMode === 'replay' && <ReplayControls />}

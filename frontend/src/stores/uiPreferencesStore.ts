@@ -39,6 +39,7 @@ interface UiPreferencesState extends PersistedUiPreferences {
   setSessionDescription: (text: string) => void;
   setStartupOpenSession: (on: boolean) => void;
   setStartupConnectWatchIo: (on: boolean) => void;
+  setConnectionBarCollapsed: (on: boolean) => void;
 }
 
 export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
@@ -76,6 +77,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
     setSessionDescription: (v) => setPref('sessionDescription', v),
     setStartupOpenSession: (v) => setPref('startupOpenSession', v),
     setStartupConnectWatchIo: (v) => setPref('startupConnectWatchIo', v),
+    setConnectionBarCollapsed: (v) => setPref('connectionBarCollapsed', v),
   };
 });
 

@@ -184,9 +184,42 @@
 }
 
 .connection-bar {
-  padding: 4px 0 2px;
-  border-top: 1px solid #d8d8d8;
+  padding: 2px 0 0;
+}
+
+.connection-bar-section {
+  border-top: 1px solid var(--border-subtle);
   margin-top: 4px;
+}
+
+.connection-bar-section--collapsed {
+  margin-bottom: -2px;
+}
+
+.connection-bar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.connection-bar-toggle:hover {
+  color: var(--text-primary);
+}
+
+.connection-bar-toggle .anticon {
+  font-size: 10px;
+}
+
+.connection-bar-panel {
+  padding-bottom: 2px;
 }
 
 .transport-connect-group .connect-btn {
