@@ -13,11 +13,13 @@ export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
     startupOpenSession,
     startupConnectWatchIo,
     plotNameTruncate,
+    connectionBarStartCollapsed,
     watchIoHistory,
     setSessionDescription,
     setStartupOpenSession,
     setStartupConnectWatchIo,
     setPlotNameTruncate,
+    setConnectionBarStartCollapsed,
   } = useUiPreferencesStore();
 
   return (
@@ -53,6 +55,12 @@ export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
               onChange={(e) => setStartupOpenSession(e.target.checked)}
             >
               Prompt to open last session on startup
+            </Checkbox>
+            <Checkbox
+              checked={connectionBarStartCollapsed}
+              onChange={(e) => setConnectionBarStartCollapsed(e.target.checked)}
+            >
+              Start with connection bar collapsed
             </Checkbox>
           </Space>
         </Form.Item>

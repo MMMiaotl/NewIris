@@ -21,6 +21,7 @@ export interface PersistedUiPreferences {
   startupConnectWatchIo: boolean;
   watchIoHistory: string[];
   connectionBarCollapsed: boolean;
+  connectionBarStartCollapsed: boolean;
 }
 
 export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
@@ -42,6 +43,7 @@ export const DEFAULT_UI_PREFERENCES: PersistedUiPreferences = {
   startupConnectWatchIo: false,
   watchIoHistory: [],
   connectionBarCollapsed: false,
+  connectionBarStartCollapsed: false,
 };
 
 export function loadUiPreferences(): PersistedUiPreferences {
