@@ -46,6 +46,11 @@
   --header-padding-x: 10px;
   --header-padding-y: 6px;
   --panel-header-padding: 6px 10px;
+
+  --surface-replay: #e6f4ff;
+  --border-replay: #91caff;
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --surface-selected: #e6f4ff;
 }
 
 html,
